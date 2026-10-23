@@ -39,6 +39,9 @@ scripts-lint: ## shellcheck every tracked shell script
 # CI passes the PR's base commit and head branch. Locally the defaults compare against origin/main.
 RECORDS_BASE ?= origin/main
 RECORDS_BRANCH ?= $(shell git branch --show-current 2>/dev/null)
+# The recipe reads these from the environment. Make pastes $(VAR) into the shell command as text, and a PR's branch
+# name is attacker-controlled: `feat/1-$$(curl${IFS}...)` is a valid git branch name.
+export RECORDS_BASE RECORDS_BRANCH
 
 .PHONY: records
 records: ## Print the ADR and assumption tables built from the record files
@@ -47,9 +50,9 @@ records: ## Print the ADR and assumption tables built from the record files
 .PHONY: records-check
 records-check: ## Fail on misnamed, duplicate, or incomplete ADR and assumption files
 	python3 docs/tools/record_index.py --check
-	@if [[ -n "$(RECORDS_BRANCH)" ]]; then \
-	  git diff --name-only --diff-filter=AR "$(RECORDS_BASE)...HEAD" \
-	    | python3 docs/tools/check_record_ids.py --branch "$(RECORDS_BRANCH)"; \
+	@if [[ -n "$${RECORDS_BRANCH}" ]]; then \
+	  git diff --name-only --diff-filter=AR "$${RECORDS_BASE}...HEAD" \
+	    | python3 docs/tools/check_record_ids.py --branch "$${RECORDS_BRANCH}"; \
 	else \
 	  python3 docs/tools/check_record_ids.py </dev/null; \
 	fi

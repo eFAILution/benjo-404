@@ -1,0 +1,10 @@
+# Human users or teams only. Never list a bot or agent identity here,
+# because Code Owner review is the human approval gate
+# (.ai/standards/pull-request-review.md).
+#
+# REPLACE-ME with the owning users or team, for example @your-org/your-team.
+*                       @REPLACE-ME
+
+# Changes to standards, CI, and ownership need the same owners' review.
+/.ai/                   @REPLACE-ME
+/.github/               @REPLACE-ME

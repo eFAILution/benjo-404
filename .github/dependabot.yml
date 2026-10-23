@@ -1,0 +1,41 @@
+# Keeps SHA-pinned actions and dependencies current. Dependabot updates the
+# SHA and the version comment together.
+# The cooldown holds back versions published less than a day ago, so a
+# compromised release has time to be caught before it reaches a PR.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 1
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Uncomment the ecosystems this repo uses.
+  #
+  # - package-ecosystem: npm   # also covers pnpm lockfiles
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   cooldown:
+  #     default-days: 1
+  #
+  # - package-ecosystem: pip   # also covers uv lockfiles
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   cooldown:
+  #     default-days: 1
+  #
+  # - package-ecosystem: docker
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #
+  # - package-ecosystem: terraform
+  #   directory: /infra/terraform
+  #   schedule:
+  #     interval: weekly

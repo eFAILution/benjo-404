@@ -1,0 +1,2 @@
+Before doing anything else, read `.ai/README.md` and follow it.
+The standards in `.ai/standards/` are mandatory. Project context is in `.ai/project/`.

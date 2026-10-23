@@ -1,0 +1,36 @@
+# Local config / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+kubeconfig*
+.claude/settings.local.json
+
+# Local agent tooling state
+.omc/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Dependencies and build output
+node_modules/
+.venv/
+__pycache__/
+dist/
+build/
+coverage/
+*.log
+
+# Terraform (remove if unused)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log

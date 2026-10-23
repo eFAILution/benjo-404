@@ -4,7 +4,7 @@ Each assumption lives in docs/assumptions/A-<issue>.<n>.md and each ADR in docs/
 Pull requests add files and never edit a shared table, so they do not conflict with each other.
 
     python3 docs/tools/record_index.py           # print both tables (`make records`)
-    python3 docs/tools/record_index.py --check   # fail if any record file is misnamed or incomplete (CI)
+    python3 docs/tools/record_index.py --check   # fail if any record file is misnamed or incomplete (pre-push hook)
     python3 docs/tools/record_index.py --write   # write both tables into the committed index files
 
 Use --write only for a snapshot, such as a release or hand-off commit. A pull request that writes the tables

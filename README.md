@@ -2,7 +2,23 @@
 
 Hackathon submission for team "404: Team Not Found".
 
-REPLACE-ME: what the app does, how to run it, and known limitations.
+## The goal
+
+A "page not found" error usually ends a visit. We want ours to be the page people come back to on purpose.
+
+benjo-404 will be an interactive 404 page for our users, starring Benjo, the dragon from our circle logo. When a link breaks, visitors still get a clear "page not found" message and a link home, plus a quick game to play and new surprises to find.
+
+What we're aiming for:
+
+- **Changes with the seasons.** The page picks a theme from the visitor's date, such as a holiday or the time of year, and changes the scenery, obstacles, and collectibles to match. Each theme is a drop-in pack, so adding one doesn't touch the game logic.
+- **Lots of fun.** Easy to start and hard to put down. One more run.
+- **Worth coming back to.** New themes, hidden extras, and a local high score to beat give people a reason to visit again and see what's new.
+- **Still a good 404 page.** The game never hides or delays the error message or the way home. It works in modern browsers on desktop and mobile, with keyboard and touch controls.
+- **Safe and light.** Self-contained: no third-party scripts, no tracking, and no network calls after the page loads. It runs under a strict Content Security Policy and only uses `localStorage` for things like a high score.
+
+The design is being worked out in [issue #3](https://github.com/eFAILution/benjo-404/issues/3).
+
+REPLACE-ME: how to run it, and known limitations.
 
 ## How we work
 

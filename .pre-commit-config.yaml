@@ -1,5 +1,8 @@
 # Local hooks: `pipx install pre-commit && pre-commit install`
 # Revs are pinned to commit SHAs. Update them with `pre-commit autoupdate --freeze`.
+# There is no CI (ADR-0006), so these hooks are the only automatic checks. Never skip them with --no-verify.
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # frozen: v6.0.0
@@ -15,3 +18,12 @@ repos:
     rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e # frozen: v8.30.1
     hooks:
       - id: gitleaks
+  - repo: local
+    hooks:
+      - id: make-verify
+        name: make verify (lint, tests, record checks)
+        entry: make verify
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

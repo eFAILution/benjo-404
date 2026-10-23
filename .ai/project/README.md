@@ -38,13 +38,13 @@ ADR and assumption IDs come from the GitHub issue number, so parallel PRs never 
 
 **Recording an assumption**
 
-- Create `docs/assumptions/A-96.1.md` for the first assumption from issue #96, `A-96.2.md` for the second. No zero padding. The format and the six required fields are in `docs/assumptions-log.md`; a missing field fails CI.
+- Create `docs/assumptions/A-96.1.md` for the first assumption from issue #96, `A-96.2.md` for the second. No zero padding. The format and the six required fields are in `docs/assumptions-log.md`; a missing field fails `make records-check`.
 - Before you pick `<n>`, run `ls docs/assumptions/A-96.*` on an up-to-date `main` and take the next number. Two open PRs for the same issue can still pick the same `<n>`; the loser gets an add/add conflict on that one file and renumbers.
 - To confirm or retire an assumption, edit its **Status** field in its file. Keep the record.
 
 **Never edit the index tables.** `docs/assumptions-log.md` and `docs/decisions/README.md` hold `<!-- BEGIN ... index -->` / `<!-- END ... index -->` markers. `make records` prints the tables from the record files. Only a snapshot commit, such as a release or hand-off, runs `python3 docs/tools/record_index.py --write` to commit both tables.
 
-**If the records check fails on your PR.** The `records` job in `ci.yml` runs `make records-check` on every pull request. Its message names the file and the expected name. Fixes, in order of likelihood: the branch has no issue number (see **Moving to a branch with an issue number** below); the file is named after the wrong number; two ADR files share a number (rename yours to your issue number); a record file is missing a field. A branch with no issue number also gets a warning when it adds no records; it does not fail the check, but move to a correctly named branch the same way. Run the check locally with `make records-check`.
+**If the records check fails on your PR.** The pre-push hook runs `make records-check` (as part of `make verify`) before every push. Its message names the file and the expected name. Fixes, in order of likelihood: the branch has no issue number (see **Moving to a branch with an issue number** below); the file is named after the wrong number; two ADR files share a number (rename yours to your issue number); a record file is missing a field. A branch with no issue number also gets a warning when it adds no records; it does not fail the check, but move to a correctly named branch the same way. Run the check locally with `make records-check`.
 
 **Moving to a branch with an issue number.** Do not rename the branch on GitHub: renaming a pull request's head branch closes the pull request and deletes the old branch name. Open the issue if there is none, then rename the branch locally, push it under the new name, and open a new PR from it:
 
@@ -65,10 +65,11 @@ The local rename and `-u` matter: they point the branch at the new remote branch
 ## Commands agents should run before committing
 
 ```sh
-make lint          # every linter for this repo
-make test          # every test suite for this repo
+make verify        # lint, tests, and record checks (what the pre-push hook runs)
 make secrets-scan  # gitleaks over the full history
 ```
+
+There is no CI (ADR-0006). Install the hooks once with `pre-commit install`; it sets up both the pre-commit and pre-push hooks.
 
 ## Data handling
 
@@ -80,3 +81,4 @@ make secrets-scan  # gitleaks over the full history
 | Standard | Deviation | Reason |
 |----------|-----------|--------|
 | `branching-and-merging.md`: branch names | The issue number in the branch name is required, not optional | ADR and assumption IDs come from it (ADR-0000) |
+| `branching-and-merging.md`, `data-handling-and-secrets.md`, `definition-of-done.md`, `pull-request-review.md`: required CI status checks | No CI. Local pre-commit and pre-push hooks run the checks, and the PR's "How was this tested" section is the evidence | GitHub Actions minutes cost money on a private repo, and the checks are cheap to run locally (ADR-0006) |

@@ -13,6 +13,7 @@ import {
   findStrayUrls,
   STORAGE_FILE,
   SVG_NS,
+  stripIconDataUrls,
 } from './check-content.js';
 import { EMBED_CSP } from './inline.js';
 
@@ -135,7 +136,8 @@ export async function checkSource(root, ctaHrefs) {
   const problems = [];
   for (const file of (await listFiles(join(root, 'src'))).sort()) {
     const name = relative(root, file).split(sep).join('/');
-    const code = await codeOnly(file, await readFile(file, 'utf8'));
+    const text = await readFile(file, 'utf8');
+    const code = extname(file) === '.html' ? stripIconDataUrls(text) : await codeOnly(file, text);
     const allow = name === STORAGE_FILE ? ['localStorage'] : [];
     for (const banned of findBanned(code, { allow }))
       problems.push(`${name}: uses banned ${banned}`);

@@ -1,6 +1,6 @@
 // @ts-check
 // Pure content checks on built output: CSP hashes, banned APIs, leftover tokens, stray URLs.
-import { escapeHtml, extractInline, singleFileCsp, validateCtaHref } from './inline.js';
+import { escapeHtml, extractInline, sha256Base64, validateCtaHref } from './inline.js';
 
 /** An identifier for createElementNS. Browsers never fetch it. */
 export const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -27,17 +27,22 @@ const URL_PATTERN = /https?:\/\/[^\s"'`<>()\\]*/gi;
 const TOKEN_PATTERN = /\{\{\s*[A-Za-z_]+\s*\}\}/g;
 
 /**
+ * The source list of one directive, or null when the policy does not have it.
  * @param {string} policy
  * @param {string} name
+ * @returns {string[] | null}
  */
-const directive = (policy, name) =>
-  policy
+function sources(policy, name) {
+  const found = policy
     .split(';')
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name} `)) ?? '';
+    .map((part) => part.trim().split(/\s+/))
+    .find(([directive]) => directive === name);
+  return found ? found.slice(1) : null;
+}
 
 /**
- * Recompute the inline hashes and compare them to the header the build wrote.
+ * Recompute the inline hashes and compare them to the script-src and style-src hashes in
+ * csp.txt. Other directives are the build's business, so they are not pinned here.
  * @param {string} html
  * @param {string} csp contents of dist/csp.txt
  * @returns {string[]}
@@ -49,13 +54,34 @@ export function checkCsp(html, csp) {
   } catch (error) {
     return [`404.html: ${error instanceof Error ? error.message : error}`];
   }
-  const expected = singleFileCsp(inline);
-  const actual = csp.trim();
-  if (actual === expected) return [];
-  const problems = ['script-src', 'style-src']
-    .filter((name) => directive(actual, name) !== directive(expected, name))
-    .map((name) => `csp.txt: ${name} hash does not match 404.html`);
-  return problems.length > 0 ? problems : ['csp.txt: header differs from the expected policy'];
+  const expected = { 'script-src': inline.script, 'style-src': inline.style };
+  return Object.entries(expected).flatMap(([name, content]) => {
+    const list = sources(csp, name);
+    if (!list) return [`csp.txt: no ${name} directive`];
+    const hashes = list.filter((source) => source.startsWith("'sha256-"));
+    const loose = list.filter((source) => !source.startsWith("'sha256-"));
+    const problems = [];
+    if (hashes.length !== 1 || hashes[0] !== `'sha256-${sha256Base64(content)}'`) {
+      problems.push(`csp.txt: ${name} hash does not match 404.html`);
+    }
+    if (loose.length > 0)
+      problems.push(`csp.txt: ${name} allows more than the hash: ${loose.join(' ')}`);
+    return problems;
+  });
+}
+
+/**
+ * Blank the href of `<link rel="icon">` tags whose href is an inline `data:image/` URL. Such a
+ * favicon is never fetched, but an SVG one carries the SVG namespace inside it.
+ * @param {string} html
+ * @returns {string}
+ */
+export function stripIconDataUrls(html) {
+  return html.replace(/<link\b[^>]*>/gi, (tag) =>
+    /\brel=["']?[^"'>]*\bicon\b/i.test(tag)
+      ? tag.replace(/\bhref=("data:image\/[^"]*"|'data:image\/[^']*')/i, 'href=""')
+      : tag,
+  );
 }
 
 /**
@@ -125,7 +151,8 @@ export function checkPage({ html, csp, ctaHrefs }) {
     problems.push(`404.html: CTA href ${JSON.stringify(href)} is not a validated message href`);
   for (const token of findLeftoverTokens(html))
     problems.push(`404.html: leftover template token ${token}`);
-  for (const url of findStrayUrls(html, [SVG_NS, ...valid, ...valid.map(escapeHtml)]))
+  const allowed = [SVG_NS, ...valid, ...valid.map(escapeHtml)];
+  for (const url of findStrayUrls(stripIconDataUrls(html), allowed))
     problems.push(`404.html: external URL ${url}`);
   const script = html.match(/<script\b[^>]*>([\s\S]*?)<\/script>/i)?.[1] ?? '';
   for (const name of findBanned(script, { allow: ['localStorage'] })) {

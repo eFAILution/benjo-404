@@ -14,6 +14,7 @@
 
 import { createAttract } from './attract.js';
 import { formatDay, resolve } from './boot.js';
+import { createDebugMeter } from './debug-meter.js';
 import { byId, readQuery, text } from './dom.js';
 import { createHost } from './host.js';
 import { createHud } from './hud.js';
@@ -53,27 +54,6 @@ function swapMessageText(message) {
     const node = byId(id);
     if (node) text(node, value);
   }
-}
-
-/**
- * @param {HTMLElement} hudRoot
- * @param {() => string} describe
- */
-function startDebugMeter(hudRoot, describe) {
-  let frames = 0;
-  let since = performance.now();
-  /** @param {number} now */
-  const tick = (now) => {
-    frames += 1;
-    if (now - since >= 1000) {
-      const fps = Math.round((frames * 1000) / (now - since));
-      hudRoot.dispatchEvent(new CustomEvent('benjo-debug', { detail: `${describe()} fps=${fps}` }));
-      frames = 0;
-      since = now;
-    }
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
 }
 
 /**
@@ -155,15 +135,16 @@ export function boot(registry, config, holidays = null) {
     },
   });
 
-  if (resolved.debug) {
-    hudRoot.addEventListener('benjo-debug', (event) =>
-      hud.setDebug(String(/** @type {CustomEvent} */ (event).detail)),
-    );
-    const line = () =>
-      `game=${game?.id ?? 'none'} theme=${theme.id} date=${formatDay(resolved.date)}`;
-    hud.setDebug(line());
-    startDebugMeter(hudRoot, line);
-  }
+  const describe = () =>
+    `game=${game?.id ?? 'none'} theme=${theme.id} date=${formatDay(resolved.date)}`;
+  const meter = resolved.debug ? createDebugMeter({ frames, emit: hud.setDebug, describe }) : null;
+  if (meter) hud.setDebug(describe());
+  // The meter only spends frames while a run is playing on a visible page.
+  const syncMeter = () => {
+    const { classList } = html;
+    const playing = classList.contains('is-playing') && !classList.contains('is-paused');
+    meter?.setRunning(playing && !classList.contains('is-over') && !document.hidden);
+  };
 
   attract.start();
   if (!game) return;
@@ -184,6 +165,7 @@ export function boot(registry, config, holidays = null) {
     setClass(name, on) {
       html.classList.toggle(name, on);
       if (name === 'is-playing') hudRoot.hidden = !on;
+      syncMeter();
     },
     createInput: (signal) =>
       attachInput({ canvas, signal, pauseButton: hud.pauseButton, onPause: () => host?.pause() }),
@@ -195,7 +177,11 @@ export function boot(registry, config, holidays = null) {
 
   const pauseIfPlaying = () => host?.pause();
   const options = { signal: page.signal };
-  document.addEventListener('visibilitychange', () => document.hidden && pauseIfPlaying(), options);
+  const onVisibility = () => {
+    if (document.hidden) pauseIfPlaying();
+    syncMeter();
+  };
+  document.addEventListener('visibilitychange', onVisibility, options);
   window.addEventListener('blur', pauseIfPlaying, options);
   // Focus moving into the message strip pauses without stealing focus, so Tab reaches the link.
   message.addEventListener('focusin', () => host?.pause({ focus: false }), options);

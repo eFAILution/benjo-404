@@ -119,15 +119,21 @@ export function createInputState() {
   return state;
 }
 
+/** Keys that activate a focused button or link. The game never takes these from one. */
+const ACTIVATION_KEYS = new Set(['Enter', 'NumpadEnter', 'Space']);
+
 /**
- * @param {Element | null} active
- * @param {Element | null} pauseButton
+ * Pure decision: is this key game input (and so prevented), or does it belong to the focused
+ * control? Links and buttons keep Enter and Space; Tab is never game input.
+ * @param {string} code KeyboardEvent.code
+ * @param {{ active: { id: string } | null, body: object | null, html: object | null,
+ *   pauseButton: object | null }} focus
  * @returns {boolean}
  */
-function keysBelongToGame(active, pauseButton) {
-  if (!active || active === document.body || active === document.documentElement) return true;
-  if (active === pauseButton) return true;
-  return active.id === 'game-root';
+export function gameOwnsKey(code, { active, body, html, pauseButton }) {
+  if (!Object.keys(KEY_MAP).includes(code)) return false;
+  if (!active || active === body || active === html || active.id === 'game-root') return true;
+  return active === pauseButton && !ACTIVATION_KEYS.has(code);
 }
 
 /**
@@ -144,7 +150,13 @@ export function attachInput({ canvas, signal, pauseButton = null, onPause }) {
   function onKey(event) {
     const actions = KEY_MAP[event.code];
     if (!actions || event.altKey || event.ctrlKey || event.metaKey) return;
-    if (!keysBelongToGame(document.activeElement, pauseButton)) return;
+    const focus = {
+      active: document.activeElement,
+      body: document.body,
+      html: document.documentElement,
+      pauseButton,
+    };
+    if (!gameOwnsKey(event.code, focus)) return;
     event.preventDefault();
     input.setTouch(false);
     for (const action of actions) {

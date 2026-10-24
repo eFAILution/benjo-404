@@ -3,6 +3,9 @@
   --ink: #f2f2f2;
   --muted: #9e9e9e;
   --line: #ffffff14;
+  /* Brand red stays fixed so buttons match the live site in every theme. */
+  --brand: #d72228;
+  --brand-hover: #b51d22;
   --accent: #d72228;
   --accent-hover: #b51d22;
   --accent-soft: #d7222833;

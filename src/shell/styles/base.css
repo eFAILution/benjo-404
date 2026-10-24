@@ -87,13 +87,13 @@ button {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--brand);
   color: var(--ink);
   box-shadow: var(--shadow-btn);
 }
 
 .btn-primary::before {
-  background: var(--accent-hover);
+  background: var(--brand-hover);
 }
 
 .btn-ghost {

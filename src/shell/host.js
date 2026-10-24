@@ -78,7 +78,6 @@ export function createHost(options) {
   let lastTime = null;
   /** @type {number | null} */
   let frameId = null;
-  let lastScore = -1;
 
   function stopLoop() {
     if (frameId !== null) frames.cancel(frameId);
@@ -161,12 +160,15 @@ export function createHost(options) {
   }
 
   /**
+   * One context per run. Its end, setScore, and setStatus go quiet once the run's signal aborts,
+   * so a stale instance can never end or write over the next run.
    * @param {AbortSignal} signal
    * @param {InputState} state
    * @returns {HostContext}
    */
   function buildContext(signal, state) {
     const { theme } = options;
+    let lastScore = -1;
     return {
       root: options.root,
       canvas: options.canvas,
@@ -180,12 +182,12 @@ export function createHost(options) {
       random: options.random,
       drawSprite: (sprite, x, y, h, opts) => options.drawSprite?.(ctx, sprite, x, y, h, opts),
       setScore(value) {
-        if (value === lastScore) return;
+        if (signal.aborted || value === lastScore) return;
         lastScore = value;
         hud.setScore(value);
       },
-      setStatus: (text) => hud.setStatus(String(text)),
-      end,
+      setStatus: (text) => signal.aborted || hud.setStatus(String(text)),
+      end: (result) => signal.aborted || end(result),
     };
   }
 
@@ -226,7 +228,6 @@ export function createHost(options) {
     controller = new AbortController();
     input = options.createInput(controller.signal);
     const context = buildContext(controller.signal, input);
-    lastScore = -1;
     hud.setScore(0);
     hud.setBest(storage.getNumber(game.bestKey, 0));
     hud.setStatus(input.touch ? game.controls.touch : game.controls.keyboard);

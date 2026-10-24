@@ -89,6 +89,42 @@ describe('createHost lifecycle', () => {
   });
 });
 
+describe('createHost stale runs', () => {
+  it("ignores the previous run's end and setScore during the next run", () => {
+    let stale = null;
+    const { game, host, hud, frames } = setup({
+      update: () => {
+        stale?.end({ score: 99 });
+        stale?.setScore(42);
+        stale?.setStatus('stale');
+      },
+    });
+    host.play();
+    stale = game.host;
+    stale.end({ score: 1 });
+    host.play();
+    frames.run(0);
+    assert.equal(host.state, 'playing');
+    assert.equal(count(game.log, 'destroy'), 1);
+    assert.equal(stale.signal.aborted, true);
+    assert.equal(game.host.signal.aborted, false);
+    assert.ok(!hud.events.some(([name, value]) => name === 'score' && value === 42));
+    assert.ok(!hud.events.some(([name, value]) => name === 'status' && value === 'stale'));
+    assert.equal(hud.events.filter(([name]) => name === 'over').length, 1);
+  });
+
+  it("keeps each run's setScore dedupe separate", () => {
+    const { game, host, hud } = setup();
+    host.play();
+    game.host.setScore(7);
+    game.host.end({ score: 7 });
+    host.play();
+    game.host.setScore(7);
+    const scores = hud.events.filter(([name]) => name === 'score').map(([, value]) => value);
+    assert.deepEqual(scores, [0, 7, 0, 7]);
+  });
+});
+
 describe('createHost error isolation', () => {
   it('a throwing update destroys the game, leaves is-playing, and restarts attract', () => {
     let explode = true;

@@ -18,7 +18,44 @@ What we're aiming for:
 
 The design is being worked out in [issue #3](https://github.com/eFAILution/benjo-404/issues/3).
 
-REPLACE-ME: how to run it, and known limitations.
+## Run it
+
+You need Node 22 or newer and pnpm 11.
+
+```sh
+pnpm install --frozen-lockfile
+make build         # writes dist/404.html, dist/csp.txt, dist/embed/
+make test          # unit tests, then build and check dist/ (budgets, CSP hashes, no external URLs)
+```
+
+Open `dist/404.html` in a browser. `node build/check.js --print` shows each part's size against its budget in `budgets.json`.
+
+Query overrides, for testing only. Bad values are ignored.
+
+| Query | Effect |
+|-------|--------|
+| `?game=runner` | Pick a bundled game. `?game=none` shows the page with no game. |
+| `?theme=halloween` | Pick a bundled theme. `?theme=none` forces the default look. |
+| `?date=2026-10-24` | Pretend today is this date (`YYYY-MM-DD`), to preview a holiday. |
+| `?message=short` | Pick a bundled message. |
+| `?rm=1` | Act as if the OS asks for reduced motion. |
+| `?debug=1` | Show a line with the game, theme, date, and frame rate. |
+
+### Add a game or a theme
+
+1. Make a folder: `src/games/<id>/index.js` exports a game module, or `src/themes/<id>/index.js` exports a theme pack. The shapes are in `src/contracts.d.ts`.
+2. Add one line to the registry: `src/games/index.js` or `src/themes/index.js`.
+3. Add the id to `games` or `themes` in `benjo.config.json`. A theme's `holiday` field names a holiday in `src/holidays/calendar.js`.
+4. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack.
+5. Run `make test`. It fails if the game is over 16 KB or the theme over 4 KB gzipped.
+
+### Known limitations
+
+- How the page reaches the live Webflow site is not settled (A-8.1). See [`docs/runbooks/deploy-404.md`](docs/runbooks/deploy-404.md).
+- The CSP header holds hashes of the inline script and style. Any rebuild that changes them needs the new `dist/csp.txt` deployed with the file.
+- The game needs Safari 14 or Chrome 90 and up. Older browsers still get the plain message and the Return Home link.
+- Holidays follow the visitor's own clock and a US calendar (A-8.3). There is no sound (A-8.4).
+- The best score lives in the browser's `localStorage`, so a private window or another device starts from zero.
 
 ## How we work
 
@@ -45,18 +82,25 @@ Every change starts with a GitHub issue, goes on a branch named after it, and re
 | `.github/CODEOWNERS` | Required human reviewers | Yes, set the owners |
 | `.github/pull_request_template.md` | PR template with testing evidence and AI disclosure | Rarely |
 | `.pre-commit-config.yaml` | pre-commit: whitespace, YAML, private keys, gitleaks. pre-push: `make verify` | Add stack hooks |
-| `Makefile` | The checks: `lint`, `test`, `records-check`, `verify`, `secrets-scan`, `check` | Yes, wire in the project's linters and tests |
+| `Makefile` | The checks: `lint`, `test`, `records-check`, `verify`, `secrets-scan`, `check`, plus `build` and `dev` | Yes, wire in the project's linters and tests |
 | `docs/decisions/` | Architecture Decision Records, one per issue, named after it (ADR-0000) | Add a file per decision |
 | `docs/assumptions/` | Assumptions made where requirements are silent, one file each, named after the issue | Add a file per assumption |
 | `docs/tools/` | Builds the record tables (`make records`) and checks record names before each push | Rarely |
 | `docs/runbooks/` | Operating procedures | Add as needed |
+| `src/` | The page: `template.html`, `shell/` (host, input, HUD), `messages/`, `games/`, `themes/`, `holidays/`, `assets/` | Yes; a new game or theme is a new folder |
+| `assets/fonts/` | Subset WOFF2 fonts, their OFL licenses, and how they were made | Only with a new subset |
+| `build/` | `build.js` writes `dist/`; `check.js` checks budgets, CSP hashes, and content | When the build changes |
+| `tests/` | `node --test` suites, mirroring `src/` and `build/` | Yes, with every change |
+| `benjo.config.json` | Which message, games, and themes the build bundles, and a theme pin or `auto` | Yes |
+| `budgets.json` | Gzipped byte budgets per part, checked by `make test` | Only with a reason in the PR |
+| `dist/` | Build output, not committed | No, run `make build` |
 
 ## Supply chain defaults
 
 - pre-commit hook revs are pinned to commit SHAs (`pre-commit autoupdate --freeze`).
 - Dependabot waits a day before proposing a newly published version.
 - No CI (ADR-0006). If a workflow is ever added back, pin every `uses:` to a commit SHA, default to `contents: read`, and never use `pull_request_target`.
-- For JavaScript, use pnpm and set `minimum-release-age=1440` in `.npmrc` so new package versions wait 24 hours.
+- For JavaScript, use pnpm and set `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` so new package versions wait 24 hours. pnpm 11 ignores that setting in `.npmrc` (A-8.6).
 
 ## Setup checklist
 

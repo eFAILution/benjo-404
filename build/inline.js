@@ -11,12 +11,15 @@ export const TEXT_TOKENS = [
   'BODY',
   'CTA_HREF',
   'CTA_LABEL',
+  'FAVICON',
 ];
 /** Tokens filled with build output (never with config or message text). */
 export const RAW_TOKENS = ['FONTS_CSS', 'STYLE', 'SCRIPT'];
 
 // A site path may not start with "//": browsers read that as a protocol-relative URL to any host.
 const CTA_PATTERNS = [/^\/(?!\/)[a-z0-9/_-]*$/, /^https:\/\/[a-z0-9.-]+\/[^\s"'<>]*$/];
+/** Only a percent-encoded SVG data URL: encodeURIComponent output never holds quotes or < >. */
+const FAVICON_PATTERN = /^data:image\/svg\+xml,[A-Za-z0-9%._~!*()-]+$/;
 const ESCAPES = /** @type {Record<string, string>} */ ({
   '&': '&amp;',
   '<': '&lt;',
@@ -49,6 +52,21 @@ export function validateCtaHref(href) {
 }
 
 /**
+ * @param {unknown} href
+ * @returns {string} the href, unchanged, when it is a percent-encoded SVG data URL
+ */
+export function validateFaviconHref(href) {
+  if (typeof href === 'string' && FAVICON_PATTERN.test(href)) return href;
+  throw new Error(`favicon href is not allowed: ${JSON.stringify(String(href).slice(0, 40))}`);
+}
+
+/** Text tokens that must pass a check before they are escaped. */
+const TEXT_VALIDATORS = /** @type {Record<string, (value: unknown) => string>} */ ({
+  CTA_HREF: validateCtaHref,
+  FAVICON: validateFaviconHref,
+});
+
+/**
  * Fill every {{TOKEN}} in one pass, so text that contains "{{SCRIPT}}" is never re-expanded.
  * @param {string} template
  * @param {{ text: Record<string, string>, raw: Record<string, string> }} values
@@ -58,8 +76,8 @@ export function fillTemplate(template, { text, raw }) {
   return template.replace(/\{\{([A-Z_]+)\}\}/g, (_match, name) => {
     if (TEXT_TOKENS.includes(name)) {
       if (typeof text[name] !== 'string') throw new Error(`missing text token ${name}`);
-      const value = name === 'CTA_HREF' ? validateCtaHref(text[name]) : text[name];
-      return escapeHtml(value);
+      const validate = TEXT_VALIDATORS[name];
+      return escapeHtml(validate ? validate(text[name]) : text[name]);
     }
     if (RAW_TOKENS.includes(name)) {
       if (typeof raw[name] !== 'string') throw new Error(`missing build output ${name}`);
@@ -95,7 +113,8 @@ export function extractInline(html) {
 }
 
 /**
- * CSP header for the single file: only the hashed inline script and style, fonts from data:.
+ * CSP header for the single file: only the hashed inline script and style, fonts from data:,
+ * and data: images for the inlined favicon.
  * @param {{ style: string, script: string }} inline
  */
 export function singleFileCsp({ style, script }) {
@@ -104,18 +123,23 @@ export function singleFileCsp({ style, script }) {
     `script-src 'sha256-${sha256Base64(script)}'`,
     `style-src 'sha256-${sha256Base64(style)}'`,
     'font-src data:',
+    'img-src data:',
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",
   ].join('; ');
 }
 
-/** CSP header for dist/embed/, where script, style, and fonts are files on the same origin. */
+/**
+ * CSP header for dist/embed/, where script, style, and fonts are files on the same origin, and
+ * the favicon is a data: image.
+ */
 export const EMBED_CSP = [
   "default-src 'none'",
   "script-src 'self'",
   "style-src 'self'",
   "font-src 'self'",
+  'img-src data:',
   "base-uri 'none'",
   "form-action 'none'",
   "frame-ancestors 'none'",

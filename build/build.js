@@ -7,7 +7,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import * as esbuild from 'esbuild';
 
+import { benjo } from '../src/assets/benjo.js';
 import { entrySource, planBundle, validateConfig } from './entry.js';
+import { faviconDataUrl } from './favicon.js';
 import { EMBED_CSP, extractInline, fillFontsCss, fillTemplate, singleFileCsp } from './inline.js';
 
 const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), '..');
@@ -168,6 +170,7 @@ export async function build(options = {}) {
     BODY: message.body,
     CTA_HREF: message.cta.href,
     CTA_LABEL: message.cta.label,
+    FAVICON: faviconDataUrl(benjo),
   };
   const html = fillTemplate(template, {
     text,

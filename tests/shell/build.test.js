@@ -8,7 +8,9 @@ import { fileURLToPath } from 'node:url';
 
 import { build } from '../../build/build.js';
 import { entrySource, planBundle } from '../../build/entry.js';
+import { faviconDataUrl } from '../../build/favicon.js';
 import { extractInline, singleFileCsp } from '../../build/inline.js';
+import { benjo } from '../../src/assets/benjo.js';
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
 const SRC = fileURLToPath(new URL('../../src/', import.meta.url));
@@ -50,13 +52,19 @@ describe('build with fixtures', () => {
     assert.ok(html.includes('<title>Page Not Found | Beast Code</title>'));
   });
 
+  it('links the generated Benjo favicon so the browser never asks for /favicon.ico', async () => {
+    const html = await readFile(join(dir, 'dist', '404.html'), 'utf8');
+    assert.ok(html.includes(`<link rel="icon" href="${faviconDataUrl(benjo)}">`));
+  });
+
   it('has no external URLs', async () => {
     const html = await readFile(join(dir, 'dist', '404.html'), 'utf8');
     const urls = (html.match(/(https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}[^\s"'<>)]*/gi) ?? []).filter(
       (url) => url !== SVG_NAMESPACE,
     );
     assert.deepEqual(urls, []);
-    assert.ok(!/<link|<img|<iframe|\ssrc=/i.test(html));
+    const icon = /<link rel="icon" href="data:image\/svg\+xml,[^"]*">/;
+    assert.ok(!/<link|<img|<iframe|\ssrc=/i.test(html.replace(icon, '')));
   });
 
   it('writes a csp.txt whose hashes match the inline script and style', async () => {
@@ -64,6 +72,7 @@ describe('build with fixtures', () => {
     const csp = (await readFile(join(dir, 'dist', 'csp.txt'), 'utf8')).trim();
     assert.equal(csp, singleFileCsp(extractInline(html)));
     assert.ok(!csp.includes('unsafe-inline'));
+    assert.ok(csp.includes('; img-src data:; '));
   });
 
   it('writes the embed outputs', async () => {
@@ -74,6 +83,7 @@ describe('build with fixtures', () => {
     assert.ok(css.includes('--accent'));
     const csp = await readFile(join(dir, 'dist', 'embed', 'csp.txt'), 'utf8');
     assert.ok(csp.includes("script-src 'self'"));
+    assert.ok(csp.includes('; img-src data:; '));
   });
 
   it('writes sizes.json with every part', async () => {

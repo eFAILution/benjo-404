@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  EMBED_CSP,
   escapeHtml,
   extractInline,
   fillFontsCss,
@@ -20,7 +21,10 @@ const TEXT = {
   BODY: 'body',
   CTA_HREF: '/',
   CTA_LABEL: 'Return Home',
+  FAVICON: 'data:image/svg+xml,%3Csvg%3E',
 };
+/** Tokens that must pass a validator before they are escaped. */
+const VALIDATED = ['CTA_HREF', 'FAVICON'];
 const RAW = { FONTS_CSS: '', STYLE: 'a{b:c}', SCRIPT: 'let x=1;' };
 
 describe('escapeHtml', () => {
@@ -38,7 +42,7 @@ describe('fillTemplate', () => {
   const evil = `<script>alert("x")</script>&'`;
   const escaped = '&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;&amp;&#39;';
 
-  for (const token of TEXT_TOKENS.filter((name) => name !== 'CTA_HREF')) {
+  for (const token of TEXT_TOKENS.filter((name) => !VALIDATED.includes(name))) {
     it(`escapes <>&"' in {{${token}}}`, () => {
       const out = fillTemplate(`[{{${token}}}]`, { text: { ...TEXT, [token]: evil }, raw: RAW });
       assert.equal(out, `[${escaped}]`);
@@ -120,6 +124,28 @@ describe('hashes and CSP', () => {
     assert.ok(csp.includes(`script-src 'sha256-${sha256Base64('go()')}'`));
     assert.ok(csp.includes(`style-src 'sha256-${sha256Base64('a{}')}'`));
     assert.ok(!csp.includes('unsafe'));
+  });
+
+  it('allows data: images for the favicon and changes nothing else', () => {
+    const csp = singleFileCsp({ style: 'a{}', script: 'go()' });
+    assert.equal(
+      csp,
+      [
+        "default-src 'none'",
+        `script-src 'sha256-${sha256Base64('go()')}'`,
+        `style-src 'sha256-${sha256Base64('a{}')}'`,
+        'font-src data:',
+        'img-src data:',
+        "base-uri 'none'",
+        "form-action 'none'",
+        "frame-ancestors 'none'",
+      ].join('; '),
+    );
+    assert.equal(
+      EMBED_CSP,
+      "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src data:; " +
+        "base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    );
   });
 
   it('refuses a page with more than one script', () => {

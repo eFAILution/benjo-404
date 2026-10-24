@@ -151,7 +151,7 @@ export function boot(registry, config, holidays = null) {
     size,
     signal: page.signal,
     onResize: () => {
-      if (!host || host.state === 'idle') attract.redraw();
+      if (!host?.redraw()) attract.redraw();
     },
   });
 

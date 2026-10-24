@@ -77,6 +77,7 @@ export function createHost(options) {
   let accumulator = 0;
   /** @type {number | null} */
   let lastTime = null;
+  let lastAlpha = 0;
   /** @type {number | null} */
   let frameId = null;
 
@@ -180,6 +181,7 @@ export function createHost(options) {
     }
     if (steps === MAX_STEPS) accumulator %= STEP;
     const alpha = Math.min(Math.max(accumulator / STEP, 0), 0.999);
+    lastAlpha = alpha;
     if (!guard(() => game.render(alpha)) || state !== 'playing') return;
     scheduleLoop();
   }
@@ -240,6 +242,17 @@ export function createHost(options) {
     scheduleLoop();
   }
 
+  /**
+   * A resize clears the canvas. Paint the paused game once more; a playing game repaints on its
+   * next frame. Returns false when no instance is alive, so the caller draws the attract backdrop.
+   */
+  function redraw() {
+    if (state === 'playing') return true;
+    if (state !== 'paused' || !instance || destroyed) return false;
+    const game = instance;
+    return guard(() => game.render(lastAlpha));
+  }
+
   function quit() {
     if (state === 'idle') return;
     releaseRun();
@@ -251,6 +264,7 @@ export function createHost(options) {
     pause,
     resume,
     quit,
+    redraw,
     get state() {
       return state;
     },

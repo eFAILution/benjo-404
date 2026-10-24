@@ -29,10 +29,16 @@ const SIZES = {
 };
 const BUDGETS = { shell: 100, fonts: 150, game: 60, theme: 25, total: 400, totalRaw: 700 };
 
-/** @param {{ script?: string, style?: string, href?: string, body?: string }} [parts] */
-function page({ script = 'let x=1;', style = 'a{b:c}', href = '/', body = 'Not found' } = {}) {
+/** @param {{ script?: string, style?: string, href?: string, body?: string, head?: string }} [parts] */
+function page({
+  script = 'let x=1;',
+  style = 'a{b:c}',
+  href = '/',
+  body = 'Not found',
+  head = '',
+} = {}) {
   return [
-    '<!doctype html><html><head><title>404</title>',
+    `<!doctype html><html><head><title>404</title>${head}`,
     `<style>${style}</style></head><body>`,
     `<p>${body}</p><a class="btn" id="m-cta" href="${href}">Return Home</a>`,
     `<script type="module">${script}</script></body></html>`,
@@ -96,10 +102,24 @@ describe('checkCsp', () => {
     ]);
   });
 
-  it('fails when another directive was loosened', () => {
+  it('ignores directives other than script-src and style-src', () => {
     const html = page();
-    const loose = cspFor(html).replace("default-src 'none'", 'default-src *');
-    assert.deepEqual(checkCsp(html, loose), ['csp.txt: header differs from the expected policy']);
+    const csp = cspFor(html).replace('font-src data:', 'font-src data:; img-src data:');
+    assert.deepEqual(checkCsp(html, csp), []);
+  });
+
+  it('fails when a hashed directive also allows unsafe-inline', () => {
+    const html = page();
+    const csp = cspFor(html).replace(/(script-src '[^']+')/, "$1 'unsafe-inline'");
+    assert.deepEqual(checkCsp(html, csp), [
+      "csp.txt: script-src allows more than the hash: 'unsafe-inline'",
+    ]);
+  });
+
+  it('fails when a hashed directive is missing', () => {
+    const html = page();
+    const csp = cspFor(html).replace(/style-src [^;]+; /, '');
+    assert.deepEqual(checkCsp(html, csp), ['csp.txt: no style-src directive']);
   });
 });
 
@@ -172,6 +192,21 @@ describe('checkPage', () => {
     assert.deepEqual(checkPage(clean(script)), ['404.html: external URL http://cdn.example/x.js']);
   });
 
+  it('allows a data: favicon, even with the SVG namespace inside', () => {
+    const icon = `data:image/svg+xml,%3Csvg xmlns='${SVG_NS}'%3E%3C/svg%3E`;
+    const html = page({ head: `<link rel="icon" type="image/svg+xml" href="${icon}">` });
+    assert.deepEqual(checkPage(clean(html)), []);
+  });
+
+  it('fails a favicon or other link that points at a URL', () => {
+    const icon = page({ head: '<link rel="icon" href="https://cdn.example/f.ico">' });
+    assert.deepEqual(checkPage(clean(icon)), ['404.html: external URL https://cdn.example/f.ico']);
+    const sheet = `<link rel="stylesheet" href="data:text/css,@import 'http://x.example/a.css'">`;
+    assert.deepEqual(checkPage(clean(page({ head: sheet }))), [
+      '404.html: external URL http://x.example/a.css',
+    ]);
+  });
+
   it('fails a leftover template token', () => {
     assert.deepEqual(checkPage(clean(page({ body: '{{KICKER}}' }))), [
       '404.html: leftover template token {{KICKER}}',
@@ -214,6 +249,7 @@ describe('checkSource', () => {
       'src/shell/ok.js': '// never use innerHTML or fetch(); see https://example.com\nexport {};\n',
       'src/shell/ns.js': `export const NS = '${SVG_NS}';\n`,
       'src/games/bad/index.js': 'localStorage.x = 1;\nexport const u = "https://cdn.example/a";\n',
+      'src/template.html': `<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='${SVG_NS}.x'%3E">`,
     };
     await Promise.all(
       Object.entries(files).map(([name, text]) => writeFile(join(root, name), text)),

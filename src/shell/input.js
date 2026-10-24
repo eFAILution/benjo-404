@@ -137,6 +137,25 @@ export function gameOwnsKey(code, { active, body, html, pauseButton }) {
 }
 
 /**
+ * Fold one game key into the input state. A keydown with repeat set is never a new press, so a
+ * held key (such as the Space that started the run) cannot fire again through auto-repeat.
+ * @param {ReturnType<typeof createInputState>} input
+ * @param {{ type: string, code: string, repeat: boolean }} key
+ * @returns {boolean} true when the key asks to pause
+ */
+export function applyKey(input, { type, code, repeat }) {
+  const actions = KEY_MAP[code] ?? [];
+  input.setTouch(false);
+  if (type !== 'keydown') {
+    for (const action of actions) input.release(action);
+    return false;
+  }
+  if (repeat) return false;
+  for (const action of actions) input.press(action);
+  return actions.includes('pause');
+}
+
+/**
  * Wire DOM events into an input state. All listeners use the signal, so abort() removes them.
  * @param {{ canvas: HTMLCanvasElement, signal: AbortSignal, pauseButton?: Element | null,
  *   onPause?: () => void }} options
@@ -158,12 +177,7 @@ export function attachInput({ canvas, signal, pauseButton = null, onPause }) {
     };
     if (!gameOwnsKey(event.code, focus)) return;
     event.preventDefault();
-    input.setTouch(false);
-    for (const action of actions) {
-      if (event.type === 'keydown') input.press(action);
-      else input.release(action);
-    }
-    if (event.type === 'keydown' && actions.includes('pause') && !event.repeat) onPause?.();
+    if (applyKey(input, event)) onPause?.();
   }
 
   /** @param {PointerEvent} event */

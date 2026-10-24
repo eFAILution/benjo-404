@@ -1,0 +1,9 @@
+# pnpm 11 reads only auth and registry settings from .npmrc, so every other setting lives here.
+# Newly published versions cannot be installed until they are 24 hours old (1440 minutes).
+minimumReleaseAge: 1440
+saveExact: true
+engineStrict: true
+# No dependency runs install scripts. esbuild's postinstall only re-checks its platform
+# binary, which pnpm already installs from the optional @esbuild/* package.
+allowBuilds:
+  esbuild: false

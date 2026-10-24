@@ -1,0 +1,137 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "plugins": ["./build/lint/no-html-sinks.grit"],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**/*.js",
+      "**/*.json",
+      "**/*.css",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.cache",
+      "!src/shell/styles/fonts.css"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "css": {
+    "formatter": {
+      "enabled": true,
+      "quoteStyle": "single"
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "security": {
+        "noDangerouslySetInnerHtml": "error",
+        "noGlobalEval": "error"
+      },
+      "suspicious": {
+        "noImplicitAnyLet": "error"
+      },
+      "style": {
+        "noRestrictedGlobals": {
+          "level": "error",
+          "options": {
+            "deniedGlobals": {
+              "localStorage": "Use host.storage; only src/shell/storage.js reads localStorage.",
+              "sessionStorage": "The page keeps no session state.",
+              "fetch": "No network after load.",
+              "XMLHttpRequest": "No network after load.",
+              "WebSocket": "No network after load.",
+              "EventSource": "No network after load.",
+              "Function": "No dynamic code."
+            }
+          }
+        }
+      },
+      "nursery": {
+        "noImpliedEval": "error",
+        "noJsRestrictedProperties": {
+          "level": "error",
+          "options": {
+            "entries": [
+              {
+                "property": "innerHTML",
+                "message": "Build nodes with dom.el() and textContent."
+              },
+              {
+                "property": "outerHTML",
+                "message": "Build nodes with dom.el() and textContent."
+              },
+              {
+                "property": "insertAdjacentHTML",
+                "message": "Build nodes with dom.el() and textContent."
+              },
+              {
+                "object": "document",
+                "property": "write",
+                "message": "No document.write."
+              },
+              {
+                "object": "document",
+                "property": "writeln",
+                "message": "No document.write."
+              },
+              {
+                "property": "sendBeacon",
+                "message": "No network after load."
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/shell/storage.js"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "sessionStorage": "The page keeps no session state.",
+                  "fetch": "No network after load.",
+                  "XMLHttpRequest": "No network after load.",
+                  "WebSocket": "No network after load.",
+                  "EventSource": "No network after load.",
+                  "Function": "No dynamic code."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/assets/**"],
+      "formatter": {
+        "enabled": false
+      }
+    }
+  ]
+}

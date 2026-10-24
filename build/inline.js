@@ -15,7 +15,8 @@ export const TEXT_TOKENS = [
 /** Tokens filled with build output (never with config or message text). */
 export const RAW_TOKENS = ['FONTS_CSS', 'STYLE', 'SCRIPT'];
 
-const CTA_PATTERNS = [/^\/[a-z0-9/_-]*$/, /^https:\/\/[a-z0-9.-]+\/[^\s"'<>]*$/];
+// A site path may not start with "//": browsers read that as a protocol-relative URL to any host.
+const CTA_PATTERNS = [/^\/(?!\/)[a-z0-9/_-]*$/, /^https:\/\/[a-z0-9.-]+\/[^\s"'<>]*$/];
 const ESCAPES = /** @type {Record<string, string>} */ ({
   '&': '&amp;',
   '<': '&lt;',

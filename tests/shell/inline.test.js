@@ -86,6 +86,8 @@ describe('validateCtaHref', () => {
       'javascript:alert(1)',
       'http://beast-code.com/',
       '//evil.example/',
+      '//evil-host',
+      '//2130706433/',
       'https://beast-code.com',
       '/Home',
       '/a b',

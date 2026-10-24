@@ -26,13 +26,10 @@ lint: scripts-lint ## Run every linter (shellcheck, Biome, tsc --noEmit)
 	pnpm run lint
 
 .PHONY: test
-test: ## Run every test suite, then build and check dist/ once a default theme and build/check.js exist
+test: ## Run every test suite, then build dist/ and check it (budgets, CSP hashes, content)
 	pnpm run test
-	@if [[ -f build/check.js && -f src/themes/default/index.js ]]; then \
-	  pnpm run build && pnpm run check; \
-	else \
-	  echo "::warning::Skipping build and check: needs src/themes/default/index.js and build/check.js."; \
-	fi
+	pnpm run build
+	pnpm run check
 
 ##@ Build
 

@@ -32,7 +32,7 @@ How it reaches Webflow is not settled. Webflow serves its own 404 page and limit
 
 Source is plain JavaScript (ES2020 modules) with JSDoc type comments, checked by `tsc --noEmit` against one hand-written `src/contracts.d.ts`. There is no transpile step. `esbuild` bundles and minifies into the single file. `@biomejs/biome` lints and formats. Tests run on Node's built-in `node --test`, with no DOM library: game and holiday logic is written as pure functions that take state and return state, so it is tested without a browser.
 
-Dev dependencies, pinned exactly: `esbuild 0.28.2`, `@biomejs/biome 2.6.2`, `typescript 7.0.2`. Runtime dependencies: none. `.npmrc` sets `minimum-release-age=1440`.
+Dev dependencies, pinned exactly: `esbuild 0.28.2`, `@biomejs/biome 2.6.2`, `typescript 7.0.2`. Runtime dependencies: none. `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440`, because pnpm 11 reads only auth and registry settings from `.npmrc` (A-8.6). `tsconfig.json` uses `module: ESNext` and `moduleResolution: Bundler`, and the tests run with `node --test 'tests/**/*.test.js'` (A-8.8).
 
 Reasons. TypeScript source would need a compile step and makes the shipped bytes no smaller. JSDoc plus a shared `.d.ts` gives parallel implementers a checked contract without that step. esbuild is one binary and the fastest option for a single bundle. Biome replaces ESLint plus Prettier with one binary. Node's test runner avoids Jest or Vitest and their dependency trees.
 
@@ -70,7 +70,7 @@ Each game and theme is one folder with no imports from other games or themes. Sh
 
 ### 6. Fonts: self-host subset WOFF2
 
-Inter and Geist Mono are both under the SIL Open Font License. The build ships subsets (Latin letters, digits, basic punctuation; Inter at weight 400 and Geist Mono at 400) as inline `data:` fonts, with system fallbacks that keep the layout stable. Budget for both subsets together: 28 KB gzipped. Because OFL fonts with a Reserved Font Name must not be redistributed under that name once modified, the subsets are declared under the internal family names `B404 Sans` and `B404 Mono`. Recorded as assumption A-8.2.
+Inter and Geist Mono are both under the SIL Open Font License. The build ships subsets (Latin letters, digits, basic punctuation; Inter at weight 400 and Geist Mono at 400) as inline `data:` fonts, with system fallbacks that keep the layout stable. Budget for both subsets together: 28 KB gzipped. Neither font declares a Reserved Font Name, but the subsets are still declared under the internal family names `B404 Sans` and `B404 Mono` as a precaution. Recorded as assumptions A-8.2 and A-8.7.
 
 ## Alternatives considered
 

@@ -26,7 +26,7 @@ Reasons. A 404 page is served for any unknown path, so relative asset URLs would
 
 The same build also writes `dist/embed/`: the body snippet, `benjo-404.js`, `benjo-404.css`, and the fonts as separate files, with a `csp.txt` that uses `script-src 'self'; style-src 'self'; font-src 'self'`. This is the fallback for a host that cannot serve the single file or that limits inline code size.
 
-How it reaches Webflow is not settled. Webflow serves its own 404 page and limits page-level custom code to a few thousand characters, which a game will exceed. The likely options are a proxy or edge worker in front of the site that serves `dist/404.html` for 404 responses, or Webflow hosting the JS and CSS as assets with the body snippet in the 404 page. This is recorded as assumption A-8.1 and is a question for the owner.
+The owner confirmed the site is built and hosted on Webflow, so the page must live inside it. Webflow allows up to 50,000 characters per Code Embed and per page custom code field (raised in May 2024). The plan is a Webflow build target that writes the script as several inline Code Embeds, each under that limit, for the 404 utility page, using the fonts the site already loads. Webflow controls the response headers, so the hashed CSP applies only to the standalone `dist/404.html`. See A-8.1.
 
 ### 2. Language and build: plain ES modules, JSDoc types, three dev dependencies
 
@@ -75,7 +75,7 @@ Inter and Geist Mono are both under the SIL Open Font License. The build ships s
 ## Alternatives considered
 
 - **Folder of static files with `script-src 'self'`.** Simpler to read, but a 404 is served on any path, so asset URLs must be absolute and every request is a point of failure. Kept as the `dist/embed/` fallback only.
-- **Paste the game into Webflow's custom code box.** Needs no proxy, but Webflow's custom code size limits are far below a game. Not viable on its own; see A-8.1.
+- **Paste the game into Webflow's custom code box.** One field holds 50,000 characters, which fits today's build but not the planned sound, themes, and games. Splitting across several Code Embeds is the chosen route; see A-8.1.
 - **TypeScript source.** Better editor support, but it adds a compile step and the shipped size is identical. JSDoc with `checkJs` gives the contract checking without it.
 - **A bundler-free build (string concatenation).** Zero dev dependencies, but no tree shaking, no minification, and hand-written module ordering. esbuild earns its place.
 - **Vitest or Jest with jsdom.** Convenient for DOM tests, but heavy dependency trees. Pure-function game logic plus a small built-file check covers what matters.
@@ -91,5 +91,5 @@ Inter and Geist Mono are both under the SIL Open Font License. The build ships s
 - Adding a game or theme is a new folder plus one line in `benjo.config.json`. The shell does not change.
 - Game logic must be pure enough to test on Node. That is a constraint on how games are written, and the first game sets the pattern.
 - Byte budgets are enforced by `make test` (`build/check.js`), so a game that grows past its budget fails the push hook.
-- How the file is served on Webflow is an open question (A-8.1). Until it is answered, the deliverable is `dist/404.html` plus `dist/csp.txt`, which any static host or edge proxy can serve.
+- The page ships inside Webflow as Code Embeds (A-8.1). `dist/404.html` plus `dist/csp.txt` remain the standalone preview and test target.
 - Fonts are a legal and size trade. If the owner prefers, the font files can be dropped and the fallback stack takes over with no code change.

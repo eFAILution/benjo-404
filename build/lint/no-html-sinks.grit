@@ -1,0 +1,10 @@
+language js
+
+or {
+  `$obj.innerHTML = $value`,
+  `$obj.outerHTML = $value`,
+  `$obj.innerHTML += $value`,
+  `$obj.outerHTML += $value`
+} as $sink where {
+  register_diagnostic(span=$sink, message="Do not assign HTML strings. Build nodes with dom.el() and textContent.", severity="error")
+}

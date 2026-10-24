@@ -183,7 +183,11 @@ describe('holidayDate', () => {
       m: 10,
       d: 31,
     });
-    assert.deepEqual(holidayDate(byId('newyear'), 2027), { y: 2027, m: 1, d: 1 });
+    assert.deepEqual(holidayDate(byId('newyear'), 2027), {
+      y: 2027,
+      m: 1,
+      d: 1,
+    });
   });
 
   test('easter rule applies its day offset across a month boundary', () => {
@@ -194,7 +198,11 @@ describe('holidayDate', () => {
       before: 0,
       after: 0,
     };
-    assert.deepEqual(holidayDate(byId('easter'), 2026), { y: 2026, m: 4, d: 5 });
+    assert.deepEqual(holidayDate(byId('easter'), 2026), {
+      y: 2026,
+      m: 4,
+      d: 5,
+    });
     assert.deepEqual(holidayDate(goodFriday, 2026), { y: 2026, m: 4, d: 3 });
     assert.deepEqual(holidayDate(goodFriday, 2024), { y: 2024, m: 3, d: 29 });
   });

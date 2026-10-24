@@ -85,8 +85,15 @@ describe('resolveTheme tie breaks', () => {
 
   test('the nearer holiday wins', () => {
     const calendar = [fixed('a', 3, 10), fixed('b', 3, 13)];
-    const themes = { default: pack('default', 'default'), a: pack('a'), b: pack('b') };
-    assert.equal(resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id, 'b');
+    const themes = {
+      default: pack('default', 'default'),
+      a: pack('a'),
+      b: pack('b'),
+    };
+    assert.equal(
+      resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id,
+      'b',
+    );
   });
 
   test('upcoming beats just passed at the same distance', () => {

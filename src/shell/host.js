@@ -3,7 +3,6 @@
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {import('../contracts').GameInstance} GameInstance */
 /** @typedef {import('../contracts').GameStorage} GameStorage */
-/** @typedef {import('../contracts').HostContext} HostContext */
 /** @typedef {import('../contracts').EndResult} EndResult */
 /** @typedef {import('../contracts').Size} Size */
 /** @typedef {import('../contracts').ThemePack} ThemePack */
@@ -39,6 +38,8 @@
  * @property {(ctx: CanvasRenderingContext2D, sprite: import('../contracts').Sprite, x: number,
  *   y: number, h: number, opts?: object) => void} [drawSprite]
  */
+
+import { createRunContext } from './run-context.js';
 
 export const STEP = 1 / 60;
 export const MAX_STEPS = 5;
@@ -159,38 +160,6 @@ export function createHost(options) {
     });
   }
 
-  /**
-   * One context per run. Its end, setScore, and setStatus go quiet once the run's signal aborts,
-   * so a stale instance can never end or write over the next run.
-   * @param {AbortSignal} signal
-   * @param {InputState} state
-   * @returns {HostContext}
-   */
-  function buildContext(signal, state) {
-    const { theme } = options;
-    let lastScore = -1;
-    return {
-      root: options.root,
-      canvas: options.canvas,
-      ctx,
-      size: options.size,
-      input: state,
-      theme,
-      storage,
-      signal,
-      reducedMotion: options.reducedMotion,
-      random: options.random,
-      drawSprite: (sprite, x, y, h, opts) => options.drawSprite?.(ctx, sprite, x, y, h, opts),
-      setScore(value) {
-        if (signal.aborted || value === lastScore) return;
-        lastScore = value;
-        hud.setScore(value);
-      },
-      setStatus: (text) => signal.aborted || hud.setStatus(String(text)),
-      end: (result) => signal.aborted || end(result),
-    };
-  }
-
   /** @param {number} time */
   function frame(time) {
     frameId = null;
@@ -227,7 +196,7 @@ export function createHost(options) {
     clearCanvas(ctx);
     controller = new AbortController();
     input = options.createInput(controller.signal);
-    const context = buildContext(controller.signal, input);
+    const context = createRunContext(options, { signal: controller.signal, input, end });
     hud.setScore(0);
     hud.setBest(storage.getNumber(game.bestKey, 0));
     hud.setStatus(input.touch ? game.controls.touch : game.controls.keyboard);

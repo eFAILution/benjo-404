@@ -22,11 +22,27 @@ check: verify secrets-scan ## Run every check, including the full-history secret
 verify: lint test records-test records-check ## Run what the pre-push hook runs
 
 .PHONY: lint
-lint: scripts-lint ## Run every linter (add the project's linters here)
+lint: scripts-lint ## Run every linter (shellcheck, Biome, tsc --noEmit)
+	pnpm run lint
 
 .PHONY: test
-test: ## Run every test suite (replace with the project's test command)
-	@echo "::warning::No tests defined yet. Replace the 'test' target in the Makefile."
+test: ## Run every test suite, then build and check dist/ once a default theme and build/check.js exist
+	pnpm run test
+	@if [[ -f build/check.js && -f src/themes/default/index.js ]]; then \
+	  pnpm run build && pnpm run check; \
+	else \
+	  echo "::warning::Skipping build and check: needs src/themes/default/index.js and build/check.js."; \
+	fi
+
+##@ Build
+
+.PHONY: build
+build: ## Build dist/404.html, dist/csp.txt and dist/embed/
+	pnpm run build
+
+.PHONY: dev
+dev: build ## Build and print the file path to open
+	@echo "open dist/404.html?game=runner&theme=halloween"
 
 .PHONY: scripts-lint
 scripts-lint: ## shellcheck every tracked shell script

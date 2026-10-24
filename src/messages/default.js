@@ -5,6 +5,7 @@
 /** @type {MessageModule} */
 const message = {
   id: 'default',
+  title: 'Page Not Found | Beast Code',
   kicker: 'Page Not Found',
   code: '404',
   body: "We're sorry, but the page you're looking for doesn't exist. It might have been moved, deleted, or perhaps it never existed at all.",

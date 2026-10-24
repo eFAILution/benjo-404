@@ -7,6 +7,8 @@ export type Id = string;
 
 export interface MessageModule {
   id: Id;
+  /** Document title. Live page: "Page Not Found | Beast Code". Default: "<code> · <kicker>". */
+  title?: string;
   /** Small mono line above the code. Live page: "Page Not Found". */
   kicker: string;
   /** Big display text. Live page: "404". */

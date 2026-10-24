@@ -45,6 +45,11 @@ describe('build with fixtures', () => {
     assert.ok(!html.includes('{{'));
   });
 
+  it('titles the page like the live site', async () => {
+    const html = await readFile(join(dir, 'dist', '404.html'), 'utf8');
+    assert.ok(html.includes('<title>Page Not Found | Beast Code</title>'));
+  });
+
   it('has no external URLs', async () => {
     const html = await readFile(join(dir, 'dist', '404.html'), 'utf8');
     const urls = (html.match(/(https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}[^\s"'<>)]*/gi) ?? []).filter(

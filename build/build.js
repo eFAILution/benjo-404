@@ -162,7 +162,7 @@ export async function build(options = {}) {
   const template = await readFile(join(srcDir, 'template.html'), 'utf8');
   const text = {
     THEME_PIN: config.theme,
-    TITLE: `${message.code} · ${message.kicker}`,
+    TITLE: message.title ?? `${message.code} · ${message.kicker}`,
     KICKER: message.kicker,
     CODE: message.code,
     BODY: message.body,

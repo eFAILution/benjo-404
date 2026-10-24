@@ -26,7 +26,7 @@ Stop if `make test` fails. Deploy only files from this build. The CSP holds hash
 
 ## 2. The CSP header
 
-`dist/csp.txt` is the exact value of the `Content-Security-Policy` header. It has this shape, with fresh hashes each build:
+`dist/csp.txt` is the exact value of the `Content-Security-Policy` header. It has about this shape, with fresh hashes each build. The build may add directives, such as `img-src data:` for an inline favicon.
 
 ```text
 default-src 'none'; script-src 'sha256-<script hash>'; style-src 'sha256-<style hash>'; font-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

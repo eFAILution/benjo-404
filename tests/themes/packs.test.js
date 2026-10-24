@@ -13,16 +13,7 @@ import * as registry from '../../src/themes/index.js';
 
 const { themes } = registry;
 
-const PALETTE_KEYS = [
-  'bg',
-  'accent',
-  'accentSoft',
-  'glow',
-  'ink',
-  'muted',
-  'hazard',
-  'pickup',
-];
+const PALETTE_KEYS = ['bg', 'accent', 'accentSoft', 'glow', 'ink', 'muted', 'hazard', 'pickup'];
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const SAFE_ID = /^[a-z0-9-]{1,32}$/;
 /** Path data only: commands, numbers, separators. No url(), no text. */
@@ -49,11 +40,7 @@ const allSprites = (pack) => [
 
 describe('theme registry', () => {
   test('bundles default, halloween, and christmas', () => {
-    assert.deepEqual(Object.keys(themes).sort(), [
-      'christmas',
-      'default',
-      'halloween',
-    ]);
+    assert.deepEqual(Object.keys(themes).sort(), ['christmas', 'default', 'halloween']);
   });
 
   test('registry keys match pack ids and folder default exports', () => {
@@ -83,10 +70,7 @@ for (const [key, pack] of packEntries) {
     });
 
     test('palette has every key as a valid hex color', () => {
-      assert.deepEqual(
-        Object.keys(pack.palette).sort(),
-        [...PALETTE_KEYS].sort(),
-      );
+      assert.deepEqual(Object.keys(pack.palette).sort(), [...PALETTE_KEYS].sort());
       for (const name of PALETTE_KEYS) {
         assert.match(pack.palette[name], HEX, `palette.${name}`);
       }
@@ -128,10 +112,7 @@ for (const [key, pack] of packEntries) {
         assert.ok(sprite.paths.length <= MAX_PATHS, `${name} paths`);
         if (name !== 'benjo') {
           assert.ok(width >= MIN_VIEWBOX && width <= MAX_VIEWBOX, `${name} w`);
-          assert.ok(
-            height >= MIN_VIEWBOX && height <= MAX_VIEWBOX,
-            `${name} h`,
-          );
+          assert.ok(height >= MIN_VIEWBOX && height <= MAX_VIEWBOX, `${name} h`);
         }
         const aspect = Math.max(width / height, height / width);
         assert.ok(aspect <= MAX_ASPECT, `${name} is not near square`);
@@ -142,10 +123,7 @@ for (const [key, pack] of packEntries) {
           }
           for (const color of [path.fill, path.stroke]) {
             if (color === undefined) continue;
-            assert.ok(
-              HEX.test(color) || PALETTE_KEYS.includes(color),
-              `${name} color ${color}`,
-            );
+            assert.ok(HEX.test(color) || PALETTE_KEYS.includes(color), `${name} color ${color}`);
           }
         }
       }

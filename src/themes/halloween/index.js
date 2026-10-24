@@ -12,8 +12,7 @@ const HAT_BAND = 'M364 334L454 356L460 376L359 356Z';
 // Jack-o'-lantern: three lobes, ribs, stem, and a lit face.
 const PUMPKIN_BODY =
   'M6 59a24 31 0 1 1 48 0a24 31 0 1 1 -48 0ZM42 59a24 31 0 1 1 48 0a24 31 0 1 1 -48 0ZM20 57a28 34 0 1 1 56 0a28 34 0 1 1 -56 0Z';
-const PUMPKIN_RIBS =
-  'M36 26Q26 58 36 91Q31 58 36 26ZM60 26Q70 58 60 91Q65 58 60 26Z';
+const PUMPKIN_RIBS = 'M36 26Q26 58 36 91Q31 58 36 26ZM60 26Q70 58 60 91Q65 58 60 26Z';
 const PUMPKIN_STEM = 'M43 26L44 12Q45 5 52 3L56 7Q51 9 51 14L53 26Z';
 const PUMPKIN_FACE =
   'M25 50H41L33 37ZM55 50H71L63 37ZM44 61H52L48 54ZM20 66L31 70V77H37V72H59V77H65V70L76 66C71 89 25 89 20 66Z';
@@ -66,11 +65,7 @@ export default {
   sprites: {
     benjo: {
       ...baseBenjo,
-      paths: [
-        ...baseBenjo.paths,
-        { d: HAT, fill: 'hazard' },
-        { d: HAT_BAND, fill: 'accent' },
-      ],
+      paths: [...baseBenjo.paths, { d: HAT, fill: 'hazard' }, { d: HAT_BAND, fill: 'accent' }],
     },
     hazards: [
       {

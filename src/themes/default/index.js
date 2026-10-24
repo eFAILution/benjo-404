@@ -6,8 +6,7 @@ import { benjo } from '../../assets/benjo.js';
 // Broken chain link: two U halves pulled apart, with a spark in the gap.
 const LINK_HALVES =
   'M33.2 43.1L21.1 55.1A14 14 0 0 0 40.9 74.9L52.9 62.8L48 57.9L36 69.9A7 7 0 0 1 26.1 60L38.1 48ZM43.1 33.2L55.1 21.1A14 14 0 0 1 74.9 40.9L62.8 52.9L57.9 48L69.9 36A7 7 0 0 0 60 26.1L48 38.1Z';
-const LINK_SPARK =
-  'M59 48L49.8 49.8L48 59L46.2 49.8L37 48L46.2 46.2L48 37L49.8 46.2Z';
+const LINK_SPARK = 'M59 48L49.8 49.8L48 59L46.2 49.8L37 48L46.2 46.2L48 37L49.8 46.2Z';
 
 // Missing file: a page with a folded corner and a red X.
 const FILE_PAGE = 'M18 10Q18 4 24 4H58L80 26V86Q80 92 74 92H24Q18 92 18 86Z';

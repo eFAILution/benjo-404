@@ -13,8 +13,7 @@ const fixtureThemes = {
   newyear: pack('newyear'),
 };
 
-const on = (y, m, d, themes = fixtureThemes) =>
-  resolveTheme({ y, m, d }, HOLIDAYS, themes).id;
+const on = (y, m, d, themes = fixtureThemes) => resolveTheme({ y, m, d }, HOLIDAYS, themes).id;
 
 describe('resolveTheme', () => {
   test('Dec 26 picks christmas over newyear', () => {
@@ -90,10 +89,7 @@ describe('resolveTheme tie breaks', () => {
       a: pack('a'),
       b: pack('b'),
     };
-    assert.equal(
-      resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id,
-      'b',
-    );
+    assert.equal(resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id, 'b');
   });
 
   test('upcoming beats just passed at the same distance', () => {
@@ -103,10 +99,7 @@ describe('resolveTheme tie breaks', () => {
       past: pack('past'),
       next: pack('next'),
     };
-    assert.equal(
-      resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id,
-      'next',
-    );
+    assert.equal(resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id, 'next');
   });
 
   test('same date prefers the earlier calendar entry', () => {
@@ -116,10 +109,7 @@ describe('resolveTheme tie breaks', () => {
       second: pack('second'),
       first: pack('first'),
     };
-    assert.equal(
-      resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id,
-      'first',
-    );
+    assert.equal(resolveTheme({ y: 2026, m: 3, d: 12 }, calendar, themes).id, 'first');
   });
 
   test('the window bounds are inclusive on both sides', () => {

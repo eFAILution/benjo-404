@@ -130,10 +130,7 @@ export function dayNumber({ y, m, d }) {
   const shiftedMonth = m > 2 ? m - 3 : m + 9;
   const dayOfYear = Math.floor((153 * shiftedMonth + 2) / 5) + d - 1;
   const dayOfEra =
-    yearOfEra * 365 +
-    Math.floor(yearOfEra / 4) -
-    Math.floor(yearOfEra / 100) +
-    dayOfYear;
+    yearOfEra * 365 + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100) + dayOfYear;
   return era * 146097 + dayOfEra - 719468;
 }
 
@@ -154,10 +151,7 @@ export function fromDayNumber(days) {
       365,
   );
   const dayOfYear =
-    dayOfEra -
-    (365 * yearOfEra +
-      Math.floor(yearOfEra / 4) -
-      Math.floor(yearOfEra / 100));
+    dayOfEra - (365 * yearOfEra + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100));
   const shiftedMonth = Math.floor((5 * dayOfYear + 2) / 153);
   const d = dayOfYear - Math.floor((153 * shiftedMonth + 2) / 5) + 1;
   const m = shiftedMonth < 10 ? shiftedMonth + 3 : shiftedMonth - 9;

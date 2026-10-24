@@ -103,18 +103,9 @@ describe('dayNumber and daysBetween', () => {
   });
 
   test('counts across the year boundary and leap days', () => {
-    assert.equal(
-      daysBetween({ y: 2026, m: 12, d: 28 }, { y: 2027, m: 1, d: 1 }),
-      4,
-    );
-    assert.equal(
-      daysBetween({ y: 2028, m: 2, d: 28 }, { y: 2028, m: 3, d: 1 }),
-      2,
-    );
-    assert.equal(
-      daysBetween({ y: 2027, m: 1, d: 2 }, { y: 2026, m: 12, d: 25 }),
-      -8,
-    );
+    assert.equal(daysBetween({ y: 2026, m: 12, d: 28 }, { y: 2027, m: 1, d: 1 }), 4);
+    assert.equal(daysBetween({ y: 2028, m: 2, d: 28 }, { y: 2028, m: 3, d: 1 }), 2);
+    assert.equal(daysBetween({ y: 2027, m: 1, d: 2 }, { y: 2026, m: 12, d: 25 }), -8);
   });
 
   test('weekdayOf follows Date.getDay with Sunday 0', () => {

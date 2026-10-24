@@ -53,15 +53,15 @@ export function resolveTheme(today, calendar, themes) {
   const byHoliday = packsByHoliday(themes);
   /** @type {Candidate | null} */
   let best = null;
-  calendar.forEach((holiday, order) => {
+  for (const [order, holiday] of calendar.entries()) {
     const pack = byHoliday.get(holiday.id);
-    if (!pack) return;
+    if (!pack) continue;
     for (const offset of YEAR_OFFSETS) {
       const delta = daysBetween(today, holidayDate(holiday, today.y + offset));
       const inWindow = delta >= -holiday.after && delta <= holiday.before;
       const candidate = { pack, delta, order };
       if (inWindow && isBetter(candidate, best)) best = candidate;
     }
-  });
+  }
   return best ? best.pack : themes.default;
 }

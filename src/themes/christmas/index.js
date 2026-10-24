@@ -14,8 +14,7 @@ const HAT_TRIM =
 const SNOWMAN_BODY =
   'M27 74a21 21 0 1 1 42 0a21 21 0 1 1 -42 0ZM33 45a15 15 0 1 1 30 0a15 15 0 1 1 -30 0ZM37 23a11 11 0 1 1 22 0a11 11 0 1 1 -22 0Z';
 const SNOWMAN_HAT = 'M35 11H61V15H35ZM40 0H56V12H40Z';
-const SNOWMAN_SCARF =
-  'M34 31Q48 38 62 31V36Q48 43 34 36ZM53 35L61 48L55 51L49 37Z';
+const SNOWMAN_SCARF = 'M34 31Q48 38 62 31V36Q48 43 34 36ZM53 35L61 48L55 51L49 37Z';
 const SNOWMAN_NOSE = 'M48 21L63 25L48 27Z';
 const SNOWMAN_COAL =
   'M42.2 19a1.8 1.8 0 1 1 3.6 0a1.8 1.8 0 1 1 -3.6 0ZM51.2 19a1.8 1.8 0 1 1 3.6 0a1.8 1.8 0 1 1 -3.6 0ZM45.8 45a2.2 2.2 0 1 1 4.4 0a2.2 2.2 0 1 1 -4.4 0ZM45.8 53a2.2 2.2 0 1 1 4.4 0a2.2 2.2 0 1 1 -4.4 0Z';
@@ -62,11 +61,7 @@ export default {
   sprites: {
     benjo: {
       ...baseBenjo,
-      paths: [
-        ...baseBenjo.paths,
-        { d: HAT, fill: 'accent' },
-        { d: HAT_TRIM, fill: 'ink' },
-      ],
+      paths: [...baseBenjo.paths, { d: HAT, fill: 'accent' }, { d: HAT_TRIM, fill: 'ink' }],
     },
     hazards: [
       {

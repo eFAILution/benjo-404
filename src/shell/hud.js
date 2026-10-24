@@ -73,7 +73,7 @@ export function createHud(options) {
   /**
    * @param {string} titleId
    * @param {Array<Node>} children
-   * @param {HTMLElement} focusTarget
+   * @param {HTMLElement | null} focusTarget null leaves focus where it is
    */
   function showCard(titleId, children, focusTarget) {
     cardSlot.replaceChildren(
@@ -83,7 +83,7 @@ export function createHud(options) {
         children,
       ),
     );
-    focusTarget.focus();
+    focusTarget?.focus();
   }
 
   /** @param {Element} node */
@@ -119,7 +119,12 @@ export function createHud(options) {
       text(debugLine, line);
       debugLine.hidden = line === '';
     },
-    showPaused() {
+    /**
+     * A pause from focus entering the message strip passes focus false, so Tab can carry on to
+     * Return Home instead of being pulled back to Resume.
+     * @param {{ focus?: boolean }} [how]
+     */
+    showPaused({ focus = true } = {}) {
       const resume = button('Resume', 'btn btn-primary', options.onResume);
       showCard(
         'card-title',
@@ -130,7 +135,7 @@ export function createHud(options) {
             button('Quit', 'btn btn-ghost', options.onQuit),
           ]),
         ],
-        resume,
+        focus ? resume : null,
       );
     },
     /** @param {{ score: number, best: number, scoreLabel: string, reason: string }} card */

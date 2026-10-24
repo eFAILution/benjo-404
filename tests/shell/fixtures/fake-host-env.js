@@ -80,7 +80,7 @@ export function fakeHud() {
     setScore: (value) => events.push(['score', value]),
     setBest: (value) => events.push(['best', value]),
     setStatus: (value) => events.push(['status', value]),
-    showPaused: () => events.push(['paused']),
+    showPaused: (options) => events.push(['paused', options]),
     showOver: (card) => events.push(['over', card]),
     clearCard: () => events.push(['clear']),
   };

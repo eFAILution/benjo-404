@@ -14,7 +14,7 @@
  * @property {(value: number) => void} setScore
  * @property {(value: number) => void} setBest
  * @property {(text: string) => void} setStatus
- * @property {() => void} showPaused
+ * @property {(options: { focus: boolean }) => void} showPaused
  * @property {(card: { score: number, best: number, scoreLabel: string, reason: string }) => void} showOver
  * @property {() => void} clearCard
  */
@@ -248,14 +248,15 @@ export function createHost(options) {
     scheduleLoop();
   }
 
-  function pause() {
+  /** @param {{ focus?: boolean }} [how] focus false leaves keyboard focus where it is */
+  function pause({ focus = true } = {}) {
     if (state !== 'playing' || !instance) return;
     const game = instance;
     stopLoop();
     if (!guard(() => game.pause())) return;
     state = 'paused';
     setClass('is-paused', true);
-    hud.showPaused();
+    hud.showPaused({ focus });
   }
 
   function resume() {

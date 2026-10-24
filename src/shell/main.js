@@ -197,7 +197,8 @@ export function boot(registry, config, holidays = null) {
   const options = { signal: page.signal };
   document.addEventListener('visibilitychange', () => document.hidden && pauseIfPlaying(), options);
   window.addEventListener('blur', pauseIfPlaying, options);
-  message.addEventListener('focusin', pauseIfPlaying, options);
+  // Focus moving into the message strip pauses without stealing focus, so Tab reaches the link.
+  message.addEventListener('focusin', () => host?.pause({ focus: false }), options);
   const canStart = () => host?.state === 'idle' && promptSlot.firstElementChild !== null;
   overlay?.addEventListener('click', () => canStart() && play(), options);
   window.addEventListener(

@@ -209,6 +209,16 @@ describe('createHost loop', () => {
     assert.ok(!classes.has('is-paused'));
   });
 
+  it('moves focus to Resume on a normal pause but not on a pause from the message strip', () => {
+    const { host, hud } = setup();
+    host.play();
+    host.pause();
+    host.resume();
+    host.pause({ focus: false });
+    const paused = hud.events.filter(([name]) => name === 'paused').map(([, value]) => value);
+    assert.deepEqual(paused, [{ focus: true }, { focus: false }]);
+  });
+
   it('quit from pause destroys, aborts, and returns to idle', () => {
     const { game, host, classes, attract } = setup();
     host.play();

@@ -1,5 +1,6 @@
 // A tiny stand-in for the shell's HostContext so the runner can be tested on Node.
 import { benjo } from '../../../src/assets/benjo.js';
+import { fakeTheme as fixtureTheme } from '../../shell/fixtures/theme.js';
 
 export const DT = 1 / 60;
 
@@ -22,16 +23,7 @@ export function fakeTheme() {
     id: 'test',
     name: 'Test',
     holiday: 'default',
-    palette: {
-      bg: '#040404',
-      accent: '#d72228',
-      accentSoft: '#d7222833',
-      glow: '#ff8a3d',
-      ink: '#f2f2f2',
-      muted: '#9e9e9e',
-      hazard: '#d72228',
-      pickup: '#ff8a3d',
-    },
+    palette: { ...fixtureTheme.palette },
     particles: {
       count: 10,
       color: '#ff8a3d',

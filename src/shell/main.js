@@ -4,6 +4,8 @@
 /** @typedef {import('../contracts').BenjoConfig} BenjoConfig */
 /** @typedef {import('../contracts').Palette} Palette */
 /** @typedef {import('../contracts').MessageModule} MessageModule */
+/** @typedef {import('../contracts').GameModule} GameModule */
+/** @typedef {{ score: number, best: number, scoreLabel: string, reason: string }} OverCard */
 /** @typedef {import('./boot.js').PickTheme} PickTheme */
 /**
  * @typedef {object} Holidays
@@ -87,8 +89,11 @@ export function boot(registry, config, holidays = null) {
     new Date(),
     reducedQuery.matches,
     pick,
+    Math.random,
   );
-  const { theme, game, reducedMotion } = resolved;
+  const { theme, reducedMotion } = resolved;
+  /** The game the next run plays. The picker and the game over card can change it (ADR-0014). */
+  let game = resolved.game;
   applyPalette(html, theme.palette);
   html.setAttribute('data-theme', theme.id);
   if (resolved.message.id !== config.message) swapMessageText(resolved.message);
@@ -122,6 +127,8 @@ export function boot(registry, config, holidays = null) {
       host?.quit();
       byId('play-prompt')?.focus();
     },
+    onSelect: (id) => selectGame(id, false),
+    onSwitch: (id) => selectGame(id, true),
   });
 
   watchSize({
@@ -149,31 +156,70 @@ export function boot(registry, config, holidays = null) {
   attract.start();
   if (!game) return;
 
-  host = createHost({
-    root: gameRoot,
-    canvas,
-    ctx,
-    size,
-    theme,
-    game,
-    reducedMotion,
-    random,
-    hud,
-    attract,
-    frames,
-    storage: createStorage(game.id),
-    setClass(name, on) {
-      html.classList.toggle(name, on);
-      if (name === 'is-playing') hudRoot.hidden = !on;
-      syncMeter();
-    },
-    createInput: (signal) =>
-      attachInput({ canvas, signal, pauseButton: hud.pauseButton, onPause: () => host?.pause() }),
-    drawSprite: (target, sprite, x, y, h, opts) =>
-      drawSprite(target, theme.palette, sprite, x, y, h, opts),
-    onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
-  });
-  hud.showPlayPrompt(resolved.message.playPrompt);
+  /** Games the player can switch to from the game over card. */
+  const others = () => (resolved.picker ? resolved.games.filter((choice) => choice !== game) : []);
+  // The host only knows its own game, so the game over card gets the switch buttons here.
+  const hostHud = {
+    ...hud,
+    showOver: (/** @type {OverCard} */ card) => hud.showOver(card, others()),
+  };
+
+  /** @param {GameModule} next */
+  const hostFor = (next) =>
+    createHost({
+      root: gameRoot,
+      canvas,
+      ctx,
+      size,
+      theme,
+      game: next,
+      reducedMotion,
+      random,
+      hud: hostHud,
+      attract,
+      frames,
+      storage: createStorage(next.id),
+      setClass(name, on) {
+        html.classList.toggle(name, on);
+        if (name === 'is-playing') hudRoot.hidden = !on;
+        syncMeter();
+      },
+      createInput: (signal) =>
+        attachInput({ canvas, signal, pauseButton: hud.pauseButton, onPause: () => host?.pause() }),
+      drawSprite: (target, sprite, x, y, h, opts) =>
+        drawSprite(target, theme.palette, sprite, x, y, h, opts),
+      onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
+    });
+
+  /**
+   * Switch to another bundled game while idle or on the game over card. A run in progress is
+   * never swapped out. `start` plays it at once, as the game over card's buttons do.
+   * @param {string} id
+   * @param {boolean} start
+   */
+  function selectGame(id, start) {
+    const next = resolved.games.find((choice) => choice.id === id);
+    if (!next || !host || host.state === 'playing' || host.state === 'paused') return;
+    if (next !== game) {
+      host.quit();
+      game = next;
+      host = hostFor(next);
+      if (meter) hud.setDebug(describe());
+    }
+    if (start) {
+      showPrompt();
+      play();
+    }
+  }
+
+  const showPrompt = () =>
+    hud.showPlayPrompt(
+      resolved.message.playPrompt,
+      resolved.picker && game ? { games: resolved.games, current: game.id } : null,
+    );
+
+  host = hostFor(game);
+  showPrompt();
 
   const pauseIfPlaying = () => host?.pause();
   const options = { signal: page.signal };

@@ -33,10 +33,35 @@ function homeLink(cta) {
   return link;
 }
 
+/** @typedef {{ id: string, name: string }} GameChoice */
+
+/**
+ * The idle picker: one toggle button per game, with the current one pressed. Picking a game
+ * only selects it; the play prompt starts it.
+ * @param {GameChoice[]} games
+ * @param {string} current
+ * @param {(id: string) => void} onSelect
+ */
+function gamePicker(games, current, onSelect) {
+  const buttons = games.map((game) => {
+    const node = el(
+      'button',
+      { type: 'button', class: 'picker-option', 'aria-pressed': String(game.id === current) },
+      [game.name],
+    );
+    node.addEventListener('click', () => {
+      for (const other of buttons) other.setAttribute('aria-pressed', String(other === node));
+      onSelect(game.id);
+    });
+    return node;
+  });
+  return el('div', { class: 'picker', role: 'group', 'aria-label': 'Choose a game' }, buttons);
+}
+
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
- *   onPlay: () => void }} options
+ *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -138,9 +163,15 @@ export function createHud(options) {
         focus ? resume : null,
       );
     },
-    /** @param {{ score: number, best: number, scoreLabel: string, reason: string }} card */
-    showOver(card) {
+    /**
+     * @param {{ score: number, best: number, scoreLabel: string, reason: string }} card
+     * @param {GameChoice[]} [others] games the player can switch to, each started at once
+     */
+    showOver(card, others = []) {
       const again = button('Play again', 'btn btn-primary', options.onPlay);
+      const switches = others.map((game) =>
+        button(`Play ${game.name}`, 'btn btn-ghost', () => options.onSwitch?.(game.id)),
+      );
       showCard(
         'card-title',
         [
@@ -148,7 +179,7 @@ export function createHud(options) {
           el('p', { class: 'card-score' }, [pad4(card.score)]),
           el('p', { class: 'card-best' }, [`Best ${pad4(card.best)}`]),
           card.reason ? el('p', { class: 'card-reason' }, [card.reason]) : null,
-          el('div', { class: 'card-actions' }, [again, homeLink(cta)]),
+          el('div', { class: 'card-actions' }, [again, ...switches, homeLink(cta)]),
         ].filter((node) => node !== null),
         again,
       );
@@ -156,14 +187,19 @@ export function createHud(options) {
     clearCard() {
       cardSlot.replaceChildren();
     },
-    /** @param {string} label */
-    showPlayPrompt(label) {
+    /**
+     * @param {string} label
+     * @param {{ games: GameChoice[], current: string } | null} [picker] shown under the prompt
+     */
+    showPlayPrompt(label, picker = null) {
       const node = el('button', { type: 'button', class: 'prompt', id: 'play-prompt' }, [
         benjoMarkSvg(PROMPT_ICON_PX),
         el('span', {}, [label]),
       ]);
       node.addEventListener('click', options.onPlay);
       showPrompt(node);
+      const { onSelect } = options;
+      if (picker && onSelect) promptSlot.append(gamePicker(picker.games, picker.current, onSelect));
     },
     showError() {
       showPrompt(

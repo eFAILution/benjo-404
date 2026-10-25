@@ -81,6 +81,7 @@ button {
 
 .btn:focus-visible,
 .prompt:focus-visible,
+.picker-option:focus-visible,
 .hud-pause:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;

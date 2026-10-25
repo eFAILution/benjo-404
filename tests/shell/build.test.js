@@ -7,7 +7,7 @@ import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { build } from '../../build/build.js';
-import { entrySource, listMessages, planBundle } from '../../build/entry.js';
+import { entrySource, listMessages, planBundle, validateConfig } from '../../build/entry.js';
 import { faviconDataUrl } from '../../build/favicon.js';
 import { extractInline, singleFileCsp } from '../../build/inline.js';
 import { benjo } from '../../src/assets/benjo.js';
@@ -143,6 +143,15 @@ describe('build failures', () => {
       themesDir: join(FIXTURES, 'themes'),
     };
     assert.throws(() => planBundle({ ...CONFIG, message: 'ghost' }, dirs), /message "ghost"/);
+  });
+
+  it('rejects a bad startGame or gamePicker', () => {
+    assert.throws(() => validateConfig({ ...CONFIG, startGame: 'last' }), /startGame/);
+    assert.throws(() => validateConfig({ ...CONFIG, gamePicker: 'yes' }), /gamePicker/);
+    assert.equal(
+      validateConfig({ ...CONFIG, startGame: 'first', gamePicker: false }).startGame,
+      'first',
+    );
   });
 
   it('rejects an unsafe config id', async () => {

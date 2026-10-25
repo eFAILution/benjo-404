@@ -4,6 +4,7 @@
 /** @typedef {import('../contracts').BenjoConfig} BenjoConfig */
 /** @typedef {import('../contracts').Resolved} Resolved */
 /** @typedef {import('../contracts').ThemePack} ThemePack */
+/** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {{ y: number, m: number, d: number }} DayDate */
 /** @typedef {(date: DayDate, themes: Record<string, ThemePack>) => ThemePack | null | undefined} PickTheme */
 
@@ -76,15 +77,42 @@ function resolveThemePack(registry, config, query, date, pickTheme) {
 }
 
 /**
+ * The game a visit starts on (ADR-0014). `?game=` pins a bundled game and `?game=none` turns
+ * games off. Otherwise config.startGame picks a random bundled game or the first configured one.
+ * @param {GameModule[]} games bundled, configured games in config order
+ * @param {BenjoConfig} config
+ * @param {Record<string, string | undefined>} query
+ * @param {() => number} random in [0, 1)
+ * @returns {GameModule | null}
+ */
+export function pickGame(games, config, query, random) {
+  if (query.game === 'none' || games.length === 0) return null;
+  const pinned = isSafeId(query.game) ? games.find((game) => game.id === query.game) : undefined;
+  if (pinned) return pinned;
+  if (config.startGame === 'first') return games[0];
+  const index = Math.floor(random() * games.length);
+  return games[Math.min(Math.max(index, 0), games.length - 1)];
+}
+
+/**
  * @param {Registry} registry
  * @param {BenjoConfig} config
  * @param {Record<string, string | undefined>} query raw values; each is validated here
  * @param {Date} now
  * @param {boolean} prefersReducedMotion
  * @param {PickTheme | null} [pickTheme] holiday resolver for theme 'auto'; null keeps default
+ * @param {() => number} [random] picks the starting game; the default always picks the first
  * @returns {Resolved & { date: DayDate }}
  */
-export function resolve(registry, config, query, now, prefersReducedMotion, pickTheme = null) {
+export function resolve(
+  registry,
+  config,
+  query,
+  now,
+  prefersReducedMotion,
+  pickTheme = null,
+  random = () => 0,
+) {
   if (!registry.themes || !has(registry.themes, 'default')) {
     throw new Error('benjo-404: no default theme in the registry');
   }
@@ -93,12 +121,8 @@ export function resolve(registry, config, query, now, prefersReducedMotion, pick
   const message = messages[messageId];
   if (!message) throw new Error(`benjo-404: unknown message "${messageId}"`);
 
-  let game = null;
-  if (query.game !== 'none') {
-    const firstConfigured = config.games.find((id) => has(games, id));
-    const gameId = has(games, query.game) ? query.game : firstConfigured;
-    game = gameId ? games[gameId] : null;
-  }
+  const bundled = [...new Set(config.games)].filter((id) => has(games, id)).map((id) => games[id]);
+  const game = pickGame(bundled, config, query, random);
 
   const date = parseDay(query.date) ?? localDay(now);
   const theme = resolveThemePack(registry, config, query, date, pickTheme);
@@ -106,6 +130,8 @@ export function resolve(registry, config, query, now, prefersReducedMotion, pick
   return {
     message,
     game,
+    games: game ? bundled : [],
+    picker: game !== null && config.gamePicker !== false && bundled.length > 1,
     theme,
     date,
     reducedMotion: query.rm === '1' || prefersReducedMotion === true,

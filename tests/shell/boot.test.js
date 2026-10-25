@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import defaultMessage from '../../src/messages/default.js';
 import short from '../../src/messages/short.js';
-import { parseDay, resolve } from '../../src/shell/boot.js';
+import { parseDay, pickGame, resolve } from '../../src/shell/boot.js';
 import { readQuery } from '../../src/shell/dom.js';
 import { fakeHalloween, fakeTheme } from './fixtures/theme.js';
 
@@ -26,6 +26,7 @@ const run = (query = {}, overrides = {}) =>
     overrides.now ?? NOW,
     overrides.rm ?? false,
     overrides.pick ?? null,
+    overrides.random,
   );
 
 describe('resolve: message', () => {
@@ -59,6 +60,44 @@ describe('resolve: game', () => {
   it('is null when no games are bundled', () => {
     const empty = { ...registry, games: {} };
     assert.equal(run({}, { registry: empty }).game, null);
+  });
+});
+
+describe('resolve: game selection (ADR-0014)', () => {
+  it('starts on a random bundled game by default', () => {
+    assert.equal(run({}, { random: () => 0 }).game, runner);
+    assert.equal(run({}, { random: () => 0.99 }).game, defense);
+  });
+  it('starts on the first configured game with startGame first', () => {
+    const first = { ...config, startGame: 'first' };
+    assert.equal(run({}, { config: first, random: () => 0.99 }).game, runner);
+  });
+  it('?game= still pins a game whatever the random draw', () => {
+    assert.equal(run({ game: 'runner' }, { random: () => 0.99 }).game, runner);
+  });
+  it('lists bundled, configured games once each, in config order', () => {
+    const listed = { ...config, games: ['defense', 'ghost', 'runner', 'defense'] };
+    assert.deepEqual(run({}, { config: listed }).games, [defense, runner]);
+  });
+  it('offers the picker only with two or more games and gamePicker not false', () => {
+    assert.equal(run().picker, true);
+    assert.equal(run({}, { config: { ...config, gamePicker: false } }).picker, false);
+    assert.equal(run({}, { config: { ...config, games: ['runner'] } }).picker, false);
+    assert.equal(run({ game: 'none' }).picker, false);
+  });
+  it('pickGame never leaves the list, even for a random() of exactly 1', () => {
+    assert.equal(
+      pickGame([runner, defense], config, {}, () => 1),
+      defense,
+    );
+    assert.equal(
+      pickGame([runner, defense], config, {}, () => -1),
+      runner,
+    );
+    assert.equal(
+      pickGame([], config, {}, () => 0),
+      null,
+    );
   });
 });
 

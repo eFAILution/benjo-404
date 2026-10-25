@@ -116,9 +116,14 @@
   }
 }
 
+@media (max-width: 599px) {
+  :root {
+    --strip-h: 88px;
+  }
+}
+
 @media (max-width: 479px) {
   :root {
     --code-size: 4rem;
-    --strip-h: 88px;
   }
 }

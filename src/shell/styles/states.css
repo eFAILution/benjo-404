@@ -228,13 +228,22 @@
   }
 }
 
-@media (min-width: 480px) and (max-width: 991px) {
-  #hud {
-    flex-wrap: wrap;
+/*
+ * Under 992px the centered hint would run into Return Home, which sits at the strip's left
+ * edge, so it drops to a line just under the strip (#17).
+ */
+@media (min-width: 600px) and (max-width: 991px) {
+  .hud-status {
+    top: calc(var(--strip-h) + 8px);
+  }
+
+  .hud-debug {
+    top: calc(var(--strip-h) + 28px);
   }
 }
 
-@media (max-width: 479px) {
+/* Under 600px the message and the score do not fit on one line: two rows (#17). */
+@media (max-width: 599px) {
   .is-playing #message {
     right: 0;
     height: calc(var(--strip-h) / 2);
@@ -251,6 +260,10 @@
 
   .hud-status {
     position: static;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     transform: none;
   }
 }

@@ -41,13 +41,12 @@ Query overrides, for testing only. Bad values are ignored.
 | `?rm=1` | Act as if the OS asks for reduced motion. |
 | `?debug=1` | Show a line with the game, theme, date, and frame rate. |
 
-### Add a game or a theme
+### Add a game, a theme, or a message
 
-1. Make a folder: `src/games/<id>/index.js` exports a game module, or `src/themes/<id>/index.js` exports a theme pack. The shapes are in `src/contracts.d.ts`.
-2. Add one line to the registry: `src/games/index.js` or `src/themes/index.js`.
-3. Add the id to `games` or `themes` in `benjo.config.json`. A theme's `holiday` field names a holiday in `src/holidays/calendar.js`.
-4. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack.
-5. Run `make test`. It fails if the game is over 16 KB or the theme over 4 KB gzipped.
+1. Make a folder or file: `src/games/<id>/index.js` exports a game module, `src/themes/<id>/index.js` exports a theme pack, and `src/messages/<id>.js` exports a message. The shapes are in `src/contracts.d.ts`. There is no registry to edit; the build finds them by name.
+2. Add the id to `games` or `themes` in `benjo.config.json`, or set `message` to it. Every message is bundled, so `?message=<id>` works without a config change. A theme's `holiday` field names a holiday in `src/holidays/calendar.js`; a new holiday also needs an entry there.
+3. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack.
+4. Run `make test`. It fails if the game is over 16 KB or the theme over 4 KB gzipped.
 
 ### Known limitations
 

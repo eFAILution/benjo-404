@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { gzipSync } from 'node:zlib';
 
@@ -9,9 +9,19 @@ import { resolveTheme } from '../../src/holidays/resolve.js';
 import christmasPack from '../../src/themes/christmas/index.js';
 import defaultPack from '../../src/themes/default/index.js';
 import halloweenPack from '../../src/themes/halloween/index.js';
-import * as registry from '../../src/themes/index.js';
 
-const { themes } = registry;
+const THEMES_DIR = new URL('../../src/themes/', import.meta.url);
+/** Every folder under src/themes/ is a pack, the same way the build finds them. */
+const themes = Object.fromEntries(
+  await Promise.all(
+    readdirSync(THEMES_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map(async ({ name }) => [
+        name,
+        (await import(new URL(`${name}/index.js`, THEMES_DIR).href)).default,
+      ]),
+  ),
+);
 
 const PALETTE_KEYS = ['bg', 'accent', 'accentSoft', 'glow', 'ink', 'muted', 'hazard', 'pickup'];
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
@@ -38,23 +48,18 @@ const allSprites = (pack) => [
   ...(pack.sprites.props ?? []).map((sprite, i) => [`props[${i}]`, sprite]),
 ];
 
-describe('theme registry', () => {
-  test('bundles default, halloween, and christmas', () => {
+describe('theme folders', () => {
+  test('ship default, halloween, and christmas', () => {
     assert.deepEqual(Object.keys(themes).sort(), ['christmas', 'default', 'halloween']);
   });
 
-  test('registry keys match pack ids and folder default exports', () => {
+  test('folder names match pack ids', () => {
     assert.equal(themes.default, defaultPack);
     assert.equal(themes.halloween, halloweenPack);
     assert.equal(themes.christmas, christmasPack);
     for (const [key, pack] of packEntries) assert.equal(pack.id, key);
   });
 
-  test('each pack is also a named export', () => {
-    assert.equal(registry.defaultTheme, defaultPack);
-    assert.equal(registry.halloween, halloweenPack);
-    assert.equal(registry.christmas, christmasPack);
-  });
 });
 
 for (const [key, pack] of packEntries) {

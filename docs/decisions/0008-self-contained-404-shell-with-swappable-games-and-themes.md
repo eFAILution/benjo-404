@@ -46,7 +46,7 @@ Three module kinds, each a plain object exported from its own folder:
 
 The host wraps every game call in `try`/`catch`. A throwing game is destroyed and the page returns to the idle state with a small "try again" control. The message and the Return Home link live outside the game's DOM subtree and are never changed by the game. The exact signatures are in the implementation plan and in `src/contracts.d.ts`.
 
-Selection is configuration. `benjo.config.json` names the message, the games to bundle, and a theme pin (or `auto`). At runtime `?game=`, `?theme=`, `?date=`, and `?message=` override for testing, validated against the bundled registry and never written to the DOM except as text.
+Selection is configuration. `benjo.config.json` names the message, the games to bundle, and a theme pin (or `auto`). The build finds each module by its path (`src/messages/<id>.js`, `src/games/<id>/index.js`, `src/themes/<id>/index.js`), so there is no registry file to edit. Only the configured games and themes are bundled. Every message is bundled, because messages are a few hundred bytes each and `?message=` should be able to preview any of them. At runtime `?game=`, `?theme=`, `?date=`, and `?message=` override for testing, validated against the bundled registry and never written to the DOM except as text.
 
 ### 4. Holiday theming: computed from the local date, closest holiday wins
 

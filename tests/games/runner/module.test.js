@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { games, runner as named } from '../../../src/games/index.js';
 import {
   createIntent,
   createTracker,
@@ -24,13 +23,8 @@ function play(host, game, seconds, beforeTick = () => {}) {
   }
 }
 
-describe('registry', () => {
-  test('exports the runner by name and in the games map', () => {
-    assert.equal(named, runner);
-    assert.equal(games.runner, runner);
-  });
-
-  test('module metadata fits the contract', () => {
+describe('module', () => {
+  test('metadata fits the contract', () => {
     assert.match(runner.id, /^[a-z0-9-]{1,32}$/);
     assert.equal(runner.name, 'Benjo Run');
     assert.ok(runner.controls.keyboard.length <= 40);

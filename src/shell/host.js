@@ -6,7 +6,7 @@
 /** @typedef {import('../contracts').EndResult} EndResult */
 /** @typedef {import('../contracts').Size} Size */
 /** @typedef {import('../contracts').ThemePack} ThemePack */
-/** @typedef {import('../contracts').InputState} InputState */
+/** @typedef {import('./input.js').HostInput} HostInput */
 /** @typedef {'idle' | 'playing' | 'paused' | 'over'} HostState */
 /**
  * @typedef {object} HudPort
@@ -30,7 +30,7 @@
  * @property {HudPort} hud
  * @property {{ start(): void, stop(): void }} attract
  * @property {(name: string, on: boolean) => void} setClass toggles a class on <html>
- * @property {(signal: AbortSignal) => InputState & { tick(): void, endTick(): void }} createInput
+ * @property {(signal: AbortSignal) => HostInput} createInput
  * @property {GameStorage} storage
  * @property {{ request(cb: (t: number) => void): number, cancel(id: number): void }} frames
  * @property {(failures: number) => void} [onFailure]
@@ -69,7 +69,7 @@ export function createHost(options) {
   let instance = null;
   /** @type {AbortController | null} */
   let controller = null;
-  /** @type {(InputState & { tick(): void, endTick(): void }) | null} */
+  /** @type {HostInput | null} */
   let input = null;
   let destroyed = true;
   let failures = 0;

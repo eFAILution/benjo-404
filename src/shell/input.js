@@ -3,6 +3,10 @@
 /** @typedef {import('../contracts').Action} Action */
 /** @typedef {import('../contracts').InputState} InputState */
 /** @typedef {'left' | 'right' | 'up' | 'down'} Direction */
+/**
+ * The InputState the host drives: tick() before each update, endTick() after it.
+ * @typedef {InputState & { tick(): void, endTick(): void }} HostInput
+ */
 
 /** @type {Record<string, Action[]>} */
 export const KEY_MAP = {
@@ -42,11 +46,11 @@ export function classifyGesture({ dx, dy, ms }) {
 
 /**
  * State machine with no DOM. The host calls tick() before each update and endTick() after it.
- * @returns {InputState & {
+ * @returns {HostInput & {
  *   press(action: Action): void, release(action: Action): void, releaseAll(): void,
  *   pulse(action: Action): void, setSwipe(direction: Direction): void,
  *   setPointer(pointer: { x: number, y: number, down: boolean } | null): void,
- *   setTouch(touch: boolean): void, tick(): void, endTick(): void
+ *   setTouch(touch: boolean): void
  * }}
  */
 export function createInputState() {

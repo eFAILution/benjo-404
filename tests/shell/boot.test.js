@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import * as messages from '../../src/messages/index.js';
+import defaultMessage from '../../src/messages/default.js';
+import short from '../../src/messages/short.js';
 import { parseDay, resolve } from '../../src/shell/boot.js';
 import { readQuery } from '../../src/shell/dom.js';
 import { fakeHalloween, fakeTheme } from './fixtures/theme.js';
 
 const runner = { id: 'runner' };
 const defense = { id: 'defense' };
+const messages = { default: defaultMessage, short };
 const registry = {
   messages,
   games: { runner, defense },

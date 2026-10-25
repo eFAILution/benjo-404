@@ -1,5 +1,5 @@
 // @ts-check
-// esbuild -> dist/404.html, dist/csp.txt, dist/embed/, dist/sizes.json (plan section 11).
+// esbuild -> dist/404.html, dist/csp.txt, dist/embed/, dist/sizes.json (ADR-0008 section 1).
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
@@ -120,14 +120,14 @@ async function buildCss(root) {
 }
 
 /**
- * @param {string} root
+ * @param {Array<{ id: string, file: string }>} messages
  * @param {string} id
  */
-async function loadMessage(root, id) {
-  const messages = await import(pathToFileURL(join(root, 'src', 'messages', 'index.js')).href);
-  const message = messages[id];
+async function loadMessage(messages, id) {
+  const entry = messages.find((candidate) => candidate.id === id);
+  const message = entry && (await import(pathToFileURL(entry.file).href)).default;
   if (!message || message.id !== id)
-    throw new Error(`message "${id}" is not in src/messages/index.js`);
+    throw new Error(`message "${id}": src/messages/${id}.js must export a message with id "${id}"`);
   return message;
 }
 
@@ -160,7 +160,7 @@ export async function build(options = {}) {
   const script = await bundle({ entryPoints: [entryFile] });
   const fonts = await readFonts(root, warn);
   const style = await buildCss(root);
-  const message = await loadMessage(root, config.message);
+  const message = await loadMessage(plan.messages, config.message);
   const template = await readFile(join(srcDir, 'template.html'), 'utf8');
   const text = {
     THEME_PIN: config.theme,

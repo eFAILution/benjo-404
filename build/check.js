@@ -15,6 +15,7 @@ import {
   SVG_NS,
   stripIconDataUrls,
 } from './check-content.js';
+import { listMessages } from './entry.js';
 import { EMBED_CSP } from './inline.js';
 
 export * from './check-content.js';
@@ -149,9 +150,11 @@ export async function checkSource(root, ctaHrefs) {
 
 /** @param {string} root */
 async function loadCtaHrefs(root) {
-  const messages = await import(pathToFileURL(join(root, 'src', 'messages', 'index.js')).href);
-  return Object.values(messages)
-    .map((message) => message?.cta?.href)
+  const modules = await Promise.all(
+    listMessages(join(root, 'src', 'messages')).map(({ file }) => import(pathToFileURL(file).href)),
+  );
+  return modules
+    .map((module) => module.default?.cta?.href)
     .filter((href) => typeof href === 'string');
 }
 

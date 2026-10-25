@@ -7,7 +7,7 @@ import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { build } from '../../build/build.js';
-import { entrySource, planBundle } from '../../build/entry.js';
+import { entrySource, listMessages, planBundle } from '../../build/entry.js';
 import { faviconDataUrl } from '../../build/favicon.js';
 import { extractInline, singleFileCsp } from '../../build/inline.js';
 import { benjo } from '../../src/assets/benjo.js';
@@ -136,6 +136,15 @@ describe('build failures', () => {
     assert.equal(plan.warnings.length > 0, true);
   });
 
+  it('fails on a configured message with no file', () => {
+    const dirs = {
+      srcDir: SRC,
+      gamesDir: join(FIXTURES, 'games'),
+      themesDir: join(FIXTURES, 'themes'),
+    };
+    assert.throws(() => planBundle({ ...CONFIG, message: 'ghost' }, dirs), /message "ghost"/);
+  });
+
   it('rejects an unsafe config id', async () => {
     await assert.rejects(build({ config: { ...CONFIG, games: ['../x'] }, log: quiet }), /games/);
   });
@@ -155,5 +164,25 @@ describe('entrySource', () => {
     assert.match(source, /import game_fake from ".*\/fixtures\/games\/fake\/index\.js";/);
     assert.match(source, /themes: \{ "default": theme_default \}/);
     assert.ok(!source.includes('halloween/index.js'));
+  });
+});
+
+describe('messages', () => {
+  it('finds every message by file name, with no registry to edit', () => {
+    const ids = listMessages(join(FIXTURES, 'messages')).map(({ id }) => id);
+    assert.deepEqual(ids, ['default', 'extra']);
+  });
+
+  it('bundles every message so ?message= can pick any of them', () => {
+    const dirs = {
+      srcDir: SRC,
+      gamesDir: join(FIXTURES, 'games'),
+      themesDir: join(FIXTURES, 'themes'),
+      messagesDir: join(FIXTURES, 'messages'),
+    };
+    const plan = planBundle(CONFIG, dirs);
+    const source = entrySource(plan, CONFIG, { srcDir: SRC, includeModules: false });
+    assert.match(source, /import message_extra from ".*\/fixtures\/messages\/extra\.js";/);
+    assert.match(source, /messages: \{ "default": message_default, "extra": message_extra \}/);
   });
 });

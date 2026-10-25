@@ -1,5 +1,5 @@
 // @ts-check
-// Keyboard, pointer, and touch folded into one InputState (plan section 8).
+// Keyboard, pointer, and touch folded into one InputState (see src/contracts.d.ts).
 /** @typedef {import('../contracts').Action} Action */
 /** @typedef {import('../contracts').InputState} InputState */
 /** @typedef {'left' | 'right' | 'up' | 'down'} Direction */

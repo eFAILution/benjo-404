@@ -1,5 +1,5 @@
 // @ts-check
-// The HostContext a game receives for one run (plan section 2).
+// The HostContext a game receives for one run (see src/contracts.d.ts).
 /** @typedef {import('../contracts').EndResult} EndResult */
 /** @typedef {import('../contracts').HostContext} HostContext */
 /** @typedef {import('../contracts').InputState} InputState */

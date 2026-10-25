@@ -23,7 +23,7 @@ import { drawSprite } from './sprite.js';
 import { createStorage } from './storage.js';
 import { watchSize } from './viewport.js';
 
-/** Only these four palette entries become CSS custom properties (plan section 3). */
+/** Only these four palette entries become CSS custom properties; the rest stay in canvas code. */
 const PALETTE_TOKENS = /** @type {const} */ ([
   ['--bg', 'bg'],
   ['--accent', 'accent'],

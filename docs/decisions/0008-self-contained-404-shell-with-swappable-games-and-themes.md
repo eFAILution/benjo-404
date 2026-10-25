@@ -44,7 +44,7 @@ Three module kinds, each a plain object exported from its own folder:
 - **Theme pack**: palette, sprite data (SVG path strings drawn through `Path2D`), particle settings, and the holiday it belongs to. It is data. It never contains behavior.
 - **Game module**: `create(host)` returns an instance with `start`, `update(dt)`, `render(alpha)`, `pause`, `resume`, `destroy`. The host runs a fixed-timestep loop, owns the canvas, input, resize, visibility, storage, and the HUD. The game only draws and updates.
 
-The host wraps every game call in `try`/`catch`. A throwing game is destroyed and the page returns to the idle state with a small "try again" control. The message and the Return Home link live outside the game's DOM subtree and are never changed by the game. The exact signatures are in the implementation plan and in `src/contracts.d.ts`.
+The host wraps every game call in `try`/`catch`. A throwing game is destroyed and the page returns to the idle state with a small "try again" control. The message and the Return Home link live outside the game's DOM subtree and are never changed by the game. The exact signatures are in `src/contracts.d.ts`.
 
 Selection is configuration. `benjo.config.json` names the message, the games to bundle, and a theme pin (or `auto`). The build finds each module by its path (`src/messages/<id>.js`, `src/games/<id>/index.js`, `src/themes/<id>/index.js`), so there is no registry file to edit. Only the configured games and themes are bundled. Every message is bundled, because messages are a few hundred bytes each and `?message=` should be able to preview any of them. At runtime `?game=`, `?theme=`, `?date=`, and `?message=` override for testing, validated against the bundled registry and never written to the DOM except as text.
 
@@ -75,7 +75,7 @@ Inter and Geist Mono are both under the SIL Open Font License. The build ships s
 ## Alternatives considered
 
 - **Folder of static files with `script-src 'self'`.** Simpler to read, but a 404 is served on any path, so asset URLs must be absolute and every request is a point of failure. Kept as the `dist/embed/` fallback only.
-- **Paste the game into Webflow's custom code box.** One field holds 50,000 characters, which fits today's build but not the planned sound, themes, and games. Splitting across several Code Embeds is the chosen route; see A-8.1.
+- **Paste the game into Webflow's custom code box.** One field holds 50,000 characters, which fits today's build but not more themes and games. Splitting across several Code Embeds is the chosen route; see A-8.1.
 - **TypeScript source.** Better editor support, but it adds a compile step and the shipped size is identical. JSDoc with `checkJs` gives the contract checking without it.
 - **A bundler-free build (string concatenation).** Zero dev dependencies, but no tree shaking, no minification, and hand-written module ordering. esbuild earns its place.
 - **Vitest or Jest with jsdom.** Convenient for DOM tests, but heavy dependency trees. Pure-function game logic plus a small built-file check covers what matters.

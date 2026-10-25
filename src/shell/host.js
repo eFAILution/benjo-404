@@ -1,5 +1,5 @@
 // @ts-check
-// Runs one game: HostContext, fixed-step loop, pause, end, and error isolation (plan section 2).
+// Runs one game: HostContext, fixed-step loop, pause, end, and error isolation (ADR-0008 section 3).
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {import('../contracts').GameInstance} GameInstance */
 /** @typedef {import('../contracts').GameStorage} GameStorage */

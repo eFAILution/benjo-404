@@ -18,7 +18,7 @@ const byId = (id) => {
 };
 
 describe('HOLIDAYS table', () => {
-  test('lists the fourteen holidays from the plan in calendar order', () => {
+  test('lists the fourteen holidays in calendar order', () => {
     assert.deepEqual(
       HOLIDAYS.map((holiday) => holiday.id),
       [
@@ -49,7 +49,7 @@ describe('HOLIDAYS table', () => {
     }
   });
 
-  test('windows match the plan', () => {
+  test('each holiday has its expected window of days', () => {
     const windows = Object.fromEntries(
       HOLIDAYS.map((holiday) => [holiday.id, [holiday.before, holiday.after]]),
     );

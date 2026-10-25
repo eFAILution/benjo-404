@@ -1,5 +1,5 @@
 // @ts-check
-// Pure selection of message, game, and theme from config and the query string (plan section 5).
+// Pure selection of message, game, and theme from config and the query string (ADR-0008 section 3).
 /** @typedef {import('../contracts').Registry} Registry */
 /** @typedef {import('../contracts').BenjoConfig} BenjoConfig */
 /** @typedef {import('../contracts').Resolved} Resolved */

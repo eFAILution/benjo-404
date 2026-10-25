@@ -81,7 +81,7 @@ Every change starts with a GitHub issue, goes on a branch named after it, and re
 | `.github/CODEOWNERS` | Required human reviewers | Yes, set the owners |
 | `.github/pull_request_template.md` | PR template with testing evidence and AI disclosure | Rarely |
 | `.pre-commit-config.yaml` | pre-commit: whitespace, YAML, private keys, gitleaks. pre-push: `make verify` | Add stack hooks |
-| `Makefile` | The checks: `lint`, `test`, `records-check`, `verify`, `secrets-scan`, `check`, plus `build` and `dev` | Yes, wire in the project's linters and tests |
+| `Makefile` | The checks: `lint`, `test`, `records-check`, `verify`, `secrets-scan`, `check`, plus `build` and `dev` | When a check is added or changed |
 | `docs/decisions/` | Architecture Decision Records, one per issue, named after it (ADR-0000) | Add a file per decision |
 | `docs/assumptions/` | Assumptions made where requirements are silent, one file each, named after the issue | Add a file per assumption |
 | `docs/tools/` | Builds the record tables (`make records`) and checks record names before each push | Rarely |

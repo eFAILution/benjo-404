@@ -117,4 +117,4 @@ Size: S is under 8 KB gzipped and about a day of work, M is under 16 KB and two 
 2. **Hoard Defense (base defense).** A different input model (pick a lane) and a wave structure. It exercises the theme pack's enemy and projectile slots and gives the page a second mood.
 3. **Lost Pages (top-down explore).** The calm option and the one that reads best with reduced motion. It uses the map and decoration slots of a theme pack, which makes holiday packs feel like places rather than skins.
 
-Benjo Flight and Breadcrumbs are the cheapest follow-ups if the budget is tight. Path Finder is the best fit for a developer audience once an on-screen keyboard exists.
+Benjo Flight and Breadcrumbs are the cheapest follow-ups if the budget is tight. Benjo Flight is built (ADR-0013); it took about 3.4 KB gzipped. Path Finder is the best fit for a developer audience once an on-screen keyboard exists.

@@ -2,6 +2,7 @@
 // Brand look: near black, red accent, orange particle glow from the globe
 // video. Hazards are broken links, pickups are glowing orbs.
 import { benjo } from '../../assets/benjo.js';
+import { BRAND_RED, BRAND_RED_SOFT } from '../../assets/brand.js';
 
 // Broken chain link: two U halves pulled apart, with a spark in the gap.
 const LINK_HALVES =
@@ -31,12 +32,12 @@ export default {
   holiday: 'default',
   palette: {
     bg: '#040404',
-    accent: '#d72228',
-    accentSoft: '#d7222833',
+    accent: BRAND_RED,
+    accentSoft: BRAND_RED_SOFT,
     glow: '#ff8a3d',
     ink: '#f2f2f2',
     muted: '#9e9e9e',
-    hazard: '#d72228',
+    hazard: BRAND_RED,
     pickup: '#ff8a3d',
   },
   particles: {

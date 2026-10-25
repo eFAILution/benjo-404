@@ -1,9 +1,9 @@
 // @ts-check
 // Pure content checks on built output: CSP hashes, banned APIs, leftover tokens, stray URLs.
+import { SVG_NS } from '../src/assets/benjo.js';
 import { escapeHtml, extractInline, sha256Base64, validateCtaHref } from './inline.js';
 
-/** An identifier for createElementNS. Browsers never fetch it. */
-export const SVG_NS = 'http://www.w3.org/2000/svg';
+export { SVG_NS };
 /** The one source file that may name localStorage. */
 export const STORAGE_FILE = 'src/shell/storage.js';
 

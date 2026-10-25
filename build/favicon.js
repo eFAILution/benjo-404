@@ -4,8 +4,9 @@
 // /favicon.ico (which default-src 'none' would block).
 /** @typedef {import('../src/contracts').Sprite} Sprite */
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const BRAND_RED = '#D72228';
+import { SVG_NS } from '../src/assets/benjo.js';
+import { BRAND_RED } from '../src/assets/brand.js';
+
 const MARK_FILL = '#fff';
 /** Space around the mark, as a fraction of its size, so the corners never clip it. */
 const PAD_RATIO = 0.1;

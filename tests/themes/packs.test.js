@@ -4,6 +4,7 @@ import { describe, test } from 'node:test';
 import { gzipSync } from 'node:zlib';
 
 import { benjo } from '../../src/assets/benjo.js';
+import { BRAND_RED, BRAND_RED_SOFT } from '../../src/assets/brand.js';
 import { HOLIDAYS } from '../../src/holidays/calendar.js';
 import { resolveTheme } from '../../src/holidays/resolve.js';
 import christmasPack from '../../src/themes/christmas/index.js';
@@ -60,6 +61,13 @@ describe('theme folders', () => {
     for (const [key, pack] of packEntries) assert.equal(pack.id, key);
   });
 
+  test('tokens.css repeats the brand red from src/assets/brand.js', () => {
+    const css = readFileSync(new URL('../../src/shell/styles/tokens.css', import.meta.url), 'utf8');
+    const token = (name) => css.match(new RegExp(`${name}:\\s*(#[0-9a-f]+);`, 'i'))?.[1];
+    assert.equal(token('--brand'), BRAND_RED);
+    assert.equal(token('--accent'), defaultPack.palette.accent);
+    assert.equal(token('--accent-soft'), BRAND_RED_SOFT);
+  });
 });
 
 for (const [key, pack] of packEntries) {

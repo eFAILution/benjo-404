@@ -12,7 +12,7 @@ describe('faviconSvg', () => {
 
   it('draws a brand red rounded square behind the mark', () => {
     assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" viewBox="[\d. ]+">/);
-    assert.match(svg, /<rect [^>]*rx="\d+(\.\d+)?" [^>]*fill="#D72228"\/>/);
+    assert.match(svg, /<rect [^>]*rx="\d+(\.\d+)?" [^>]*fill="#d72228"\/>/);
     assert.ok(svg.endsWith('</svg>'));
   });
 

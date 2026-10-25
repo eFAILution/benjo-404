@@ -3,6 +3,7 @@
 // Benjo wears a Santa hat. Hazards are a snowman and a stack of presents;
 // pickups are a snowflake and a candy cane.
 import { benjo as baseBenjo } from '../../assets/benjo.js';
+import { BRAND_RED, BRAND_RED_SOFT } from '../../assets/brand.js';
 
 // Santa hat in Benjo's own 620-unit viewBox: drooping cone, then trim and pom.
 const HAT =
@@ -42,8 +43,8 @@ export default {
   holiday: 'christmas',
   palette: {
     bg: '#040609',
-    accent: '#d72228',
-    accentSoft: '#d7222833',
+    accent: BRAND_RED,
+    accentSoft: BRAND_RED_SOFT,
     glow: '#dff3ff',
     ink: '#f2f2f2',
     muted: '#9e9e9e',

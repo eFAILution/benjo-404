@@ -12,11 +12,11 @@ export const BENJO_X_MAX = 360;
 export const BENJO_H = 40;
 /**
  * The HUD strip covers the top of the canvas while playing (--strip-h in the shell CSS: 56px,
- * 88px under 480px wide), so Benjo's ceiling sits just below it (A-13.4).
+ * 88px under 600px wide since #17), so Benjo's ceiling sits just below it (A-13.4).
  */
 export const CEILING = 64;
 export const CEILING_NARROW = 96;
-export const NARROW_WIDTH = 480;
+export const NARROW_WIDTH = 600;
 export const MIN_WIDTH = 320;
 export const MIN_HEIGHT = 240;
 

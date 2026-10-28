@@ -7,6 +7,7 @@ import { benjo } from '../../src/assets/benjo.js';
 import { BRAND_RED, BRAND_RED_SOFT } from '../../src/assets/brand.js';
 import { HOLIDAYS } from '../../src/holidays/calendar.js';
 import { resolveTheme } from '../../src/holidays/resolve.js';
+import { CUES } from '../../src/shell/audio.js';
 import christmasPack from '../../src/themes/christmas/index.js';
 import defaultPack from '../../src/themes/default/index.js';
 import halloweenPack from '../../src/themes/halloween/index.js';
@@ -36,6 +37,7 @@ const MAX_VIEWBOX = 128;
 const MAX_ASPECT = 4 / 3;
 const MAX_GZIP_BYTES = 4000;
 const DRIFTS = ['none', 'up', 'down', 'left', 'right'];
+const CUE_NAMES = Object.keys(CUES);
 
 const packEntries = Object.entries(themes);
 
@@ -98,6 +100,19 @@ for (const [key, pack] of packEntries) {
       }
       assert.ok(DRIFTS.includes(drift));
       assert.equal(typeof twinkle, 'boolean');
+    });
+
+    test('sound cues use known names and sane tones', () => {
+      for (const [name, tones] of Object.entries(pack.cues ?? {})) {
+        assert.ok(CUE_NAMES.includes(name), `unknown cue ${name}`);
+        assert.ok(tones.length > 0 && tones.length <= 6, `${name} has 1 to 6 tones`);
+        for (const tone of tones) {
+          assert.ok(tone.f >= 40 && tone.f <= 8000, `${name} frequency in range`);
+          assert.ok(tone.d > 0 && tone.d <= 1, `${name} lasts at most a second`);
+          assert.ok((tone.at ?? 0) + tone.d <= 1.5, `${name} ends within 1.5 s`);
+          assert.ok(tone.g === undefined || (tone.g > 0 && tone.g <= 1), `${name} gain in 0..1`);
+        }
+      }
     });
 
     test('tagline is at most 32 characters', () => {

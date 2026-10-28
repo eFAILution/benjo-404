@@ -35,6 +35,7 @@
  * @property {{ request(cb: (t: number) => void): number, cancel(id: number): void }} frames
  * @property {(failures: number) => void} [onFailure]
  * @property {(error: unknown) => void} [logError]
+ * @property {{ play(cue: import('../contracts').AudioCue): void }} [audio]
  * @property {(ctx: CanvasRenderingContext2D, sprite: import('../contracts').Sprite, x: number,
  *   y: number, h: number, opts?: object) => void} [drawSprite]
  */
@@ -153,6 +154,7 @@ export function createHost(options) {
     setClass('is-paused', false);
     setClass('is-over', true);
     hud.setBest(best);
+    options.audio?.play(score > previous && previous > 0 ? 'best' : 'over');
     hud.showOver({
       score,
       best,

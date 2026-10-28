@@ -97,7 +97,11 @@ function createTail(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
+      const { score, dead } = world;
       stepWorld(world, readInput(world), dt);
+      // The snake's world raises no events, so the sound comes from what changed this step.
+      if (world.dead && !dead) host.audio?.play(world.hit === 'full' ? 'clear' : 'hit');
+      else if (world.score > score) host.audio?.play('pickup');
       syncHud(world, dt);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;

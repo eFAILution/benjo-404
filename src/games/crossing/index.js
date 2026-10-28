@@ -6,7 +6,16 @@
 
 import { createTracker, readHop, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
-import { DEATH_PAUSE, EVENT_HIT, EVENT_LEVEL, HINT_T, NEW_BEST_T, STATUS_T } from './tuning.js';
+import {
+  DEATH_PAUSE,
+  EVENT_HIT,
+  EVENT_HOP,
+  EVENT_LEVEL,
+  EVENT_ORB,
+  HINT_T,
+  NEW_BEST_T,
+  STATUS_T,
+} from './tuning.js';
 import { createWorld, resizeWorld, screenX, screenY, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
@@ -14,6 +23,25 @@ import { createWorld, resizeWorld, screenX, screenY, stepWorld } from './world.j
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('./world.js').Intent} Intent */
+/** @typedef {import('../../contracts').AudioCue} AudioCue */
+
+/** World events and their sounds, most important first. One cue plays per step. */
+/** @type {Array<[number, AudioCue]>} */
+const CUES = [
+  [EVENT_HIT, 'hit'],
+  [EVENT_LEVEL, 'clear'],
+  [EVENT_ORB, 'pickup'],
+  [EVENT_HOP, 'jump'],
+];
+
+/**
+ * @param {HostContext} host
+ * @param {number} events
+ */
+function playCue(host, events) {
+  const match = CUES.find(([bit]) => events & bit);
+  if (match) host.audio?.play(match[1]);
+}
 
 const BEST_KEY = 'best';
 const HINT_KEYS = 'ARROWS OR SPACE TO HOP';
@@ -108,6 +136,7 @@ function createCrossing(host) {
       if (!world || paused || ended) return;
       syncLayout();
       stepWorld(world, readIntent(world), dt);
+      playCue(host, world.events);
       syncHud(world, dt);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;

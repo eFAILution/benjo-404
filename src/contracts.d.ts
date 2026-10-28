@@ -69,6 +69,29 @@ export interface ThemePack {
   };
   /** Shown in the HUD status line during attract mode. Max 32 chars. */
   tagline?: string;
+  /** Optional sound overrides, one cue at a time. Missing cues use the shell's defaults. */
+  cues?: Partial<Record<AudioCue, Tone[]>>;
+}
+
+// ---------- Sound ----------
+
+/** Named sound cues. Games pick the closest one; the host plays 'best' or 'over' at the end. */
+export type AudioCue =
+  | 'jump' | 'shoot' | 'land' | 'turn' | 'score' | 'pickup' | 'hit' | 'clear' | 'best' | 'over';
+
+/** One synthesized tone. Times in seconds from the cue start, frequencies in Hz. */
+export interface Tone {
+  type?: 'sine' | 'square' | 'sawtooth' | 'triangle';
+  /** Start frequency. */
+  f: number;
+  /** Optional end frequency for a slide. */
+  to?: number;
+  /** Delay before the tone starts. Default 0. */
+  at?: number;
+  /** Duration. */
+  d: number;
+  /** Peak gain, 0 to 1. Default 0.3. */
+  g?: number;
 }
 
 // ---------- Host (what a game receives) ----------
@@ -133,6 +156,8 @@ export interface HostContext {
   setStatus(text: string): void;
   /** Ask the host to end the run. Host calls instance.destroy() after this. */
   end(result: EndResult): void;
+  /** Optional sound. Silent while muted or before the player's first input. */
+  audio?: { play(cue: AudioCue): void };
 }
 
 // ---------- Game ----------

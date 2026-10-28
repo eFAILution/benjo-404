@@ -11,6 +11,7 @@ import {
   END_T,
   EVENT_DECOY,
   EVENT_SQUASH,
+  EVENT_WHIFF,
   HINT_T,
   NEW_BEST_T,
 } from './tuning.js';
@@ -20,6 +21,24 @@ import { createWorld, resizeWorld, stepWorld } from './world.js';
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('../../contracts').AudioCue} AudioCue */
+
+/** World events and their sounds, most important first. One cue plays per step. */
+/** @type {Array<[number, AudioCue]>} */
+const CUES = [
+  [EVENT_DECOY, 'hit'],
+  [EVENT_SQUASH, 'score'],
+  [EVENT_WHIFF, 'turn'],
+];
+
+/**
+ * @param {HostContext} host
+ * @param {number} events
+ */
+function playCue(host, events) {
+  const match = CUES.find(([bit]) => events & bit);
+  if (match) host.audio?.play(match[1]);
+}
 
 const BEST_KEY = 'best';
 const HINT_KEYS = 'ARROWS OR SPACE TO WHACK';
@@ -104,6 +123,7 @@ function createWhack(host) {
       if (!world || paused || ended) return;
       syncLayout();
       stepWorld(world, readWhack(host.input, tracker, world.time, world), dt);
+      playCue(host, world.events);
       syncHud(world, dt);
       if (world.dead && world.deadT >= END_T) {
         ended = true;

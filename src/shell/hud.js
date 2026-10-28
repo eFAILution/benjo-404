@@ -1,7 +1,7 @@
 // @ts-check
 // The strip HUD, the paused and game over cards, and the play prompt. Built only with dom.el().
 
-import { benjoMarkSvg } from '../assets/benjo.js';
+import { benjoMarkSvg, SVG_NS } from '../assets/benjo.js';
 import { el, text } from './dom.js';
 import { gameWheel } from './wheel.js';
 
@@ -36,10 +36,32 @@ function homeLink(cta) {
 
 /** @typedef {import('./wheel.js').GameChoice} GameChoice */
 
+const SPEAKER_PATHS = [
+  ['hud-mute-body', 'M4 9h4l5-4v14l-5-4H4z'],
+  ['hud-mute-wave', 'M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11'],
+  ['hud-mute-cross', 'M16 9l5 6M21 9l-5 6'],
+];
+
+/** A speaker icon. The CSS shows the waves while sound is on and the cross while muted. */
+function speakerSvg() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  for (const [className, d] of SPEAKER_PATHS) {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('class', className);
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+  }
+  return svg;
+}
+
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
- *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void }} options
+ *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void,
+ *   onMute?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -57,6 +79,14 @@ export function createHud(options) {
     ],
   );
   pauseButton.addEventListener('click', options.onPause);
+  const muteButton = el(
+    'button',
+    { type: 'button', class: 'hud-mute', 'aria-label': 'Mute sound', 'aria-pressed': 'false' },
+    [speakerSvg()],
+  );
+  // A click never takes focus, so Space and the arrows keep going to the game.
+  muteButton.addEventListener('pointerdown', (event) => event.preventDefault());
+  muteButton.addEventListener('click', () => options.onMute?.());
   hudRoot.append(
     status,
     debugLine,
@@ -65,6 +95,7 @@ export function createHud(options) {
       scoreValue,
       el('span', { class: 'hud-label' }, ['Best']),
       bestValue,
+      options.onMute ? muteButton : null,
       pauseButton,
     ]),
   );
@@ -96,6 +127,10 @@ export function createHud(options) {
 
   return {
     pauseButton,
+    /** @param {boolean} muted */
+    setMuted(muted) {
+      muteButton.setAttribute('aria-pressed', String(muted));
+    },
     /** @param {number} value */
     setScore(value) {
       const next = pad4(value);

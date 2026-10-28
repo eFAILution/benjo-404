@@ -109,4 +109,13 @@ export default {
     ],
   },
   tagline: 'BOO',
+  // A ghostly slide for jumps and a minor arpeggio for treats.
+  cues: {
+    jump: [{ type: 'triangle', f: 440, to: 220, d: 0.18, g: 0.35 }],
+    pickup: [
+      { type: 'triangle', f: 440, d: 0.07, g: 0.3 },
+      { type: 'triangle', f: 523, at: 0.07, d: 0.07, g: 0.3 },
+      { type: 'triangle', f: 622, at: 0.14, d: 0.12, g: 0.3 },
+    ],
+  },
 };

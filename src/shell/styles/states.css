@@ -165,6 +165,47 @@
   cursor: pointer;
 }
 
+.hud-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.hud-mute svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hud-mute-body {
+  fill: currentColor;
+}
+
+.hud-mute-cross,
+.hud-mute[aria-pressed='true'] .hud-mute-wave {
+  display: none;
+}
+
+.hud-mute[aria-pressed='true'] {
+  color: var(--muted);
+}
+
+.hud-mute[aria-pressed='true'] .hud-mute-cross {
+  display: inline;
+}
+
 .hud-pause-bar {
   width: 2px;
   height: 12px;
@@ -228,6 +269,7 @@
 }
 
 @media (pointer: coarse) {
+  .hud-mute,
   .hud-pause {
     width: 44px;
     height: 44px;

@@ -9,13 +9,31 @@ import { createIntent, createTracker, readIntent, resetTracker } from './control
 import { drawFrame } from './draw.js';
 import { createFx, stepFx } from './fx.js';
 import { contentAspect } from './sprite-bounds.js';
-import { DEATH_PAUSE, HINT_T, NEW_BEST_T } from './tuning.js';
+import { DEATH_PAUSE, EVENT_HIT, EVENT_JUMP, EVENT_PICKUP, HINT_T, NEW_BEST_T } from './tuning.js';
 import { cloneWorld, createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('../../contracts').AudioCue} AudioCue */
+
+/** World events and their sounds, most important first. One cue plays per step. */
+/** @type {Array<[number, AudioCue]>} */
+const CUES = [
+  [EVENT_HIT, 'hit'],
+  [EVENT_PICKUP, 'pickup'],
+  [EVENT_JUMP, 'jump'],
+];
+
+/**
+ * @param {HostContext} host
+ * @param {number} events
+ */
+function playCue(host, events) {
+  const match = CUES.find(([bit]) => events & bit);
+  if (match) host.audio?.play(match[1]);
+}
 
 const BEST_KEY = 'best';
 const HINT = 'SPACE OR TAP TO JUMP';
@@ -101,6 +119,7 @@ function createRun(host) {
       syncLayout();
       readIntent(host.input, intent, tracker, current.time);
       const next = stepWorld(current, intent, dt, spare);
+      playCue(host, next.events);
       spare = current;
       current = next;
       stepFx(fx, current, dt);

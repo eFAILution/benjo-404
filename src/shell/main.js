@@ -15,6 +15,7 @@
  */
 
 import { createAttract } from './attract.js';
+import { createAudio } from './audio.js';
 import { formatDay, nextGames, resolve } from './boot.js';
 import { createDebugMeter } from './debug-meter.js';
 import { byId, readQuery, text } from './dom.js';
@@ -108,6 +109,7 @@ export function boot(registry, config, holidays = null) {
   /** @type {ReturnType<typeof createHost> | null} */
   let host = null;
   const page = new AbortController();
+  const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
 
   function play() {
     const active = document.activeElement;
@@ -129,7 +131,14 @@ export function boot(registry, config, holidays = null) {
     },
     onSelect: (id) => selectGame(id, false),
     onSwitch: (id) => selectGame(id, true),
+    onMute: toggleMute,
   });
+  hud.setMuted(audio.muted);
+
+  function toggleMute() {
+    audio.setMuted(!audio.muted);
+    hud.setMuted(audio.muted);
+  }
 
   watchSize({
     root: gameRoot,
@@ -189,6 +198,7 @@ export function boot(registry, config, holidays = null) {
       drawSprite: (target, sprite, x, y, h, opts) =>
         drawSprite(target, theme.palette, sprite, x, y, h, opts),
       onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
+      audio,
     });
 
   /**
@@ -233,9 +243,23 @@ export function boot(registry, config, holidays = null) {
   message.addEventListener('focusin', () => host?.pause({ focus: false }), options);
   const canStart = () => host?.state === 'idle' && promptSlot.firstElementChild !== null;
   overlay?.addEventListener('click', () => canStart() && play(), options);
+  // Browsers only allow sound after a gesture, so every input tries to wake the audio.
+  for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) {
+    window.addEventListener(type, audio.unlock, { ...options, capture: true, passive: true });
+  }
   window.addEventListener(
     'keydown',
     (event) => {
+      if (
+        event.code === 'KeyM' &&
+        !event.repeat &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        toggleMute();
+        return;
+      }
       const onBody = document.activeElement === document.body;
       if (!onBody || event.code !== 'Space' || !canStart()) return;
       event.preventDefault();

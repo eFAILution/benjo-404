@@ -6,13 +6,41 @@
 
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
-import { DEATH_PAUSE, EVENT_HIT, EVENT_WAVE, HINT_T, NEW_BEST_T, STATUS_T } from './tuning.js';
+import {
+  DEATH_PAUSE,
+  EVENT_FIRE,
+  EVENT_HIT,
+  EVENT_KILL,
+  EVENT_WAVE,
+  HINT_T,
+  NEW_BEST_T,
+  STATUS_T,
+} from './tuning.js';
 import { createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('../../contracts').AudioCue} AudioCue */
+
+/** World events and their sounds, most important first. One cue plays per step. */
+/** @type {Array<[number, AudioCue]>} */
+const CUES = [
+  [EVENT_HIT, 'hit'],
+  [EVENT_WAVE, 'clear'],
+  [EVENT_KILL, 'score'],
+  [EVENT_FIRE, 'shoot'],
+];
+
+/**
+ * @param {HostContext} host
+ * @param {number} events
+ */
+function playCue(host, events) {
+  const match = CUES.find(([bit]) => events & bit);
+  if (match) host.audio?.play(match[1]);
+}
 
 const BEST_KEY = 'best';
 const KEY_HINT = 'ARROWS TO MOVE, SPACE TO BREATHE FIRE';
@@ -92,6 +120,7 @@ function createZapper(host) {
       if (!world || paused || ended) return;
       syncLayout();
       stepWorld(world, readIntent(host.input, tracker, world.time, intent), dt);
+      playCue(host, world.events);
       syncHud(world, dt);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;

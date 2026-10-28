@@ -59,6 +59,16 @@ export function layoutBricks(w) {
 /** Bring every brick back. @param {Wall} w */
 export const refillBricks = (w) => w.alive.fill(1);
 
+/** Row of brick i, 0 at the top. @param {number} i */
+export const rowOf = (i) => rows[i];
+
+/** The lowest row that still has a live brick, or -1 when the wall is gone. @param {Wall} w */
+export function lowestRow(w) {
+  let row = -1;
+  for (let i = 0; i < BRICK_COUNT; i++) if (w.alive[i]) row = Math.max(row, rows[i]);
+  return row;
+}
+
 /** @param {Wall} w */
 export function bricksLeft(w) {
   let n = 0;

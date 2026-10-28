@@ -109,3 +109,11 @@ export const EVENT_BOUNCE = 4;
 export const EVENT_LOST = 8;
 export const EVENT_ROUND = 16;
 export const EVENT_HIT = 32;
+
+// Power-ups (#22)
+/** After the Digital Twin saves a ball, the floor keeps bouncing it back for this long. */
+export const GRACE_T = 1;
+export const BLINK_EVERY = 0.1;
+export const GRACE_ALPHA = 0.35;
+/** Magnet: a falling fireball drifts toward the paddle at up to this many px/s, times pace. */
+export const MAGNET_PULL = 300;

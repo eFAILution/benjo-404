@@ -10,7 +10,9 @@ import {
   createRects,
   hitBrick,
   layoutBricks,
+  lowestRow,
   refillBricks,
+  rowOf,
 } from './bricks.js';
 import {
   BALL_R,
@@ -33,10 +35,12 @@ import {
   EVENT_LOST,
   EVENT_ROUND,
   EVENT_SERVE,
+  GRACE_T,
   GRID_COLS,
   GRID_TOP,
   LIVES,
   LOSE_T,
+  MAGNET_PULL,
   MAX_BOUNCE,
   MIN_HEIGHT,
   MIN_WIDTH,
@@ -66,6 +70,10 @@ import {
 
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {{ move: number, targetX: number | null, serve: boolean }} Intent */
+/**
+ * Power-up help from the host (#22), read during a step.
+ * @typedef {{ magnet: boolean, absorb: () => boolean }} Aid
+ */
 /** @typedef {{ active: boolean, brick: number, t: number }} Pop */
 /** @typedef {ReturnType<typeof layout>} Layout */
 /**
@@ -75,7 +83,7 @@ import {
  *   trailX: number[], trailY: number[],
  *   serving: boolean, served: boolean, losing: boolean, lostT: number,
  *   lives: number, round: number, score: number, bricksHit: number,
- *   time: number, dead: boolean, hit: 'lost' | null, deadT: number, events: number,
+ *   time: number, dead: boolean, hit: 'lost' | null, deadT: number, graceT: number, events: number,
  *   reducedMotion: boolean, random: () => number,
  *   alive: Uint8Array, rects: import('./bricks.js').Rect[], pops: Pop[],
  * }} World
@@ -83,6 +91,9 @@ import {
 
 /** @type {Intent} */
 const IDLE = { move: 0, targetX: null, serve: false };
+
+/** No power-ups: what a step gets from a host without them. @type {Aid} */
+export const NO_AID = { magnet: false, absorb: () => false };
 
 /** @param {number} v @param {number} lo @param {number} hi */
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -161,6 +172,7 @@ export function createWorld(size, random, options = {}) {
     dead: false,
     hit: null,
     deadT: 0,
+    graceT: 0,
     events: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
@@ -281,6 +293,30 @@ function scoreBrick(w, brick) {
   w.events |= EVENT_BRICK;
   popBrick(w, brick);
   if (bricksLeft(w) > 0) return;
+  nextRound(w);
+}
+
+/**
+ * Garbage Collector: the lowest row of live bricks pops at once and scores as if hit. A wall that
+ * empties starts the next round as usual.
+ * @param {World} w
+ * @returns {number} bricks cleared
+ */
+export function clearRow(w) {
+  const row = lowestRow(w);
+  const { round } = w;
+  let n = 0;
+  for (let i = 0; i < BRICK_COUNT && w.round === round; i++) {
+    if (!w.alive[i] || rowOf(i) !== row) continue;
+    w.alive[i] = 0;
+    n += 1;
+    scoreBrick(w, i);
+  }
+  return n;
+}
+
+/** The wall is gone: bonus, a fresh wall, and the ball back on the paddle. @param {World} w */
+function nextRound(w) {
   w.score += WALL_BONUS * w.round;
   w.round += 1;
   w.events |= EVENT_ROUND;
@@ -306,10 +342,33 @@ function loseBall(w) {
 }
 
 /**
- * Move the ball in sub-steps no longer than its radius, so it never tunnels through a brick.
- * @param {World} w @param {number} dt
+ * The ball fell past the bottom. The grace or a fresh twin bounces it back up off the floor;
+ * otherwise it is lost.
+ * @param {World} w @param {Aid} aid
+ * @returns {boolean} true when the ball was saved
  */
-function moveBall(w, dt) {
+function rescue(w, aid) {
+  if (w.graceT <= 0) {
+    if (!aid.absorb()) return false;
+    w.graceT = GRACE_T;
+  }
+  w.by = w.bottom - w.ballR;
+  w.vy = -Math.abs(w.vy);
+  return true;
+}
+
+/** Magnet: a falling fireball drifts sideways toward the paddle. @param {World} w @param {number} dt */
+function pullBall(w, dt) {
+  if (w.vy <= 0) return;
+  const reach = MAGNET_PULL * w.pace * dt;
+  w.bx += clamp(w.px - w.bx, -reach, reach);
+}
+
+/**
+ * Move the ball in sub-steps no longer than its radius, so it never tunnels through a brick.
+ * @param {World} w @param {number} dt @param {Aid} aid
+ */
+function moveBall(w, dt, aid) {
   const speed = Math.hypot(w.vx, w.vy);
   const steps = Math.max(1, Math.ceil((speed * dt) / w.ballR));
   const h = dt / steps;
@@ -323,7 +382,7 @@ function moveBall(w, dt) {
       scoreBrick(w, brick);
       if (w.serving) return;
     }
-    if (w.by > w.bottom + w.ballR) {
+    if (w.by > w.bottom + w.ballR && !rescue(w, aid)) {
       loseBall(w);
       return;
     }
@@ -357,9 +416,10 @@ function keepPrevious(w) {
  * @param {World} w
  * @param {Intent} intent
  * @param {number} dt
+ * @param {Aid} [aid] power-up help; none by default
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, aid = NO_AID) {
   keepPrevious(w);
   w.events = 0;
   w.time += dt;
@@ -368,6 +428,7 @@ export function stepWorld(w, intent, dt) {
     w.deadT += dt;
     return w;
   }
+  w.graceT = Math.max(0, w.graceT - dt);
   if (w.losing) {
     w.lostT += dt;
     if (w.lostT < LOSE_T) return w;
@@ -381,7 +442,8 @@ export function stepWorld(w, intent, dt) {
     if (live && intent.serve) serve(w);
     return w;
   }
-  moveBall(w, dt);
+  if (aid.magnet) pullBall(w, dt);
+  moveBall(w, dt, aid);
   return w;
 }
 

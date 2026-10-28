@@ -5,6 +5,7 @@
 import { createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import {
+  BENJO_DY,
   DEATH_PAUSE,
   EVENT_BOUNCE,
   EVENT_BRICK,
@@ -16,13 +17,20 @@ import {
   NEW_BEST_T,
   STATUS_T,
 } from './tuning.js';
-import { createWorld, resizeWorld, stepWorld } from './world.js';
+import { clearRow, createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
+/** @typedef {import('./world.js').Aid} Aid */
+/**
+ * Everything update and render read, for Rollback. The world goes without its random source,
+ * which stays the host's.
+ * @typedef {{ world: Omit<World, 'random'>, status: string, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 
 /** World events and their sounds, most important first. One cue plays per step. */
 /** @type {Array<[number, AudioCue]>} */
@@ -64,15 +72,20 @@ function createBreakout(host) {
   let paused = false;
   let ended = false;
   let lastScore = 0;
+  let status = '';
   let statusT = 0;
   let best = 0;
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
 
+  /** @type {Aid} */
+  const aid = { magnet: false, absorb: () => host.power?.absorb() ?? false };
+
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
     host.setStatus(text);
+    status = text;
     statusT = seconds;
   }
 
@@ -101,7 +114,7 @@ function createBreakout(host) {
     // The hint stays up until the first serve.
     if (statusT <= 0 || !w.served) return;
     statusT -= dt;
-    if (statusT <= 0) host.setStatus('');
+    if (statusT <= 0) showStatus('', 0);
   }
 
   return {
@@ -122,9 +135,11 @@ function createBreakout(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readIntent(host.input, tracker, world.time), dt);
+      aid.magnet = host.power?.active('magnet') ?? false;
+      stepWorld(world, readIntent(host.input, tracker, world.time), dt, aid);
       playCue(host, world.events);
       syncHud(world, dt);
+      host.track?.(world.px, world.paddleY + BENJO_DY * world.unit);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;
         host.end({ score: world.score, scoreLabel: SCORE_LABEL, reason: REASON });
@@ -148,6 +163,39 @@ function createBreakout(host) {
       ended = true;
       world = null;
     },
+
+    // Garbage Collector. Bricks are the targets here, not threats, so clearing all of them would
+    // skip a round; the lowest row pops instead and scores as if hit.
+    collect() {
+      if (!world || ended || world.dead) return 0;
+      const { round } = world;
+      const n = clearRow(world);
+      if (world.round !== round) {
+        host.audio?.play('clear');
+        showStatus(ROUND + world.round, STATUS_T);
+      } else if (n) host.audio?.play('score');
+      return n;
+    },
+
+    snapshot() {
+      if (!world) return null;
+      const { random: _random, ...rest } = world;
+      /** @type {Snapshot} */
+      const snap = { world: rest, status, statusT, cheered, seenWidth, seenHeight };
+      return structuredClone(snap);
+    },
+
+    restore(saved) {
+      if (!saved) return;
+      const snap = /** @type {Snapshot} */ (structuredClone(saved));
+      world = { ...snap.world, random: host.random };
+      ({ cheered, seenWidth, seenHeight } = snap);
+      showStatus(snap.status, snap.statusT);
+      ended = false;
+      lastScore = world.score;
+      host.setScore(lastScore);
+      resetTracker(tracker, host.input);
+    },
   };
 }
 
@@ -161,6 +209,7 @@ const breakout = {
   },
   bestKey: BEST_KEY,
   create: createBreakout,
+  powers: ['twin', 'rollback', 'gc', 'magnet'],
 };
 
 export default breakout;

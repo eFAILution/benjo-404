@@ -5,7 +5,9 @@
 import {
   BENJO_DY,
   BENJO_H,
+  BLINK_EVERY,
   FLASH_EVERY,
+  GRACE_ALPHA,
   LIFE_R,
   LIFE_SPACING,
   LIFE_X,
@@ -32,7 +34,7 @@ const TAU = Math.PI * 2;
 
 // Reused option objects: the host reads them synchronously, so one of each is enough.
 /** @type {SpriteOpts} */
-const benjoOpts = { flipX: false };
+const benjoOpts = { flipX: false, alpha: 1 };
 /** @type {SpriteOpts} */
 const hitOpts = { flipX: false, tint: '' };
 
@@ -125,13 +127,16 @@ function drawLives(ctx, palette, w) {
 }
 
 /**
- * Benjo hangs under the paddle, then the bar on his claws. He flashes when a ball is lost.
+ * Benjo hangs under the paddle, then the bar on his claws. He flashes when a ball is lost, and
+ * blinks while the Digital Twin's grace lasts.
  * @param {HostContext} host @param {World} w @param {number} px
  */
 function drawPaddle(host, w, px) {
   const t = w.dead ? w.deadT : w.lostT;
   const hurt = w.dead || w.losing;
   const flashOn = hurt && (w.reducedMotion || Math.floor(t / FLASH_EVERY) % 2 === 0);
+  const blink = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   const opts = flashOn ? hitOpts : benjoOpts;
   opts.flipX = w.facing < 0;
   hitOpts.tint = host.theme.palette.hazard;

@@ -243,8 +243,9 @@ export function boot(registry, config, holidays = null) {
   message.addEventListener('focusin', () => host?.pause({ focus: false }), options);
   const canStart = () => host?.state === 'idle' && promptSlot.firstElementChild !== null;
   overlay?.addEventListener('click', () => canStart() && play(), options);
-  // Browsers only allow sound after a gesture, so every input tries to wake the audio.
-  for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) {
+  // Browsers only allow sound after a gesture, so every input tries to wake the audio. A touch
+  // pointerdown is not a gesture, and iOS Safari interrupts a context made there.
+  for (const type of ['pointerup', 'touchend', 'keydown']) {
     window.addEventListener(type, audio.unlock, { ...options, capture: true, passive: true });
   }
   window.addEventListener(

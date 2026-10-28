@@ -56,7 +56,9 @@ export function createAudio({ storage, cues = {} }) {
   /** Call from an input handler. Makes the context on the first call and wakes it after. */
   function unlock() {
     if (context) {
-      if (context.state === 'suspended') context.resume().catch(() => {});
+      // iOS Safari parks the context in 'interrupted' as well as 'suspended'; both need a resume.
+      const state = /** @type {string} */ (context.state);
+      if (state === 'suspended' || state === 'interrupted') context.resume().catch(() => {});
       return;
     }
     const Context = globalThis.AudioContext;

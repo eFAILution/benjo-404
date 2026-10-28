@@ -48,6 +48,17 @@ describe('createAudio', () => {
     assert.equal(played.length, CUES.jump.length);
   });
 
+  it('wakes an engine that iOS Safari left interrupted', async () => {
+    const played = [];
+    globalThis.AudioContext = fakeContext(played, 'interrupted');
+    const audio = createAudio({ storage: createStorage('audio', memory()) });
+    audio.unlock();
+    audio.unlock();
+    await Promise.resolve();
+    audio.play('jump');
+    assert.equal(played.length, CUES.jump.length);
+  });
+
   it('plays nothing while muted and remembers the choice', () => {
     const played = [];
     globalThis.AudioContext = fakeContext(played);

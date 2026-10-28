@@ -78,6 +78,15 @@ export const TILT_DOWN = 0.6;
 export const HINT_T = 3;
 export const NEW_BEST_T = 1.5;
 
+// Power-ups (#22)
+/** Digital Twin grace after an absorbed hit: towers pass through Benjo while he blinks. */
+export const GRACE_T = 1;
+export const GRACE_BLINK = 0.08;
+export const GRACE_ALPHA = 0.35;
+/** Magnet: pickups this close to Benjo fly to him at this speed. */
+export const MAGNET_R = 260;
+export const MAGNET_V = 600;
+
 // Events raised by one step
 export const EVENT_FLAP = 1;
 export const EVENT_SCORE = 2;

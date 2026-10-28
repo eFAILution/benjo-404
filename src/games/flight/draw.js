@@ -8,6 +8,8 @@ import {
   BRICK_W,
   CAP_H,
   FLASH_EVERY,
+  GRACE_ALPHA,
+  GRACE_BLINK,
   MAX_FALL,
   PICKUP_H,
   POP_GROW,
@@ -156,12 +158,18 @@ function drawPops(ctx, w, color, scroll) {
   ctx.globalAlpha = 1;
 }
 
-/** Benjo noses up on a flap, down as he falls, and flashes when hit. @param {HostContext} host @param {World} w @param {number} by */
+/**
+ * Benjo noses up on a flap, down as he falls, and flashes when hit. He blinks while the Digital
+ * Twin's grace runs (holds faint under reduced motion).
+ * @param {HostContext} host @param {World} w @param {number} by
+ */
 function drawBenjo(host, w, by) {
   const tilt = w.ready ? 0 : w.vy < 0 ? TILT_UP : (w.vy / (MAX_FALL * w.unit)) * TILT_DOWN;
   const flashOn = w.dead && (w.reducedMotion || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
+  const faint = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / GRACE_BLINK) % 2 === 0);
   opts.rotate = tilt;
+  opts.alpha = faint ? GRACE_ALPHA : 1;
   hitOpts.tint = host.theme.palette.hazard;
   host.drawSprite(host.theme.sprites.benjo, w.benjoX, by, w.benjoH, opts);
 }

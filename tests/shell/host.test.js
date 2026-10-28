@@ -277,3 +277,94 @@ describe('createHost loop', () => {
     assert.deepEqual(scores, [0, 5, 6]);
   });
 });
+
+describe('createHost run events', () => {
+  function withEvents(behavior, overrides = {}) {
+    const events = [];
+    const env = setup(behavior, { onEvent: (event) => events.push(event), ...overrides });
+    let now = 0;
+    const advance = (seconds) => {
+      const stop = now + seconds * 1000 - 1e-6;
+      while (now < stop) {
+        now += FRAME_MS;
+        env.frames.run(now);
+      }
+    };
+    return { ...env, events, advance };
+  }
+
+  it('sends start, then end before the game over card', () => {
+    const order = [];
+    const { game, host, hud } = withEvents(undefined, {
+      onEvent: (event) => order.push(event.type),
+    });
+    const showOver = hud.showOver;
+    hud.showOver = (card) => {
+      order.push('over');
+      showOver(card);
+    };
+    host.play();
+    game.host.end({ score: 4 });
+    assert.deepEqual(order, ['start', 'end', 'over']);
+  });
+
+  it('reports the score, the previous best, and playing time without the pause', () => {
+    const { game, host, events, advance, frames } = withEvents();
+    host.play();
+    game.host.end({ score: 7 });
+    host.play();
+    frames.run(0);
+    advance(2.5);
+    host.pause();
+    frames.run(1e6);
+    host.resume();
+    advance(1);
+    game.host.end({ score: 9 });
+    assert.deepEqual(events.at(-1), {
+      type: 'end',
+      game: 'fake',
+      score: 9,
+      previous: 7,
+      seconds: 3,
+      nightly: false,
+      ghost: false,
+    });
+  });
+
+  it("uses a run's own random and echoes nightly", () => {
+    const { game, host, events } = withEvents();
+    const seeded = () => 0.25;
+    host.play({ random: seeded, nightly: true });
+    assert.equal(game.host.random, seeded);
+    assert.deepEqual(events[0], { type: 'start', game: 'fake', nightly: true });
+    game.host.end({ score: 1 });
+    assert.equal(events.at(-1).nightly, true);
+    host.play();
+    assert.equal(game.host.random(), 0.5);
+    assert.deepEqual(events.at(-1), { type: 'start', game: 'fake', nightly: false });
+  });
+
+  it('a throwing listener cannot break the run', () => {
+    const { game, host, hud, errors } = withEvents(undefined, {
+      onEvent: () => {
+        throw new Error('listener');
+      },
+    });
+    host.play();
+    assert.equal(host.state, 'playing');
+    game.host.end({ score: 2 });
+    assert.equal(host.state, 'over');
+    assert.equal(hud.events.filter(([name]) => name === 'over').length, 1);
+    assert.equal(errors.length, 2);
+    assert.equal(host.failures, 0);
+  });
+
+  it('empties the power slot when the run ends', () => {
+    const views = [];
+    const { game, host, hud } = withEvents();
+    hud.setPower = (view) => views.push(view);
+    host.play();
+    game.host.end({ score: 1 });
+    assert.deepEqual(views, [null]);
+  });
+});

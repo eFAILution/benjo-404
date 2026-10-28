@@ -1,5 +1,6 @@
 // @ts-check
-// Runs one game: HostContext, fixed-step loop, pause, end, and error isolation (ADR-0008 section 3).
+// Runs one game: HostContext, fixed-step loop, pause, end, and error isolation (ADR-0008 section 3),
+// plus the run's power-ups, Digital Twin, ghost race, and run events (#22).
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {import('../contracts').GameInstance} GameInstance */
 /** @typedef {import('../contracts').GameStorage} GameStorage */
@@ -58,14 +59,23 @@
  * @property {{ play(cue: import('../contracts').AudioCue): void }} [audio]
  * @property {(ctx: CanvasRenderingContext2D, sprite: import('../contracts').Sprite, x: number,
  *   y: number, h: number, opts?: object) => void} [drawSprite]
+ * @property {(event: RunEvent) => void} [onEvent]
+ * @property {() => number} [powerRandom] drops use their own random, so a seeded run's `random`
+ *   gives the same level whatever the power-ups do. Default Math.random.
  */
 
+import { avatarSize, createTrail } from './ghost.js';
+import { createPowers, powerPool } from './power.js';
 import { createRunContext } from './run-context.js';
 
 export const STEP = 1 / 60;
 export const MAX_STEPS = 5;
 const MAX_FRAME_SECONDS = 0.25;
 const EPSILON = 1e-9;
+// Rollback keeps a snapshot every 0.5 s of game time, eight deep, and rewinds at least 3 s.
+const SNAP_TICKS = 30;
+const SNAPS = 8;
+const ROLLBACK_TICKS = 180;
 
 /** @param {unknown} error */
 function defaultLogError(error) {
@@ -101,6 +111,24 @@ export function createHost(options) {
   let lastAlpha = 0;
   /** @type {number | null} */
   let frameId = null;
+  /** @type {import('./power.js').Powers | null} */
+  let powers = null;
+  /** @type {import('./ghost.js').Trail | null} */
+  let trail = null;
+  let nightly = false;
+  let snapping = false;
+  let ticks = 0;
+  /** @type {Array<{ tick: number, data: unknown }>} */
+  let snaps = [];
+
+  /** A listener that throws must not take the run down with it. @param {RunEvent} event */
+  function emit(event) {
+    try {
+      options.onEvent?.(event);
+    } catch (error) {
+      logError(error);
+    }
+  }
 
   function stopLoop() {
     if (frameId !== null) frames.cancel(frameId);
@@ -126,6 +154,9 @@ export function createHost(options) {
     stopLoop();
     controller?.abort();
     destroyOnce();
+    powers?.clear();
+    powers = null;
+    snaps = [];
   }
 
   function backToIdle() {
@@ -162,14 +193,35 @@ export function createHost(options) {
     }
   }
 
+  /**
+   * A held Rollback turns a death into a rewind to the newest snapshot at least 3 s old. True when
+   * it took the end (a restore that throws fails the run, like any game error).
+   */
+  function rollback() {
+    const game = instance;
+    if (!game?.restore || !powers?.holds('rollback')) return false;
+    const back = snaps.filter((snap) => ticks - snap.tick >= ROLLBACK_TICKS).pop();
+    if (!back || !powers.take('rollback')) return false;
+    snaps = [];
+    if (guard(() => game.restore?.(back.data))) emit({ type: 'rollback' });
+    return true;
+  }
+
   /** @param {EndResult} result */
   function end(result) {
     if (state !== 'playing' && state !== 'paused') return;
+    if (rollback()) return;
+    const seconds = Math.floor(powers?.clock ?? 0);
     releaseRun();
     const score = Math.max(0, Math.floor(Number(result?.score) || 0));
     const previous = storage.getNumber(game.bestKey, 0);
     const best = Math.max(previous, score);
-    if (score > previous) storage.setNumber(game.bestKey, score);
+    if (score > previous) {
+      storage.setNumber(game.bestKey, score);
+      trail?.save();
+    }
+    const ghost = trail?.racing ?? false;
+    emit({ type: 'end', game: game.id, score, previous, seconds, nightly, ghost });
     state = 'over';
     setClass('is-paused', false);
     setClass('is-over', true);
@@ -183,6 +235,36 @@ export function createHost(options) {
     });
   }
 
+  /**
+   * After each update: feed the trail, and keep a Rollback snapshot every 0.5 s of game time.
+   * @param {GameInstance} game
+   */
+  function afterUpdate(game) {
+    trail?.step(ticks);
+    ticks += 1;
+    if (!snapping || ticks % SNAP_TICKS !== 0) return true;
+    /** @type {unknown} */
+    let data;
+    if (!guard(() => (data = game.snapshot?.()))) return false;
+    snaps = [...snaps.slice(1 - SNAPS), { tick: ticks, data }];
+    return true;
+  }
+
+  /**
+   * The game's frame, then the ghost and the twin on top of it.
+   * @param {GameInstance} game
+   * @param {number} alpha
+   */
+  function render(game, alpha) {
+    if (!guard(() => game.render(alpha))) return false;
+    const benjo = options.theme.sprites.benjo;
+    const h = avatarSize(options.size);
+    trail?.draw(ticks, powers?.isActive('twin') ?? false, (x, y, opacity) =>
+      options.drawSprite?.(ctx, benjo, x, y, h, { alpha: opacity }),
+    );
+    return true;
+  }
+
   /** @param {number} time */
   function frame(time) {
     frameId = null;
@@ -190,25 +272,29 @@ export function createHost(options) {
     const game = instance;
     const keys = input;
     if (lastTime === null) lastTime = time;
-    accumulator += Math.min(Math.max(time - lastTime, 0) / 1000, MAX_FRAME_SECONDS);
+    const seconds = Math.min(Math.max(time - lastTime, 0) / 1000, MAX_FRAME_SECONDS);
     lastTime = time;
+    // Power timers run on real time; Breakpoint only slows the game.
+    powers?.tick(seconds);
+    accumulator += powers?.isActive('breakpoint') ? seconds / 2 : seconds;
     let steps = 0;
     while (accumulator + EPSILON >= STEP && steps < MAX_STEPS) {
       keys.tick();
       const ok = guard(() => game.update(STEP));
       keys.endTick();
-      if (!ok || state !== 'playing') return;
+      if (!ok || state !== 'playing' || !afterUpdate(game)) return;
       accumulator -= STEP;
       steps += 1;
     }
     if (steps === MAX_STEPS) accumulator %= STEP;
     const alpha = Math.min(Math.max(accumulator / STEP, 0), 0.999);
     lastAlpha = alpha;
-    if (!guard(() => game.render(alpha)) || state !== 'playing') return;
+    if (!render(game, alpha) || state !== 'playing') return;
     scheduleLoop();
   }
 
-  function play() {
+  /** @param {RunOptions} [run] a run's own random (the nightly seed) and whether it is nightly */
+  function play(run) {
     if (state === 'playing' || state === 'paused') return;
     if (state === 'over') {
       setClass('is-over', false);
@@ -220,7 +306,25 @@ export function createHost(options) {
     clearCanvas(ctx);
     controller = new AbortController();
     input = options.createInput(controller.signal);
-    const context = createRunContext(options, { signal: controller.signal, input, end });
+    nightly = run?.nightly === true;
+    ticks = 0;
+    trail = createTrail(storage, options.size);
+    const runTrail = trail;
+    powers = createPowers({
+      pool: () => (instance ? powerPool(game.powers, instance) : []),
+      random: options.powerRandom ?? Math.random,
+      emit,
+      show: (view) => hud.setPower?.(view),
+      cue: () => options.audio?.play('pickup'),
+    });
+    const context = createRunContext(options, {
+      signal: controller.signal,
+      input,
+      end,
+      random: run?.random ?? options.random,
+      powers,
+      track: (x, y) => runTrail.track(x, y),
+    });
     hud.setScore(0);
     hud.setBest(storage.getNumber(game.bestKey, 0));
     hud.setStatus(input.touch ? game.controls.touch : game.controls.keyboard);
@@ -235,10 +339,22 @@ export function createHost(options) {
       return;
     }
     instance = created;
+    snapping = powerPool(game.powers, created).includes('rollback');
     if (!guard(() => created.start()) || state !== 'playing') return;
+    emit({ type: 'start', game: game.id, nightly });
     accumulator = STEP;
     lastTime = null;
     scheduleLoop();
+  }
+
+  /** The player fires the held power-up. Only while playing. */
+  function firePower() {
+    const game = instance;
+    if (state !== 'playing' || !game || !powers) return;
+    if (powers.fire() !== 'gc') return;
+    let count = 0;
+    if (!guard(() => (count = Math.max(0, Math.floor(Number(game.collect?.()) || 0))))) return;
+    emit({ type: 'collect', count });
   }
 
   /** @param {{ focus?: boolean }} [how] focus false leaves keyboard focus where it is */
@@ -271,8 +387,7 @@ export function createHost(options) {
   function redraw() {
     if (state === 'playing') return true;
     if (state !== 'paused' || !instance || destroyed) return false;
-    const game = instance;
-    return guard(() => game.render(lastAlpha));
+    return render(instance, lastAlpha);
   }
 
   function quit() {
@@ -283,6 +398,7 @@ export function createHost(options) {
 
   return {
     play,
+    firePower,
     pause,
     resume,
     quit,

@@ -106,6 +106,15 @@ export const TRAIL_EVERY = 3;
 export const DUST_COUNT = 4;
 export const DUST_T = 0.22;
 
+// Power-ups (#22)
+/** Digital Twin grace after an absorbed hit: hazards pass through Benjo while he blinks. */
+export const GRACE_T = 1;
+export const GRACE_BLINK = 0.08;
+export const GRACE_ALPHA = 0.35;
+/** Magnet: pickups this close to Benjo's middle fly to him at this speed. */
+export const MAGNET_R = 300;
+export const MAGNET_V = 900;
+
 // Events raised by one step
 export const EVENT_JUMP = 1;
 export const EVENT_LAND = 2;

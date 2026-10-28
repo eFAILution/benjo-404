@@ -4,19 +4,36 @@
 // Two worlds are double-buffered: each update writes the next state into the spare one, then
 // the two swap. The older one is what render(alpha) interpolates from, and nothing in the
 // update path allocates.
+//
+// Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, collect()
+// clears the hazards on screen, and snapshot()/restore() copy the run for Rollback.
 
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { createFx, stepFx } from './fx.js';
 import { contentAspect } from './sprite-bounds.js';
-import { DEATH_PAUSE, EVENT_HIT, EVENT_JUMP, EVENT_PICKUP, HINT_T, NEW_BEST_T } from './tuning.js';
-import { cloneWorld, createWorld, resizeWorld, stepWorld } from './world.js';
+import {
+  DEATH_PAUSE,
+  EVENT_HIT,
+  EVENT_JUMP,
+  EVENT_PICKUP,
+  GROUND_FRAC,
+  HINT_T,
+  NEW_BEST_T,
+} from './tuning.js';
+import { clearObstacles, cloneWorld, createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
+/** @typedef {import('./world.js').Powers} Powers */
+/** @typedef {import('./fx.js').Fx} Fx */
+/**
+ * @typedef {{ world: Omit<World, 'random'>, fx: Fx, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 
 /** World events and their sounds, most important first. One cue plays per step. */
 /** @type {Array<[number, AudioCue]>} */
@@ -61,6 +78,17 @@ function createRun(host) {
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
+  /** @type {Required<Powers>} */
+  const powers = { magnet: false, absorb: () => host.power?.absorb() ?? false };
+
+  /** A world copy that shares nothing with `w`. The host's random is a function, so it stays out. @param {World} w */
+  function freeze(w) {
+    const { random: _, ...rest } = w;
+    return structuredClone(rest);
+  }
+
+  /** @param {Omit<World, 'random'>} w @returns {World} */
+  const thaw = (w) => ({ ...structuredClone(w), random: host.random });
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -118,12 +146,15 @@ function createRun(host) {
       if (!current || !spare || paused || ended) return;
       syncLayout();
       readIntent(host.input, intent, tracker, current.time);
-      const next = stepWorld(current, intent, dt, spare);
+      powers.magnet = Boolean(host.power?.active('magnet'));
+      const next = stepWorld(current, intent, dt, spare, powers);
       playCue(host, next.events);
       spare = current;
       current = next;
       stepFx(fx, current, dt);
       syncHud(current, dt);
+      const groundY = Math.round(current.height * GROUND_FRAC);
+      host.track?.(current.benjoX, groundY - current.by - current.benjoH / 2);
       if (current.dead && current.deadT >= DEATH_PAUSE) {
         ended = true;
         host.end({ score: current.score, scoreLabel: SCORE_LABEL, reason: REASON });
@@ -148,6 +179,40 @@ function createRun(host) {
       current = null;
       spare = null;
     },
+
+    collect() {
+      return current ? clearObstacles(current) : 0;
+    },
+
+    snapshot() {
+      if (!current) return null;
+      /** @type {Snapshot} */
+      const snap = {
+        world: freeze(current),
+        fx: structuredClone(fx),
+        statusT,
+        cheered,
+        seenWidth,
+        seenHeight,
+      };
+      return snap;
+    },
+
+    restore(saved) {
+      const snap = /** @type {Snapshot | null} */ (saved);
+      if (!snap) return;
+      current = thaw(snap.world);
+      spare = cloneWorld(current);
+      fx = structuredClone(snap.fx);
+      statusT = snap.statusT;
+      cheered = snap.cheered;
+      seenWidth = snap.seenWidth;
+      seenHeight = snap.seenHeight;
+      ended = false;
+      resetTracker(tracker, host.input);
+      lastScore = current.score;
+      host.setScore(lastScore);
+    },
   };
 }
 
@@ -161,6 +226,7 @@ const runner = {
   },
   bestKey: BEST_KEY,
   create: createRun,
+  powers: ['twin', 'rollback', 'gc', 'magnet'],
 };
 
 export default runner;

@@ -6,7 +6,16 @@
 import { drawBackdrop, drawGround } from './backdrop.js';
 import { drawFx } from './fx.js';
 import { contentAspect, spriteBounds } from './sprite-bounds.js';
-import { DUCK_SCALE, GROUND_FRAC, LAND_SQUASH, POP_T, SHAKE_PX, SHAKE_T } from './tuning.js';
+import {
+  DUCK_SCALE,
+  GRACE_ALPHA,
+  GRACE_BLINK,
+  GROUND_FRAC,
+  LAND_SQUASH,
+  POP_T,
+  SHAKE_PX,
+  SHAKE_T,
+} from './tuning.js';
 
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('../../contracts').Sprite} Sprite */
@@ -114,6 +123,7 @@ function drawPops(ctx, w, color, groundY, lag) {
 
 /**
  * Benjo with squash on landing, a stretch while rising, a tilt in the air, and a hit flash.
+ * He blinks while the Digital Twin's grace runs (holds faint under reduced motion).
  * @param {HostContext} host @param {World} w @param {number} groundY @param {number} by
  */
 function drawBenjo(host, w, groundY, by) {
@@ -137,7 +147,9 @@ function drawBenjo(host, w, groundY, by) {
   const tilt = w.grounded ? 0 : clamp((-w.vy / w.jumpV) * TILT_MAX, -TILT_MAX, TILT_MAX);
   const flashOn = w.dead && (still || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
+  const faint = w.graceT > 0 && (still || Math.floor(w.graceT / GRACE_BLINK) % 2 === 0);
   opts.rotate = tilt;
+  opts.alpha = faint ? GRACE_ALPHA : 1;
   hitOpts.tint = host.theme.palette.hazard;
 
   ctx.save();

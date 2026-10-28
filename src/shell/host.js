@@ -16,7 +16,27 @@
  * @property {(options: { focus: boolean }) => void} showPaused
  * @property {(card: { score: number, best: number, scoreLabel: string, reason: string }) => void} showOver
  * @property {() => void} clearCard
+ * @property {(view: PowerView | null) => void} [setPower] the HUD power slot; null empties it
  */
+/** @typedef {import('../contracts').PowerId} PowerId */
+/**
+ * What the HUD power slot shows (#22). 'held' waits for the player to fire it; 'active' is running
+ * and `left` drains from 1 to 0.
+ * @typedef {{ id: PowerId, label: string, name: string, state: 'held' | 'active', left: number }} PowerView
+ */
+/**
+ * What happened in a run, for trophies, tickets, and XP (#22). The host sends 'end' before it
+ * shows the game over card, so the card can carry the XP the run earned.
+ * @typedef {{ type: 'start', game: string, nightly: boolean }
+ *   | { type: 'end', game: string, score: number, previous: number, seconds: number,
+ *       nightly: boolean, ghost: boolean }
+ *   | { type: 'drop', id: PowerId }
+ *   | { type: 'power', id: PowerId }
+ *   | { type: 'absorb' }
+ *   | { type: 'rollback' }
+ *   | { type: 'collect', count: number }} RunEvent
+ */
+/** @typedef {{ random?: () => number, nightly?: boolean }} RunOptions */
 /**
  * @typedef {object} HostOptions
  * @property {HTMLElement} root

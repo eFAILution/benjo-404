@@ -1,0 +1,36 @@
+:root {
+  --bg: #040404;
+  --ink: #f2f2f2;
+  --muted: #9e9e9e;
+  --line: #ffffff14;
+  /* Brand red stays fixed so buttons match the live site in every theme. */
+  --brand: #d72228;
+  --brand-hover: #b51d22;
+  --accent: #d72228;
+  --accent-hover: #b51d22;
+  --accent-soft: #d7222833;
+  --glow: #ff8a3d;
+  --overlay: #0000008c;
+  --overlay-play: #00000040;
+  --overlay-card: #00000099;
+  --font-sans: 'B404 Sans', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'B404 Mono', 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius-sm: 0.1rem;
+  --radius-md: 0.5rem;
+  --radius-btn: 0.25rem;
+  --pad: 1.5rem; /* 1rem under 992px */
+  --kicker-size: clamp(0.8rem, 0.9vw, 0.95rem);
+  --code-size: clamp(8.75rem, 9.333vw, 9.333vw); /* 5rem tablet, 4rem mobile */
+  --strip-h: 56px; /* 88px under 480px */
+  --shadow-btn:
+    0 4px 4px #08080814, 0 1px 2px #08080833, inset 0 6px 12px #ffffff1f, inset 0 1px 1px #fff3;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 160ms;
+  --t-base: 240ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0ms;
+    --t-base: 0ms;
+  }
+}

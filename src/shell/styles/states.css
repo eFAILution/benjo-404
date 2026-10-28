@@ -1,0 +1,256 @@
+/* Playing, paused, and over. The column collapses into a top strip and the HUD sits on its right. */
+@keyframes strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.is-playing #game-root {
+  pointer-events: auto;
+}
+
+.is-playing #overlay {
+  pointer-events: none;
+  background:
+    linear-gradient(var(--line), var(--line)) left 12px top calc(var(--strip-h) + 12px) / 8px 1px
+    no-repeat,
+    linear-gradient(var(--line), var(--line)) left 12px top calc(var(--strip-h) + 12px) / 1px 8px
+    no-repeat,
+    linear-gradient(var(--line), var(--line)) right 12px top calc(var(--strip-h) + 12px) / 8px 1px
+    no-repeat,
+    linear-gradient(var(--line), var(--line)) right 12px top calc(var(--strip-h) + 12px) / 1px 8px
+    no-repeat,
+    linear-gradient(var(--line), var(--line)) left 12px bottom 12px / 8px 1px no-repeat,
+    linear-gradient(var(--line), var(--line)) left 12px bottom 12px / 1px 8px no-repeat,
+    linear-gradient(var(--line), var(--line)) right 12px bottom 12px / 8px 1px no-repeat,
+    linear-gradient(var(--line), var(--line)) right 12px bottom 12px / 1px 8px no-repeat,
+    var(--overlay-play);
+}
+
+.is-playing #page::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  height: var(--strip-h);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(90deg, #040404e6, transparent);
+  pointer-events: none;
+}
+
+.is-playing #message {
+  top: 0;
+  left: 0;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 1rem;
+  width: auto;
+  max-width: none;
+  height: var(--strip-h);
+  padding: 0 var(--pad);
+  text-align: left;
+  transform: none;
+  animation: strip-in var(--t-base) var(--ease) both;
+}
+
+.is-playing .code,
+.is-playing .kicker {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.is-playing .code {
+  order: -1;
+}
+
+.is-playing .code::after {
+  content: ' \00b7';
+  color: var(--muted);
+}
+
+.is-playing .kicker {
+  margin-left: -0.5rem;
+}
+
+.is-playing .body,
+.is-playing #prompt-slot {
+  display: none;
+}
+
+.is-playing #m-cta {
+  min-height: 36px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+  .is-playing #page::before {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 90%, transparent), transparent);
+  }
+}
+
+#hud[hidden] {
+  display: none;
+}
+
+#hud {
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: var(--strip-h);
+  padding: 0 var(--pad);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+  animation: strip-in var(--t-base) var(--ease) both;
+}
+
+.hud-status,
+.hud-debug {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.hud-debug {
+  top: calc(var(--strip-h) + 8px);
+  text-transform: none;
+}
+
+.hud-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  pointer-events: auto;
+}
+
+.hud-label {
+  color: var(--muted);
+}
+
+.hud-value {
+  margin-right: 0.75rem;
+  color: var(--ink);
+}
+
+.hud-score {
+  color: var(--accent);
+}
+
+.hud-pause {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+.hud-pause-bar {
+  width: 2px;
+  height: 12px;
+  background: var(--ink);
+}
+
+#card-slot:not(:empty) {
+  inset: var(--strip-h) 0 0 0;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  background: var(--overlay-card);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  min-width: min(20rem, 100%);
+  padding: 2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #040404d9;
+  text-align: center;
+}
+
+.card-kicker,
+.card-best {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.card-best {
+  color: var(--ink);
+}
+
+.card-score {
+  font-size: 4rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.card-reason {
+  font-size: 14px;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+@media (pointer: coarse) {
+  .hud-pause {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 991px) {
+  #hud {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 479px) {
+  .is-playing #message {
+    right: 0;
+    height: calc(var(--strip-h) / 2);
+  }
+
+  .is-playing #m-cta {
+    margin-left: auto;
+  }
+
+  #hud {
+    top: calc(var(--strip-h) / 2);
+    height: calc(var(--strip-h) / 2);
+  }
+
+  .hud-status {
+    position: static;
+    transform: none;
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="{{THEME_PIN}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="robots" content="noindex">
+<title>{{TITLE}}</title>
+<link rel="icon" href="{{FAVICON}}">
+<style>{{FONTS_CSS}}{{STYLE}}</style>
+</head>
+<body>
+<div id="page">
+  <div id="game-root" aria-hidden="true"><canvas id="game-canvas"></canvas></div>
+  <div id="overlay"></div>
+  <main id="message">
+    <p class="kicker" id="m-kicker">{{KICKER}}</p>
+    <h1 class="code" id="m-code">{{CODE}}</h1>
+    <p class="body" id="m-body">{{BODY}}</p>
+    <a class="btn btn-primary" id="m-cta" href="{{CTA_HREF}}">{{CTA_LABEL}}</a>
+    <div id="prompt-slot"></div>
+  </main>
+  <div id="hud" hidden></div>
+  <div id="card-slot"></div>
+</div>
+<script type="module">{{SCRIPT}}</script>
+</body>
+</html>

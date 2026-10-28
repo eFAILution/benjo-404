@@ -9,6 +9,9 @@ kubeconfig*
 
 # Local agent tooling state
 .omc/
+.claude/worktrees/
+.playwright-mcp/
+.pnpm-store/
 
 # OS / editor
 .DS_Store
@@ -22,7 +25,7 @@ node_modules/
 .venv/
 __pycache__/
 dist/
-build/
+.cache/
 coverage/
 *.log
 

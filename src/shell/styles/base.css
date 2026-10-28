@@ -1,0 +1,128 @@
+/* Reset, type, and buttons. The live page's look: white on coal, red button, mono labels. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: dark;
+  background: var(--bg);
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #fff;
+  color: #ff0000;
+}
+
+h1,
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.btn {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.75rem 1.5rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease);
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -10%;
+  top: -37.5%;
+  width: 120%;
+  height: 175%;
+  border-radius: 100%;
+  transform: scale(0);
+  transition: transform var(--t-base) var(--ease);
+}
+
+.btn:hover::before {
+  transform: scale(1);
+}
+
+.btn:focus-visible,
+.prompt:focus-visible,
+.hud-pause:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--brand);
+  color: var(--ink);
+  box-shadow: var(--shadow-btn);
+}
+
+.btn-primary::before {
+  background: var(--brand-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.btn-ghost::before {
+  background: var(--line);
+}
+
+.btn-small {
+  min-height: 36px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.mono,
+.kicker,
+.prompt,
+.hud-label,
+.hud-value,
+.hud-status,
+.hud-debug,
+.card-kicker,
+.card-best,
+.prompt-status {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}

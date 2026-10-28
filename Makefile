@@ -22,11 +22,24 @@ check: verify secrets-scan ## Run every check, including the full-history secret
 verify: lint test records-test records-check ## Run what the pre-push hook runs
 
 .PHONY: lint
-lint: scripts-lint ## Run every linter (add the project's linters here)
+lint: scripts-lint ## Run every linter (shellcheck, Biome, tsc --noEmit)
+	pnpm run lint
 
 .PHONY: test
-test: ## Run every test suite (replace with the project's test command)
-	@echo "::warning::No tests defined yet. Replace the 'test' target in the Makefile."
+test: ## Run every test suite, then build dist/ and check it (budgets, CSP hashes, content)
+	pnpm run test
+	pnpm run build
+	pnpm run check
+
+##@ Build
+
+.PHONY: build
+build: ## Build dist/404.html, dist/csp.txt and dist/embed/
+	pnpm run build
+
+.PHONY: dev
+dev: build ## Build and print the file path to open
+	@echo "open dist/404.html?game=runner&theme=halloween"
 
 .PHONY: scripts-lint
 scripts-lint: ## shellcheck every tracked shell script

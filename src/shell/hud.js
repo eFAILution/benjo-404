@@ -57,11 +57,41 @@ function speakerSvg() {
   return svg;
 }
 
+/** @typedef {import('./host.js').PowerView} PowerView */
+
+/**
+ * The power-up slot (#22). Like the mute button, a click never takes focus. The draining bar
+ * reads --left through CSSOM, so no style attribute is written.
+ * @param {() => void} onFire
+ */
+function powerSlot(onFire) {
+  const label = el('span', {});
+  const node = el('button', { type: 'button', class: 'hud-power', 'aria-label': 'No power-up' }, [
+    label,
+    el('span', { class: 'hud-power-bar', 'aria-hidden': 'true' }),
+  ]);
+  node.disabled = true;
+  node.addEventListener('pointerdown', (event) => event.preventDefault());
+  node.addEventListener('click', onFire);
+  /** @param {PowerView | null} view */
+  const set = (view) => {
+    node.disabled = !view;
+    text(label, view?.label ?? '');
+    node.setAttribute('data-state', view?.state ?? '');
+    node.setAttribute(
+      'aria-label',
+      !view ? 'No power-up' : view.state === 'held' ? `Fire ${view.name}` : `${view.name} running`,
+    );
+    node.style.setProperty('--left', String(view?.left ?? 0));
+  };
+  return { node, set };
+}
+
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
  *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void,
- *   onMute?: () => void }} options
+ *   onMute?: () => void, onFire?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -87,6 +117,7 @@ export function createHud(options) {
   // A click never takes focus, so Space and the arrows keep going to the game.
   muteButton.addEventListener('pointerdown', (event) => event.preventDefault());
   muteButton.addEventListener('click', () => options.onMute?.());
+  const power = options.onFire ? powerSlot(options.onFire) : null;
   hudRoot.append(
     status,
     debugLine,
@@ -95,6 +126,7 @@ export function createHud(options) {
       scoreValue,
       el('span', { class: 'hud-label' }, ['Best']),
       bestValue,
+      power?.node,
       options.onMute ? muteButton : null,
       pauseButton,
     ]),
@@ -130,6 +162,10 @@ export function createHud(options) {
     /** @param {boolean} muted */
     setMuted(muted) {
       muteButton.setAttribute('aria-pressed', String(muted));
+    },
+    /** @param {PowerView | null} view */
+    setPower(view) {
+      power?.set(view);
     },
     /** @param {number} value */
     setScore(value) {
@@ -180,8 +216,9 @@ export function createHud(options) {
      * With others, an "All games" button follows the switches and quits to the idle picker.
      * @param {{ score: number, best: number, scoreLabel: string, reason: string }} card
      * @param {GameChoice[]} [others] games the player can switch to, each started at once
+     * @param {string} [note] one line under the best, like the XP the run earned
      */
-    showOver(card, others = []) {
+    showOver(card, others = [], note = '') {
       const again = button('Play again', 'btn btn-primary', options.onPlay);
       const switches = others.map((game) =>
         button(`Play ${game.name}`, 'btn btn-ghost', () => options.onSwitch?.(game.id)),
@@ -193,6 +230,7 @@ export function createHud(options) {
           el('p', { class: 'card-kicker', id: 'card-title' }, [card.scoreLabel]),
           el('p', { class: 'card-score' }, [pad4(card.score)]),
           el('p', { class: 'card-best' }, [`Best ${pad4(card.best)}`]),
+          note ? el('p', { class: 'card-xp' }, [note]) : null,
           card.reason ? el('p', { class: 'card-reason' }, [card.reason]) : null,
           el('div', { class: 'card-actions' }, [again, ...switches, homeLink(cta)]),
         ].filter((node) => node !== null),

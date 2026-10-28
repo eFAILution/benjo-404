@@ -83,6 +83,8 @@ button {
 .prompt:focus-visible,
 .wheel-item:focus-visible,
 .hud-mute:focus-visible,
+.hud-power:focus-visible,
+.build-bar:focus-visible,
 .hud-pause:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
@@ -123,8 +125,25 @@ button {
 .hud-debug,
 .card-kicker,
 .card-best,
+.hud-power,
+.profile-label,
 .prompt-status {
   font-family: var(--font-mono);
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;
+}
+
+/* Mono without the upper case, so versions keep their lower-case v (#22). */
+.card-xp,
+.build-bar,
+.toast,
+.profile-note,
+.save-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }

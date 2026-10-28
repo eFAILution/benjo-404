@@ -7,6 +7,9 @@
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {{ score: number, best: number, scoreLabel: string, reason: string }} OverCard */
 /** @typedef {import('./boot.js').PickTheme} PickTheme */
+/** @typedef {import('./host.js').PowerView} PowerView */
+/** @typedef {import('./host.js').RunEvent} RunEvent */
+/** @typedef {import('./host.js').RunOptions} RunOptions */
 /**
  * @typedef {object} Holidays
  * @property {(today: import('./boot.js').DayDate, calendar: unknown[],
@@ -14,6 +17,7 @@
  * @property {unknown[]} calendar
  */
 
+import { benjo } from '../assets/benjo.js';
 import { createAttract } from './attract.js';
 import { createAudio } from './audio.js';
 import { formatDay, nextGames, resolve } from './boot.js';
@@ -22,9 +26,23 @@ import { byId, readQuery, text } from './dom.js';
 import { createHost } from './host.js';
 import { createHud } from './hud.js';
 import { attachInput } from './input.js';
+import { dayNumber, nightlyGame, nightlyRandom } from './nightly.js';
+import { createPipeline, xpNote } from './pipeline.js';
+import { createBuildBar, openProfile } from './profile.js';
+import { skinFor } from './skins.js';
 import { drawSprite } from './sprite.js';
 import { createStorage } from './storage.js';
+import { watchTeapot } from './teapot.js';
+import { createToasts } from './toast.js';
 import { watchSize } from './viewport.js';
+
+/** Typing a save code must not reach the M and E shortcuts. @param {KeyboardEvent} event */
+const isShortcut = (event) =>
+  !event.repeat &&
+  !event.altKey &&
+  !event.ctrlKey &&
+  !event.metaKey &&
+  !(event.target instanceof HTMLInputElement);
 
 /** Only these four palette entries become CSS custom properties; the rest stay in canvas code. */
 const PALETTE_TOKENS = /** @type {const} */ ([
@@ -111,10 +129,11 @@ export function boot(registry, config, holidays = null) {
   const page = new AbortController();
   const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
 
-  function play() {
+  /** @param {RunOptions} [run] */
+  function play(run) {
     const active = document.activeElement;
     if (active instanceof HTMLElement && message?.contains(active)) active.blur();
-    host?.play();
+    host?.play(run);
   }
 
   const hud = createHud({
@@ -122,7 +141,7 @@ export function boot(registry, config, holidays = null) {
     cardSlot,
     promptSlot,
     cta,
-    onPlay: play,
+    onPlay: () => play(),
     onPause: () => host?.pause(),
     onResume: () => host?.resume(),
     onQuit: () => {
@@ -132,6 +151,7 @@ export function boot(registry, config, holidays = null) {
     onSelect: (id) => selectGame(id, false),
     onSwitch: (id) => selectGame(id, true),
     onMute: toggleMute,
+    onFire: firePower,
   });
   hud.setMuted(audio.muted);
 
@@ -165,12 +185,79 @@ export function boot(registry, config, holidays = null) {
   attract.start();
   if (!game) return;
 
+  // One storage per game, shared by the host and the progress, so a browser without
+  // localStorage still sees one memory copy of each best.
+  /** @type {Map<string, ReturnType<typeof createStorage>>} */
+  const stores = new Map();
+  const storeFor = (/** @type {string} */ id) => {
+    const store = stores.get(id) ?? createStorage(id);
+    stores.set(id, store);
+    return store;
+  };
+  const bestKeyOf = (/** @type {string} */ id) =>
+    resolved.games.find((choice) => choice.id === id)?.bestKey ?? 'best';
+  const pipeline = createPipeline({
+    storage: createStorage('meta'),
+    games: resolved.games,
+    bestOf: (id) => storeFor(id).getNumber(bestKeyOf(id), 0),
+    setBest: (id, value) => storeFor(id).setNumber(bestKeyOf(id), value),
+  });
+  const toasts = createToasts(byId('page') ?? document.body);
+  const bar = createBuildBar(() => openCard());
+  /** @param {string[]} notices */
+  const announce = (notices) => {
+    toasts.showAll(notices);
+    bar.update(pipeline);
+  };
+  /** The slot's current power, for the Rollback hint and the name in the drop toast. */
+  /** @type {PowerView | null} */
+  let power = null;
+
+  /** @param {RunEvent} event */
+  function onEvent(event) {
+    if (event.type === 'drop' && power?.id === event.id) toasts.show(`Power-up: ${power.name}`);
+    announce(pipeline.onEvent(event));
+  }
+
+  function firePower() {
+    if (power?.id === 'rollback' && power.state === 'held') {
+      toasts.show('Rollback fires when you crash');
+      return;
+    }
+    host?.firePower();
+  }
+
+  function playNightly() {
+    const day = dayNumber(Date.now());
+    const pick = nightlyGame(day, resolved.games);
+    if (pick) selectGame(pick.id, true, { random: nightlyRandom(day), nightly: true });
+  }
+
+  const openCard = () => {
+    if (host?.state !== 'idle') return;
+    openProfile(cardSlot, pipeline, {
+      games: resolved.games,
+      now: Date.now,
+      onNightly: () => {
+        cardSlot.replaceChildren();
+        playNightly();
+      },
+      onClose: () => bar.node.focus(),
+      toast: announce,
+    });
+  };
+
   /** Games the player can switch to from the game over card: the next two in config order. */
   const others = () => (resolved.picker ? nextGames(resolved.games, game) : []);
   // The host only knows its own game, so the game over card gets the switch buttons here.
   const hostHud = {
     ...hud,
-    showOver: (/** @type {OverCard} */ card) => hud.showOver(card, others()),
+    setPower: (/** @type {PowerView | null} */ view) => {
+      power = view;
+      hud.setPower(view);
+    },
+    showOver: (/** @type {OverCard} */ card) =>
+      hud.showOver(card, others(), xpNote(pipeline.lastRun)),
   };
 
   /** @param {GameModule} next */
@@ -187,7 +274,7 @@ export function boot(registry, config, holidays = null) {
       hud: hostHud,
       attract,
       frames,
-      storage: createStorage(next.id),
+      storage: storeFor(next.id),
       setClass(name, on) {
         html.classList.toggle(name, on);
         if (name === 'is-playing') hudRoot.hidden = !on;
@@ -195,8 +282,14 @@ export function boot(registry, config, holidays = null) {
       },
       createInput: (signal) =>
         attachInput({ canvas, signal, pauseButton: hud.pauseButton, onPause: () => host?.pause() }),
-      drawSprite: (target, sprite, x, y, h, opts) =>
-        drawSprite(target, theme.palette, sprite, x, y, h, opts),
+      // Benjo wears the chosen look everywhere he is drawn: the game, the twin, and the ghost.
+      // A picked look replaces a holiday hat, so the two never stack.
+      drawSprite: (target, sprite, x, y, h, opts) => {
+        const skin = skinFor(sprite, theme.sprites.benjo, pipeline.state.look);
+        drawSprite(target, theme.palette, skin ? benjo : sprite, x, y, h, opts);
+        if (skin) drawSprite(target, theme.palette, skin, x, y, h, opts);
+      },
+      onEvent,
       onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
       audio,
     });
@@ -206,8 +299,9 @@ export function boot(registry, config, holidays = null) {
    * never swapped out. `start` plays it at once, as the game over card's buttons do.
    * @param {string} id
    * @param {boolean} start
+   * @param {RunOptions} [run]
    */
-  function selectGame(id, start) {
+  function selectGame(id, start, run) {
     const next = resolved.games.find((choice) => choice.id === id);
     if (!next || !host || host.state === 'playing' || host.state === 'paused') return;
     if (next !== game) {
@@ -218,18 +312,21 @@ export function boot(registry, config, holidays = null) {
     }
     if (start) {
       showPrompt();
-      play();
+      play(run);
     }
   }
 
-  const showPrompt = () =>
+  const showPrompt = () => {
     hud.showPlayPrompt(
       resolved.message.playPrompt,
       resolved.picker && game ? { games: resolved.games, current: game.id } : null,
     );
+    promptSlot.append(bar.node);
+  };
 
   host = hostFor(game);
   showPrompt();
+  announce(pipeline.visit());
 
   const pauseIfPlaying = () => host?.pause();
   const options = { signal: page.signal };
@@ -241,24 +338,34 @@ export function boot(registry, config, holidays = null) {
   window.addEventListener('blur', pauseIfPlaying, options);
   // Focus moving into the message strip pauses without stealing focus, so Tab reaches the link.
   message.addEventListener('focusin', () => host?.pause({ focus: false }), options);
-  const canStart = () => host?.state === 'idle' && promptSlot.firstElementChild !== null;
+  const canStart = () =>
+    host?.state === 'idle' && promptSlot.firstElementChild !== null && !cardSlot.firstElementChild;
   overlay?.addEventListener('click', () => canStart() && play(), options);
   // Browsers only allow sound after a gesture, so every input tries to wake the audio. A touch
   // pointerdown is not a gesture, and iOS Safari interrupts a context made there.
   for (const type of ['pointerup', 'touchend', 'keydown']) {
     window.addEventListener(type, audio.unlock, { ...options, capture: true, passive: true });
   }
+  const mCode = byId('m-code');
+  if (mCode) {
+    watchTeapot(
+      mCode,
+      () => {
+        audio.play('clear');
+        announce(pipeline.unlock('teapot'));
+      },
+      page.signal,
+    );
+  }
   window.addEventListener(
     'keydown',
     (event) => {
-      if (
-        event.code === 'KeyM' &&
-        !event.repeat &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey
-      ) {
+      if (event.code === 'KeyM' && isShortcut(event)) {
         toggleMute();
+        return;
+      }
+      if (event.code === 'KeyE' && isShortcut(event) && host?.state === 'playing') {
+        firePower();
         return;
       }
       const onBody = document.activeElement === document.body;

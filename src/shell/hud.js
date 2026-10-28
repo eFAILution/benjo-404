@@ -3,6 +3,7 @@
 
 import { benjoMarkSvg } from '../assets/benjo.js';
 import { el, text } from './dom.js';
+import { gameWheel } from './wheel.js';
 
 const PROMPT_ICON_PX = 20;
 
@@ -33,42 +34,7 @@ function homeLink(cta) {
   return link;
 }
 
-/** @typedef {{ id: string, name: string }} GameChoice */
-
-/**
- * Bring the pressed picker option into view inside the scrolling row (#20), without moving
- * focus. A missing scrollIntoView (tests, old browsers) is a no-op.
- * @param {Element} picker
- */
-function revealPressed(picker) {
-  const pressed = picker.querySelector('[aria-pressed="true"]');
-  if (typeof pressed?.scrollIntoView !== 'function') return;
-  pressed.scrollIntoView({ inline: 'center', block: 'nearest' });
-}
-
-/**
- * The idle picker: one toggle button per game, with the current one pressed. Picking a game
- * only selects it; the play prompt starts it.
- * @param {GameChoice[]} games
- * @param {string} current
- * @param {(id: string) => void} onSelect
- */
-function gamePicker(games, current, onSelect) {
-  const buttons = games.map((game) => {
-    const node = el(
-      'button',
-      { type: 'button', class: 'picker-option', 'aria-pressed': String(game.id === current) },
-      [game.name],
-    );
-    node.addEventListener('click', () => {
-      for (const other of buttons) other.setAttribute('aria-pressed', String(other === node));
-      if (node.parentElement) revealPressed(node.parentElement);
-      onSelect(game.id);
-    });
-    return node;
-  });
-  return el('div', { class: 'picker', role: 'group', 'aria-label': 'Choose a game' }, buttons);
-}
+/** @typedef {import('./wheel.js').GameChoice} GameChoice */
 
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
@@ -214,9 +180,7 @@ export function createHud(options) {
       showPrompt(node);
       const { onSelect } = options;
       if (!picker || !onSelect) return;
-      const row = gamePicker(picker.games, picker.current, onSelect);
-      promptSlot.append(row);
-      revealPressed(row);
+      promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
     },
     showError() {
       showPrompt(

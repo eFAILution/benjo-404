@@ -26,14 +26,17 @@ Seven games built at once raise questions the first two did not. The games are b
 
 7. **The embed split is left to issue #10.** `dist/embed/` is build output and is not committed. This PR makes the embed script about 107,000 characters, so the Webflow target will need three or more embeds. #10 owns that split and may trim the `games` list for the Webflow build.
 
-8. **The game over card shows at most two switch buttons** plus an "All games" button that returns to the idle screen and its picker. On phones the picker becomes one row that scrolls sideways. Nine full-width buttons would push Return Home off a 320 px screen.
+8. **The game over card shows at most two switch buttons** plus an "All games" button that returns to the idle screen and its picker. Nine full-width buttons would push Return Home off a 320 px screen.
+
+9. **The idle picker is a horizontal wheel** (`src/shell/wheel.js`). The chosen game sits in the middle with an accent border, its neighbors shrink and fade toward both ends, and the list wraps around. Arrow buttons, a sideways swipe, or the Left and Right keys spin it, and a counter such as `06 / 09` shows where you are. It takes one row at every width, so nine games never push Return Home down. Spinning or tapping a neighbor only selects, as ADR-0014 asks. Pressing the game already in the middle plays it, so Space on the focused wheel starts a run the same way the play prompt does. The arrow buttons never take focus, so Space after clicking one still plays.
 
 ## Alternatives considered
 
 - **One PR per game.** Cleaner history and smaller reviews, but the owner asked for one PR, and the seven games share no files, so the diff is seven independent folders plus a small integration commit.
 - **Add actions to `KEY_MAP`** such as number keys for Whack-a-Bug. It would change the shell and the input tests while seven builders work, and five holes are enough for a 45 second round.
 - **Raise the page budget now.** The sum of the targets fits, and a budget that is never close to failing stops meaning anything. Raising it waits for a real need, such as sound (#11).
-- **A `<select>` picker on phones.** Most compact, but it changes the idle screen's look and the `aria-pressed` group that ADR-0014 chose. A scrolling row keeps the same buttons.
+- **A `<select>` picker on phones.** Most compact, but it does not match the page's look, and the native menu looks different on every phone.
+- **Wrapped rows of buttons, or one row that scrolls sideways.** The first version of this PR did this. Nine buttons took three rows on desktop, and on phones the scrolling row hid most games with no hint that more were there.
 - **Split the embed in this PR.** It is a build change with its own issue and its own tests, and the standalone `dist/404.html` is unaffected.
 
 ## Consequences

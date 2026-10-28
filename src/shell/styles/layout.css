@@ -98,16 +98,42 @@
   gap: 0.5rem;
 }
 
-.picker {
+.wheel {
+  --wheel-item-w: 10.5rem;
+  --wheel-step: 9.5rem;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  width: min(36rem, calc(100vw - 2 * var(--pad)));
 }
 
-.picker-option {
-  min-height: 44px;
-  padding: 0.5rem 0.75rem;
+.wheel-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+/* The fade at both ends makes the row read as a wheel turning away. The extra height keeps
+   the focus ring inside the clip. */
+.wheel-track {
+  position: relative;
+  flex: 1;
+  height: 52px;
+  overflow: hidden;
+  touch-action: pan-y;
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);
+}
+
+.wheel-item {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: var(--wheel-item-w);
+  height: 44px;
+  margin-left: calc(var(--wheel-item-w) / -2);
+  padding: 0 0.5rem;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-btn);
   background: transparent;
@@ -115,20 +141,88 @@
   font-family: var(--font-mono);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
   transition:
+    transform var(--t-base) var(--ease),
+    opacity var(--t-base) var(--ease),
+    visibility var(--t-base),
     color var(--t-fast) var(--ease),
     border-color var(--t-fast) var(--ease);
 }
 
-.picker-option:hover {
+.wheel-item[data-offset='0'] {
+  z-index: 1;
+  border-color: var(--accent);
+  background: var(--bg);
   color: var(--ink);
 }
 
-.picker-option[aria-pressed='true'] {
-  border-color: var(--accent);
+.wheel-item[data-offset='-1'],
+.wheel-item[data-offset='1'] {
+  opacity: 0.7;
+}
+
+.wheel-item[data-offset='-1'] {
+  transform: translateX(calc(var(--wheel-step) * -1)) scale(0.86);
+}
+
+.wheel-item[data-offset='1'] {
+  transform: translateX(var(--wheel-step)) scale(0.86);
+}
+
+.wheel-item[data-offset='-2'],
+.wheel-item[data-offset='2'] {
+  opacity: 0.35;
+}
+
+.wheel-item[data-offset='-2'] {
+  transform: translateX(calc(var(--wheel-step) * -1.8)) scale(0.72);
+}
+
+.wheel-item[data-offset='2'] {
+  transform: translateX(calc(var(--wheel-step) * 1.8)) scale(0.72);
+}
+
+.wheel-item[data-offset='-3'],
+.wheel-item[data-offset='3'] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.wheel-item[data-offset='-3'] {
+  transform: translateX(calc(var(--wheel-step) * -2.4)) scale(0.6);
+}
+
+.wheel-item[data-offset='3'] {
+  transform: translateX(calc(var(--wheel-step) * 2.4)) scale(0.6);
+}
+
+.wheel-item:hover,
+.wheel-arrow:hover {
   color: var(--ink);
+}
+
+.wheel-arrow {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: color var(--t-fast) var(--ease);
+}
+
+.wheel-count {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
 }
 
 .prompt-error {
@@ -161,26 +255,9 @@
     --strip-h: 88px;
   }
 
-  /* Nine games wrap to five rows and push Return Home off a 320x568 phone: one scrolling row. */
-  .picker {
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    padding: 0 var(--pad) 4px;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .picker::-webkit-scrollbar {
-    display: none;
-  }
-
-  .picker-option {
-    flex: none;
-    scroll-snap-align: center;
+  /* Only the chosen game and a sliver of each neighbor fit beside the arrows. */
+  .wheel {
+    --wheel-step: 8rem;
   }
 }
 

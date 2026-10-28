@@ -54,7 +54,8 @@ Query overrides, for testing only. Bad values are ignored.
 - The CSP header holds hashes of the inline script and style. Any rebuild that changes them needs the new `dist/csp.txt` deployed with the file.
 - The game needs Safari 14 or Chrome 90 and up. Older browsers still get the plain message and the Return Home link.
 - Holidays follow the visitor's own clock and a US calendar (A-8.3). Sound starts after the first tap or key press, is on by default, and mutes with the speaker button or M (A-8.4, A-20.3). Phones on silent mode play no sound.
-- The best score lives in the browser's `localStorage`, so a private window or another device starts from zero.
+- Best scores, the build version, trophies, and sprint tickets live in the browser's `localStorage`, so a private window starts from zero. The save code in the build menu moves progress to another device (ADR-0022, A-22.1).
+- Power-ups drop into the slot next to the speaker button during a run. Tap it or press E to fire one. Rollback fires on its own when you crash (ADR-0022).
 - The Webflow embed script is above the 50,000 character limit per embed once nine games are bundled; issue #10 splits it. `dist/404.html` is the deploy target until then.
 
 ## How we work

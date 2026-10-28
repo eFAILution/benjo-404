@@ -1,6 +1,8 @@
 {
   "message": "default",
   "games": ["runner", "flight"],
+  "startGame": "random",
+  "gamePicker": true,
   "theme": "auto",
   "themes": ["default", "halloween", "christmas"]
 }

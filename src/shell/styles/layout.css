@@ -91,6 +91,46 @@
   color: var(--ink);
 }
 
+#prompt-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.picker-option {
+  min-height: 44px;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-btn);
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease);
+}
+
+.picker-option:hover {
+  color: var(--ink);
+}
+
+.picker-option[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
 .prompt-error {
   display: flex;
   align-items: center;

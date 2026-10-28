@@ -11,6 +11,8 @@ const ID = /^[a-z0-9-]{1,32}$/;
  * @property {string[]} games
  * @property {string} theme
  * @property {string[]} themes
+ * @property {'random' | 'first'} [startGame]
+ * @property {boolean} [gamePicker]
  */
 /**
  * @typedef {object} BundlePlan
@@ -36,6 +38,12 @@ export function validateConfig(config) {
       ? ''
       : "theme must be 'auto' or a safe id",
     isIdList(value?.themes) ? '' : 'themes must be a list of safe ids',
+    value?.startGame === undefined || value.startGame === 'random' || value.startGame === 'first'
+      ? ''
+      : "startGame must be 'random' or 'first'",
+    value?.gamePicker === undefined || typeof value.gamePicker === 'boolean'
+      ? ''
+      : 'gamePicker must be true or false',
   ].filter(Boolean);
   if (problems.length > 0) throw new Error(`benjo.config.json: ${problems.join('; ')}`);
   return /** @type {BuildConfig} */ (value);

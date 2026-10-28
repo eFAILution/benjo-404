@@ -171,8 +171,12 @@ export interface Registry {
 
 export interface BenjoConfig {
   message: Id;
-  /** First entry is the default game. */
+  /** Games to bundle, in the order the picker lists them. */
   games: Id[];
+  /** Which game a visit starts on: a random bundled one (default) or the first in `games`. ADR-0014. */
+  startGame?: 'random' | 'first';
+  /** Show a game picker on the idle screen and the game over card when two or more games are bundled. Default true. */
+  gamePicker?: boolean;
   /** 'auto' resolves from the date; otherwise a theme id pin. */
   theme: 'auto' | Id;
   /** Themes to bundle when theme is 'auto'. */
@@ -182,6 +186,10 @@ export interface BenjoConfig {
 export interface Resolved {
   message: MessageModule;
   game: GameModule | null;
+  /** Every bundled, configured game, in config order. */
+  games: GameModule[];
+  /** True when the player may switch games: the picker is on and there is more than one game. */
+  picker: boolean;
   theme: ThemePack;
   debug: boolean;
   reducedMotion: boolean;

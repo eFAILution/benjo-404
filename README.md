@@ -34,7 +34,7 @@ Query overrides, for testing only. Bad values are ignored.
 
 | Query | Effect |
 |-------|--------|
-| `?game=runner` | Pick a bundled game: `runner` (Benjo Run) or `flight` (Benjo Flight). `?game=none` shows the page with no game. |
+| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run) or `flight` (Benjo Flight). `?game=none` shows the page with no game. |
 | `?theme=halloween` | Pick a bundled theme. `?theme=none` forces the default look. |
 | `?date=2026-10-24` | Pretend today is this date (`YYYY-MM-DD`), to preview a holiday. |
 | `?message=short` | Pick a bundled message. |
@@ -90,7 +90,7 @@ Every change starts with a GitHub issue, goes on a branch named after it, and re
 | `assets/fonts/` | Subset WOFF2 fonts, their OFL licenses, and how they were made | Only with a new subset |
 | `build/` | `build.js` writes `dist/`; `check.js` checks budgets, CSP hashes, and content | When the build changes |
 | `tests/` | `node --test` suites, mirroring `src/` and `build/` | Yes, with every change |
-| `benjo.config.json` | Which message, games, and themes the build bundles, and a theme pin or `auto` | Yes |
+| `benjo.config.json` | Which message, games, and themes the build bundles, a theme pin or `auto`, and how a visitor gets a game (`startGame`, `gamePicker`, ADR-0014) | Yes |
 | `budgets.json` | Gzipped byte budgets per part, checked by `make test` | Only with a reason in the PR |
 | `dist/` | Build output, not committed | No, run `make build` |
 

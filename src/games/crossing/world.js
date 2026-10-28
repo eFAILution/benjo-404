@@ -4,8 +4,10 @@
 // Benjo lives on a grid of cells: `col` and `row` are where he is (or is hopping to), and
 // `bx`/`by` are his drawn center in cells, tweened between hops. Lane offsets are in cells too,
 // so a resize only changes the cell size and the column count.
+// Power-ups come in through `powers`: the magnet flag and the Digital Twin's absorb(), which the
+// step calls at the moment a block would cost Benjo a life.
 
-import { createLane, hitAt, orbNear, rerollLane } from './lanes.js';
+import { createLane, cutLane, hitAt, mod, orbNear, rerollLane } from './lanes.js';
 import {
   BOTTOM_PAD,
   CEILING,
@@ -20,10 +22,13 @@ import {
   EVENT_SCORE,
   GOAL_ROW,
   GOAL_SCORE,
+  GRACE_T,
   HIT_T,
   HOP_T,
   LANES,
   LIVES,
+  MAGNET_ROWS,
+  MAGNET_V,
   MIN_HEIGHT,
   MIN_WIDTH,
   NARROW_WIDTH,
@@ -42,6 +47,10 @@ import {
 /** @typedef {'up' | 'down' | 'left' | 'right'} Dir */
 /** @typedef {{ hop: Dir | null }} Intent */
 /** @typedef {{ width: number, height: number }} Area */
+/**
+ * @typedef {{ magnet?: boolean, absorb?: () => boolean }} Powers
+ *   magnet pulls orbs in this step; absorb() is true when the Digital Twin takes a hit.
+ */
 /**
  * @typedef {object} World
  * @property {number} width
@@ -72,6 +81,7 @@ import {
  * @property {number} orbs collected this run
  * @property {number} hitT hit stop left after a lost life
  * @property {number} hitAge seconds since the last hit, for shake and flash
+ * @property {number} graceT seconds left in which blocks pass through Benjo (Digital Twin)
  * @property {boolean} dead
  * @property {number} deadT
  * @property {'block' | 'timeout' | null} hit what cost the last life
@@ -165,6 +175,7 @@ export function createWorld(size, random, options = {}) {
     orbs: 0,
     hitT: 0,
     hitAge: Number.POSITIVE_INFINITY,
+    graceT: 0,
     dead: false,
     deadT: 0,
     hit: null,
@@ -234,16 +245,8 @@ function placeBenjo(w) {
   w.by = w.row + 0.5 + (w.fromRow - w.row) * t;
 }
 
-/** Block hits and orb pickups on the lane under Benjo. @param {World} w */
-function checkLane(w) {
-  const lane = laneUnder(w);
-  if (!lane) return;
-  const x = w.col + 0.5;
-  if (hitAt(lane, x)) {
-    loseLife(w, 'block');
-    return;
-  }
-  if (!orbNear(lane, x)) return;
+/** @param {World} w @param {Lane} lane */
+function takeOrb(w, lane) {
   lane.orbTaken = true;
   w.orbs += 1;
   w.score += ORB_SCORE;
@@ -251,13 +254,60 @@ function checkLane(w) {
 }
 
 /**
+ * Block hits and orb pickups on the lane under Benjo. The Digital Twin may take a block hit.
+ * @param {World} w @param {Powers} [powers]
+ */
+function checkLane(w, powers) {
+  const lane = laneUnder(w);
+  if (!lane) return;
+  const x = w.col + 0.5;
+  if (w.graceT === 0 && hitAt(lane, x)) {
+    if (!powers?.absorb?.()) {
+      loseLife(w, 'block');
+      return;
+    }
+    w.graceT = GRACE_T;
+  }
+  if (orbNear(lane, x)) takeOrb(w, lane);
+}
+
+/**
+ * Magnet: orbs on Benjo's lane and the lanes next to it slide along their lane to his column,
+ * and he takes them when they get there. Mutates `w`.
+ * @param {World} w @param {number} dt
+ */
+function pullOrbs(w, dt) {
+  const x = w.col + 0.5;
+  const step = MAGNET_V * dt;
+  for (const lane of w.lanes) {
+    if (lane.orbAt < 0 || lane.orbTaken || Math.abs(lane.index - w.row) > MAGNET_ROWS) continue;
+    const half = lane.period / 2;
+    const d = mod(x - lane.offset - lane.orbAt - 0.5 + half, lane.period) - half;
+    lane.orbAt = mod(lane.orbAt + Math.max(-step, Math.min(step, d)), lane.period);
+    if (Math.abs(d) <= step) takeOrb(w, lane);
+  }
+}
+
+/**
+ * Garbage Collector: remove every block on the band now. Mutates `w`.
+ * @param {World} w
+ * @returns {number} how many were removed
+ */
+export function clearBlocks(w) {
+  let cleared = 0;
+  for (const lane of w.lanes) cleared += cutLane(lane, w.cols);
+  return cleared;
+}
+
+/**
  * Advance the world one fixed step. Mutates and returns `w`.
  * @param {World} w
  * @param {Intent} intent
  * @param {number} dt
+ * @param {Powers} [powers]
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, powers) {
   w.prevBx = w.bx;
   w.prevBy = w.by;
   for (const lane of w.lanes) lane.prevOffset = lane.offset;
@@ -291,8 +341,10 @@ export function stepWorld(w, intent, dt) {
     w.queued = null;
   }
   placeBenjo(w);
-  checkLane(w);
+  w.graceT = Math.max(0, w.graceT - dt);
+  checkLane(w, powers);
   if (w.hitT > 0 || w.dead) return w;
+  if (powers?.magnet) pullOrbs(w, dt);
   w.clock -= dt;
   if (w.clock <= 0) loseLife(w, 'timeout');
   return w;

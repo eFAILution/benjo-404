@@ -1,6 +1,8 @@
 // @ts-check
 // Train math for Code Crossing. A lane is an endless train of blocks: `len` block cells, then
 // `gap` empty cells, repeated forever and sliding by `offset` cells. No per-block objects.
+// Block k starts at offset + k * period. The Garbage Collector removes blocks k in
+// cutLo..cutHi, the ones that were on screen, and the train refills from the edge.
 
 import {
   CELL_MAX,
@@ -30,6 +32,8 @@ import {
  * @property {number} prevOffset
  * @property {number} orbAt cell inside the period where an orb rides, or -1
  * @property {boolean} orbTaken
+ * @property {number} cutLo first removed block index
+ * @property {number} cutHi last removed block index; below cutLo means none
  */
 
 /** Positive remainder. @param {number} a @param {number} n */
@@ -48,6 +52,8 @@ export const createLane = (index) =>
     prevOffset: 0,
     orbAt: -1,
     orbTaken: false,
+    cutLo: 0,
+    cutHi: -1,
   });
 
 /**
@@ -76,13 +82,22 @@ export function rerollLane(lane, level, random, reducedMotion) {
   lane.offset = random() * lane.period;
   lane.prevOffset = lane.offset;
   lane.speed = laneSpeed(lane.index, level, reducedMotion);
+  lane.cutLo = 0;
+  lane.cutHi = -1;
 }
 
+/** Was block k removed by the Garbage Collector? @param {Lane} lane @param {number} k */
+export const isCut = (lane, k) => k >= lane.cutLo && k <= lane.cutHi;
+
+/** Index of the block whose period holds `x`. @param {Lane} lane @param {number} x @param {number} offset */
+const blockIndex = (lane, x, offset) => Math.floor((x - offset) / lane.period);
+
 /**
- * Is cell position `x` covered by a block? Periodic in `period`.
+ * Is cell position `x` covered by a block? Periodic in `period`, less any removed blocks.
  * @param {Lane} lane @param {number} x cells from the band's left edge @param {number} [offset]
  */
-export const blockAt = (lane, x, offset = lane.offset) => mod(x - offset, lane.period) < lane.len;
+export const blockAt = (lane, x, offset = lane.offset) =>
+  mod(x - offset, lane.period) < lane.len && !isCut(lane, blockIndex(lane, x, offset));
 
 /**
  * Does a Benjo centered at `x` get hit? Like blockAt with the block shrunk by HIT_MARGIN.
@@ -90,7 +105,22 @@ export const blockAt = (lane, x, offset = lane.offset) => mod(x - offset, lane.p
  */
 export function hitAt(lane, x, offset = lane.offset) {
   const r = mod(x - offset, lane.period);
-  return r > HIT_MARGIN && r < lane.len - HIT_MARGIN;
+  return r > HIT_MARGIN && r < lane.len - HIT_MARGIN && !isCut(lane, blockIndex(lane, x, offset));
+}
+
+/**
+ * Remove every block that overlaps the band (0 to `cols` cells). Mutates `lane`.
+ * @param {Lane} lane @param {number} cols
+ * @returns {number} how many were removed that were not already gone
+ */
+export function cutLane(lane, cols) {
+  const lo = Math.floor((-lane.len - lane.offset) / lane.period) + 1;
+  const hi = Math.ceil((cols - lane.offset) / lane.period) - 1;
+  let removed = 0;
+  for (let k = lo; k <= hi; k++) if (!isCut(lane, k)) removed += 1;
+  lane.cutLo = lo;
+  lane.cutHi = hi;
+  return removed;
 }
 
 /**

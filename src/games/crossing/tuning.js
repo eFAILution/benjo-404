@@ -91,6 +91,15 @@ export const HINT_T = 3;
 export const STATUS_T = 1.5;
 export const NEW_BEST_T = 1.5;
 
+// Power-ups (#22)
+/** Digital Twin grace after an absorbed hit: blocks pass through Benjo while he blinks. */
+export const GRACE_T = 1;
+export const GRACE_BLINK = 0.08;
+export const GRACE_ALPHA = 0.35;
+/** Magnet: orbs on Benjo's lane and the lanes next to it slide to his column this fast (cells/s). */
+export const MAGNET_ROWS = 1;
+export const MAGNET_V = 8;
+
 // Events raised by one step
 export const EVENT_HOP = 1;
 export const EVENT_SCORE = 2;

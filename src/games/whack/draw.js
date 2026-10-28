@@ -12,6 +12,7 @@ import {
   CODE_BAR_GAP,
   CODE_BAR_H,
   FLASH_EVERY,
+  GRACE_ALPHA,
   ROUND_T,
   SHAKE_PX,
   SHAKE_T,
@@ -128,7 +129,7 @@ function drawThings(host, w, alpha) {
   }
 }
 
-/** Benjo hovers over the last hole he hit and stomps it on a whack. @param {HostContext} host @param {World} w @param {number} time */
+/** Benjo hovers over the last hole he hit, stomps it on a whack, and blinks in the twin's grace. @param {HostContext} host @param {World} w @param {number} time */
 function drawBenjo(host, w, time) {
   const i = w.lastHole;
   const stomping = w.stompT > 0;
@@ -138,6 +139,8 @@ function drawBenjo(host, w, time) {
   const hover = Math.max(w.ceiling + base / 2, w.holeY[i] - w.cell * BENJO_LIFT + bob);
   const flashOn = w.oopsT > 0 && (w.reducedMotion || Math.floor(w.oopsT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
+  const blink = w.grace > 0 && (w.reducedMotion || Math.floor(w.grace / FLASH_EVERY) % 2 === 0);
+  benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   opts.flipX = i === 4;
   hitOpts.tint = host.theme.palette.hazard;
   host.drawSprite(host.theme.sprites.benjo, w.holeX[i], stomping ? w.holeY[i] : hover, h, opts);

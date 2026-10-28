@@ -19,6 +19,7 @@ import {
   EVENT_SOLVED,
   EVENT_TIMEOUT,
   EVENT_TURN,
+  GC_FIX,
   MAX_CELLS,
   MIN_HEIGHT,
   MIN_WIDTH,
@@ -31,6 +32,7 @@ import {
   SOLVED_T,
   START_GRACE,
   TILE_MAX,
+  TWIN_CLOCK,
   UNIT_MAX,
   UNIT_MIN,
 } from './tuning.js';
@@ -38,6 +40,10 @@ import {
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {import('./board.js').Board} Board */
 /** @typedef {{ dx: number, dy: number, turn: boolean, tapTile: number }} Intent */
+/**
+ * What the host's power-ups ask of a step (#22). The world never calls the host itself.
+ * @typedef {{ absorb?: () => boolean }} Assist
+ */
 /**
  * @typedef {object} World
  * @property {number} width
@@ -197,6 +203,9 @@ function nextBoard(w) {
   w.prevRot.fill(0);
 }
 
+/** @type {Assist} */
+const NO_ASSIST = {};
+
 /** @param {World} w @param {Intent} intent */
 function applyIntent(w, intent) {
   if (intent.tapTile >= 0 && intent.tapTile < w.board.cols * w.board.rows) {
@@ -216,9 +225,10 @@ function applyIntent(w, intent) {
  * @param {World} w
  * @param {Intent} intent
  * @param {number} dt
+ * @param {Assist} [assist] power-up hooks from the host; none in plain play
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, assist = NO_ASSIST) {
   w.prevTime = w.time;
   w.prevClock = w.clock;
   w.prevRot.set(w.rot);
@@ -239,12 +249,40 @@ export function stepWorld(w, intent, dt) {
   if (w.connected) return w;
 
   w.clock = Math.max(0, w.clock - dt);
-  if (w.clock <= 0) {
+  if (w.clock <= 0 && assist.absorb?.()) {
+    // The Digital Twin buys the link more time.
+    w.clock = TWIN_CLOCK;
+    w.prevClock = w.clock;
+  } else if (w.clock <= 0) {
     w.dead = true;
     w.deadT = 0;
     w.events |= EVENT_TIMEOUT;
   }
   return w;
+}
+
+/**
+ * Garbage Collector: set up to GC_FIX wrong path tiles to their solved turn, leftmost column
+ * first, so the lit link grows from Benjo. Solves the board when that closes the link.
+ * @param {World} w
+ * @returns {number} tiles fixed; none while a solved board shows or after time is up
+ */
+export function fixTiles(w) {
+  if (w.dead || w.connected) return 0;
+  const b = w.board;
+  const tween = w.reducedMotion ? 0 : ROT_T;
+  let fixed = 0;
+  for (let cell = 0; cell < b.cols * b.rows && fixed < GC_FIX; cell++) {
+    // Walk columns left to right, top to bottom within each.
+    const at = (cell % b.rows) * b.cols + Math.floor(cell / b.rows);
+    if (!b.path[at] || b.mask[at] === b.solved[at]) continue;
+    b.mask[at] = b.solved[at];
+    w.rot[at] = tween;
+    w.prevRot[at] = tween;
+    fixed += 1;
+  }
+  if (fixed > 0 && flood(b)) solve(w);
+  return fixed;
 }
 
 /**

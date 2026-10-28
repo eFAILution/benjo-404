@@ -1,16 +1,27 @@
 // @ts-check
 // Fix the Link: the GameModule. Wires host input, the world, drawing, and the HUD.
 // Turn tiles until the link runs from Benjo on the left to the home page on the right.
+//
+// Power-ups (#22): the Digital Twin puts time back when the clock runs out, Rollback rewinds a
+// timed-out board, and the Garbage Collector sets a few wrong tiles right. Benjo never moves and
+// nothing drifts toward him, so there is no track and no magnet.
 
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { END_T, EVENT_SOLVED, EVENT_TURN, HINT_T, NEW_BEST_T, SOLVED_T } from './tuning.js';
-import { createWorld, resizeWorld, stepWorld } from './world.js';
+import { createWorld, fixTiles, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('./world.js').Assist} Assist */
+/**
+ * Everything update and render read, copied deep for Rollback. The world's random is the host's,
+ * so it is left out and put back on restore.
+ * @typedef {{ world: Omit<World, 'random'>, lastScore: number, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
 
 /** World events and their sounds, most important first. One cue plays per step. */
@@ -54,6 +65,8 @@ function createLinks(host) {
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
+  /** @type {Assist} */
+  const assist = { absorb: () => host.power?.absorb() === true };
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -70,12 +83,16 @@ function createLinks(host) {
     resizeWorld(world, host.size);
   }
 
+  /** @param {World} w */
+  function syncScore(w) {
+    if (w.score === lastScore) return;
+    lastScore = w.score;
+    host.setScore(lastScore);
+  }
+
   /** @param {World} w @param {number} dt */
   function syncHud(w, dt) {
-    if (w.score !== lastScore) {
-      lastScore = w.score;
-      host.setScore(lastScore);
-    }
+    syncScore(w);
     if (w.events & EVENT_SOLVED) showStatus(LINK_FIXED, SOLVED_T);
     if (!cheered && best > 0 && w.score > best) {
       cheered = true;
@@ -105,7 +122,7 @@ function createLinks(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readIntent(host.input, tracker, world, intent), dt);
+      stepWorld(world, readIntent(host.input, tracker, world, intent), dt, assist);
       playCue(host, world.events);
       syncHud(world, dt);
       if (world.dead && world.deadT >= END_T) {
@@ -131,6 +148,35 @@ function createLinks(host) {
       ended = true;
       world = null;
     },
+
+    collect() {
+      if (!world || ended) return 0;
+      const fixed = fixTiles(world);
+      if (fixed === 0) return 0;
+      // A solve here happens between steps, so the next step would clear its event: say it now.
+      host.audio?.play(world.connected ? 'clear' : 'turn');
+      if (world.connected) showStatus(LINK_FIXED, SOLVED_T);
+      syncScore(world);
+      return fixed;
+    },
+
+    snapshot() {
+      if (!world) return null;
+      const { random: _random, ...rest } = world;
+      /** @type {Snapshot} */
+      const snap = { world: rest, lastScore, statusT, cheered, seenWidth, seenHeight };
+      return structuredClone(snap);
+    },
+
+    restore(value) {
+      if (!value) return;
+      const snap = /** @type {Snapshot} */ (structuredClone(value));
+      world = { ...snap.world, random: host.random };
+      ({ lastScore, statusT, cheered, seenWidth, seenHeight } = snap);
+      ended = false;
+      resetTracker(tracker, host.input);
+      host.setScore(lastScore);
+    },
   };
 }
 
@@ -144,6 +190,7 @@ const links = {
   },
   bestKey: BEST_KEY,
   create: createLinks,
+  powers: ['twin', 'rollback', 'gc'],
 };
 
 export default links;

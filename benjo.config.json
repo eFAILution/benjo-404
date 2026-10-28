@@ -1,6 +1,6 @@
 {
   "message": "default",
-  "games": ["runner"],
+  "games": ["runner", "flight"],
   "startGame": "random",
   "gamePicker": true,
   "theme": "auto",

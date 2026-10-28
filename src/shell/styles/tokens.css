@@ -21,7 +21,7 @@
   --pad: 1.5rem; /* 1rem under 992px */
   --kicker-size: clamp(0.8rem, 0.9vw, 0.95rem);
   --code-size: clamp(8.75rem, 9.333vw, 9.333vw); /* 5rem tablet, 4rem mobile */
-  --strip-h: 56px; /* 88px under 480px */
+  --strip-h: 56px; /* 88px under 600px, where the strip splits into two rows */
   --shadow-btn:
     0 4px 4px #08080814, 0 1px 2px #08080833, inset 0 6px 12px #ffffff1f, inset 0 1px 1px #fff3;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);

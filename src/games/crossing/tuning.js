@@ -92,8 +92,9 @@ export const STATUS_T = 1.5;
 export const NEW_BEST_T = 1.5;
 
 // Power-ups (#22)
-/** Digital Twin grace after an absorbed hit: blocks pass through Benjo while he blinks. */
-export const GRACE_T = 1;
+/** Digital Twin grace after an absorbed hit: blocks pass through Benjo while he blinks. Longer than
+ * the other games: the slowest lane takes over a second to carry a block past a still Benjo. */
+export const GRACE_T = 2.5;
 export const GRACE_BLINK = 0.08;
 export const GRACE_ALPHA = 0.35;
 /** Magnet: orbs on Benjo's lane and the lanes next to it slide to his column this fast (cells/s). */

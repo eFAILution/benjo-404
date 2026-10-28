@@ -15,7 +15,7 @@
  */
 
 import { createAttract } from './attract.js';
-import { formatDay, resolve } from './boot.js';
+import { formatDay, nextGames, resolve } from './boot.js';
 import { createDebugMeter } from './debug-meter.js';
 import { byId, readQuery, text } from './dom.js';
 import { createHost } from './host.js';
@@ -156,8 +156,8 @@ export function boot(registry, config, holidays = null) {
   attract.start();
   if (!game) return;
 
-  /** Games the player can switch to from the game over card. */
-  const others = () => (resolved.picker ? resolved.games.filter((choice) => choice !== game) : []);
+  /** Games the player can switch to from the game over card: the next two in config order. */
+  const others = () => (resolved.picker ? nextGames(resolved.games, game) : []);
   // The host only knows its own game, so the game over card gets the switch buttons here.
   const hostHud = {
     ...hud,

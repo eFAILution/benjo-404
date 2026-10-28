@@ -1,6 +1,16 @@
 {
   "message": "default",
-  "games": ["runner", "flight"],
+  "games": [
+    "runner",
+    "flight",
+    "stack",
+    "tail",
+    "breakout",
+    "crossing",
+    "zapper",
+    "whack",
+    "links"
+  ],
   "startGame": "random",
   "gamePicker": true,
   "theme": "auto",

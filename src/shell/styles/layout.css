@@ -107,7 +107,7 @@
 
 .picker-option {
   min-height: 44px;
-  padding: 0.5rem 0.875rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid var(--line);
   border-radius: var(--radius-btn);
   background: transparent;
@@ -159,6 +159,28 @@
 @media (max-width: 599px) {
   :root {
     --strip-h: 88px;
+  }
+
+  /* Nine games wrap to five rows and push Return Home off a 320x568 phone: one scrolling row. */
+  .picker {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0 var(--pad) 4px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .picker::-webkit-scrollbar {
+    display: none;
+  }
+
+  .picker-option {
+    flex: none;
+    scroll-snap-align: center;
   }
 }
 

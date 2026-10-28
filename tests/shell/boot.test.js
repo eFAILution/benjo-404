@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import defaultMessage from '../../src/messages/default.js';
 import short from '../../src/messages/short.js';
-import { parseDay, pickGame, resolve } from '../../src/shell/boot.js';
+import { nextGames, OVER_SWITCH_MAX, parseDay, pickGame, resolve } from '../../src/shell/boot.js';
 import { readQuery } from '../../src/shell/dom.js';
 import { fakeHalloween, fakeTheme } from './fixtures/theme.js';
 
@@ -98,6 +98,26 @@ describe('resolve: game selection (ADR-0014)', () => {
       pickGame([], config, {}, () => 0),
       null,
     );
+  });
+});
+
+describe('nextGames: the game over card switches (A-20.1)', () => {
+  const nine = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'].map((id) => ({ id }));
+  const ids = (list) => list.map((game) => game.id);
+
+  it('caps at two, the next games in config order', () => {
+    assert.equal(OVER_SWITCH_MAX, 2);
+    assert.deepEqual(ids(nextGames(nine, nine[0])), ['b', 'c']);
+    assert.deepEqual(ids(nextGames(nine, nine[4])), ['f', 'g']);
+  });
+  it('wraps past the end of the list', () => {
+    assert.deepEqual(ids(nextGames(nine, nine[7])), ['i', 'a']);
+    assert.deepEqual(ids(nextGames(nine, nine[8])), ['a', 'b']);
+  });
+  it('never offers the current game, even with fewer games than the cap', () => {
+    assert.deepEqual(ids(nextGames(nine.slice(0, 2), nine[1])), ['a']);
+    assert.deepEqual(nextGames(nine.slice(0, 1), nine[0]), []);
+    assert.deepEqual(nextGames([], null), []);
   });
 });
 

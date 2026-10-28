@@ -36,6 +36,17 @@ function homeLink(cta) {
 /** @typedef {{ id: string, name: string }} GameChoice */
 
 /**
+ * Bring the pressed picker option into view inside the scrolling row (#20), without moving
+ * focus. A missing scrollIntoView (tests, old browsers) is a no-op.
+ * @param {Element} picker
+ */
+function revealPressed(picker) {
+  const pressed = picker.querySelector('[aria-pressed="true"]');
+  if (typeof pressed?.scrollIntoView !== 'function') return;
+  pressed.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+
+/**
  * The idle picker: one toggle button per game, with the current one pressed. Picking a game
  * only selects it; the play prompt starts it.
  * @param {GameChoice[]} games
@@ -51,6 +62,7 @@ function gamePicker(games, current, onSelect) {
     );
     node.addEventListener('click', () => {
       for (const other of buttons) other.setAttribute('aria-pressed', String(other === node));
+      if (node.parentElement) revealPressed(node.parentElement);
       onSelect(game.id);
     });
     return node;
@@ -164,6 +176,7 @@ export function createHud(options) {
       );
     },
     /**
+     * With others, an "All games" button follows the switches and quits to the idle picker.
      * @param {{ score: number, best: number, scoreLabel: string, reason: string }} card
      * @param {GameChoice[]} [others] games the player can switch to, each started at once
      */
@@ -172,6 +185,7 @@ export function createHud(options) {
       const switches = others.map((game) =>
         button(`Play ${game.name}`, 'btn btn-ghost', () => options.onSwitch?.(game.id)),
       );
+      if (switches.length > 0) switches.push(button('All games', 'btn btn-ghost', options.onQuit));
       showCard(
         'card-title',
         [
@@ -199,7 +213,10 @@ export function createHud(options) {
       node.addEventListener('click', options.onPlay);
       showPrompt(node);
       const { onSelect } = options;
-      if (picker && onSelect) promptSlot.append(gamePicker(picker.games, picker.current, onSelect));
+      if (!picker || !onSelect) return;
+      const row = gamePicker(picker.games, picker.current, onSelect);
+      promptSlot.append(row);
+      revealPressed(row);
     },
     showError() {
       showPrompt(

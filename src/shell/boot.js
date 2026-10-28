@@ -94,6 +94,27 @@ export function pickGame(games, config, query, random) {
   return games[Math.min(Math.max(index, 0), games.length - 1)];
 }
 
+/** The game over card offers at most this many other games, then "All games" (A-20.1). */
+export const OVER_SWITCH_MAX = 2;
+
+/**
+ * The games the game over card offers: the next ones after `current` in config order, wrapping,
+ * so every visit to a game shows the same card.
+ * @template {{ id: string }} T
+ * @param {T[]} games bundled games in config order
+ * @param {T | null} current
+ * @param {number} [max]
+ * @returns {T[]}
+ */
+export function nextGames(games, current, max = OVER_SWITCH_MAX) {
+  const start = current ? games.indexOf(current) : -1;
+  const count = Math.min(max, games.length - 1);
+  return Array.from(
+    { length: Math.max(count, 0) },
+    (_, step) => games[(start + 1 + step) % games.length],
+  );
+}
+
 /**
  * @param {Registry} registry
  * @param {BenjoConfig} config

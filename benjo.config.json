@@ -1,6 +1,6 @@
 {
   "message": "default",
-  "games": ["runner"],
+  "games": ["runner", "flight"],
   "theme": "auto",
   "themes": ["default", "halloween", "christmas"]
 }

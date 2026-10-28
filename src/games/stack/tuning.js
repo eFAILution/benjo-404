@@ -74,6 +74,12 @@ export const FLASH_EVERY = 0.06;
 export const HINT_T = 3;
 export const NEW_BEST_T = 1.5;
 
+// Power-ups (#22)
+/** After the Digital Twin saves a miss, the next block waits this long and drops are ignored. */
+export const TWIN_GRACE = 1;
+/** Benjo blinks at this alpha while the twin's grace runs. */
+export const GRACE_ALPHA = 0.4;
+
 // Events raised by one step
 export const EVENT_LAND = 1;
 export const EVENT_PERFECT = 2;

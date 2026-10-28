@@ -3,9 +3,12 @@
 //
 // The world keeps its own previous positions, so a single world mutated in place is enough for
 // render(alpha) to interpolate, and nothing in the update path allocates.
+//
+// Power-ups (#22): the Digital Twin catches one missed block, Rollback rewinds a toppled stack,
+// and the host's twin and ghost follow Benjo. There are no hazards to collect and nothing to pull.
 
 import { createTracker, readDrop, resetTracker } from './controls.js';
-import { drawFrame } from './draw.js';
+import { benjoY, drawFrame } from './draw.js';
 import {
   DEATH_PAUSE,
   EVENT_LAND,
@@ -22,6 +25,13 @@ import { createWorld, resizeWorld, stepWorld } from './world.js';
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('./world.js').Assist} Assist */
+/**
+ * Everything update and render read, copied deep for Rollback. The world's random is the host's,
+ * so it is left out and put back on restore.
+ * @typedef {{ world: Omit<World, 'random'>, lastScore: number, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
 
 /** World events and their sounds, most important first. One cue plays per step. */
@@ -65,6 +75,8 @@ function createStack(host) {
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
+  /** @type {Assist} */
+  const assist = { absorb: () => host.power?.absorb() === true };
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -119,7 +131,8 @@ function createStack(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readDrop(host.input, tracker, world.time), dt);
+      stepWorld(world, readDrop(host.input, tracker, world.time), dt, assist);
+      host.track?.(world.benjoX, benjoY(world));
       playCue(host, world.events);
       syncHud(world, dt);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
@@ -145,6 +158,25 @@ function createStack(host) {
       ended = true;
       world = null;
     },
+
+    snapshot() {
+      if (!world) return null;
+      const { random: _random, ...rest } = world;
+      /** @type {Snapshot} */
+      const snap = { world: rest, lastScore, statusT, cheered, seenWidth, seenHeight };
+      return structuredClone(snap);
+    },
+
+    restore(value) {
+      if (!value) return;
+      const snap = /** @type {Snapshot} */ (structuredClone(value));
+      world = { ...snap.world, random: host.random };
+      ({ lastScore, statusT, cheered, seenWidth, seenHeight } = snap);
+      ended = false;
+      // The press that died is not a drop in the restored run.
+      resetTracker(tracker, host.input);
+      host.setScore(lastScore);
+    },
   };
 }
 
@@ -158,6 +190,7 @@ const stack = {
   },
   bestKey: BEST_KEY,
   create: createStack,
+  powers: ['twin', 'rollback'],
 };
 
 export default stack;

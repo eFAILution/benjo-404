@@ -1,0 +1,424 @@
+// @ts-check
+// The Break the 404 world and its fixed step. No DOM, no host: tests drive it directly.
+//
+// Benjo's paddle and fireball keep their previous positions so render can interpolate.
+// Brick rects follow the layout; only the 38 alive flags are game state.
+
+import {
+  BRICK_COUNT,
+  bricksLeft,
+  createRects,
+  hitBrick,
+  layoutBricks,
+  refillBricks,
+} from './bricks.js';
+import {
+  BALL_R,
+  BALL_R_MIN,
+  BALL_SPEED_CAP,
+  BALL_SPEED_CAP_REDUCED,
+  BALL_SPEED_START,
+  BALL_SPEED_STEP,
+  BOTTOM_PAD,
+  BRICK_GAP,
+  BRICK_H_FRAC,
+  BRICK_H_MAX,
+  BRICK_SCORE,
+  CEILING,
+  CEILING_NARROW,
+  CELL_MAX,
+  EVENT_BOUNCE,
+  EVENT_BRICK,
+  EVENT_HIT,
+  EVENT_LOST,
+  EVENT_ROUND,
+  EVENT_SERVE,
+  GRID_COLS,
+  GRID_TOP,
+  LIVES,
+  LOSE_T,
+  MAX_BOUNCE,
+  MIN_HEIGHT,
+  MIN_WIDTH,
+  NARROW_WIDTH,
+  PADDLE_H,
+  PADDLE_SPEED,
+  PADDLE_W_MIN,
+  PADDLE_W_MIN_PX,
+  PADDLE_W_START,
+  PADDLE_W_START_PX,
+  PADDLE_W_STEP,
+  PADDLE_Y,
+  PLAY_W_MAX,
+  POINTER_SPEED,
+  POP_POOL,
+  POP_T,
+  REF_HEIGHT,
+  REF_PLAY_H,
+  SERVE_SPREAD,
+  SIDE_PAD,
+  START_GRACE,
+  TRAIL,
+  UNIT_MAX,
+  UNIT_MIN,
+  WALL_BONUS,
+} from './tuning.js';
+
+/** @typedef {{ width: number, height: number }} Area */
+/** @typedef {{ move: number, targetX: number | null, serve: boolean }} Intent */
+/** @typedef {{ active: boolean, brick: number, t: number }} Pop */
+/** @typedef {ReturnType<typeof layout>} Layout */
+/**
+ * @typedef {Layout & {
+ *   px: number, prevPx: number, facing: number,
+ *   bx: number, by: number, prevBx: number, prevBy: number, vx: number, vy: number,
+ *   trailX: number[], trailY: number[],
+ *   serving: boolean, served: boolean, losing: boolean, lostT: number,
+ *   lives: number, round: number, score: number, bricksHit: number,
+ *   time: number, dead: boolean, hit: 'lost' | null, deadT: number, events: number,
+ *   reducedMotion: boolean, random: () => number,
+ *   alive: Uint8Array, rects: import('./bricks.js').Rect[], pops: Pop[],
+ * }} World
+ */
+
+/** @type {Intent} */
+const IDLE = { move: 0, targetX: null, serve: false };
+
+/** @param {number} v @param {number} lo @param {number} hi */
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+/** @param {Area} size */
+function layout(size) {
+  const width = Math.max(MIN_WIDTH, size.width || 0);
+  const height = Math.max(MIN_HEIGHT, size.height || 0);
+  const unit = clamp(height / REF_HEIGHT, UNIT_MIN, UNIT_MAX);
+  const ceiling = size.width < NARROW_WIDTH ? CEILING_NARROW : CEILING;
+  const playW = Math.min(width - SIDE_PAD * 2, PLAY_W_MAX * unit);
+  const left = (width - playW) / 2;
+  const right = left + playW;
+  const bottom = height - BOTTOM_PAD;
+  const cell = Math.min((right - left) / GRID_COLS, CELL_MAX * unit);
+  return {
+    width,
+    height,
+    unit,
+    pace: Math.max(unit, (bottom - ceiling) / REF_PLAY_H),
+    ceiling,
+    left,
+    right,
+    bottom,
+    cell,
+    brickW: cell - BRICK_GAP,
+    brickH: Math.min(cell * BRICK_H_FRAC, BRICK_H_MAX * unit),
+    gridLeft: (left + right - cell * GRID_COLS) / 2,
+    gridTop: ceiling + GRID_TOP * unit,
+    paddleY: bottom - PADDLE_Y * unit,
+    paddleH: PADDLE_H * unit,
+    ballR: Math.max(BALL_R_MIN, BALL_R * unit),
+  };
+}
+
+/**
+ * @template T
+ * @param {number} n
+ * @param {() => T} make
+ * @returns {T[]}
+ */
+const pool = (n, make) => Array.from({ length: n }, make);
+
+/**
+ * @param {Area} size
+ * @param {() => number} random
+ * @param {{ reducedMotion?: boolean }} [options]
+ * @returns {World}
+ */
+export function createWorld(size, random, options = {}) {
+  const l = layout(size);
+  const px = (l.left + l.right) / 2;
+  /** @type {World} */
+  const w = {
+    ...l,
+    px,
+    prevPx: px,
+    facing: 1,
+    bx: px,
+    by: 0,
+    prevBx: px,
+    prevBy: 0,
+    vx: 0,
+    vy: 0,
+    trailX: pool(TRAIL, () => px),
+    trailY: pool(TRAIL, () => 0),
+    serving: true,
+    served: false,
+    losing: false,
+    lostT: 0,
+    lives: LIVES,
+    round: 1,
+    score: 0,
+    bricksHit: 0,
+    time: 0,
+    dead: false,
+    hit: null,
+    deadT: 0,
+    events: 0,
+    reducedMotion: Boolean(options.reducedMotion),
+    random,
+    alive: new Uint8Array(BRICK_COUNT),
+    rects: createRects(),
+    pops: pool(POP_POOL, () => ({ active: false, brick: 0, t: 0 })),
+  };
+  refillBricks(w);
+  layoutBricks(w);
+  holdBall(w);
+  return w;
+}
+
+/** Ball speed for the current round, capped. @param {World} w */
+export function speedFor(w) {
+  const cap = w.reducedMotion ? BALL_SPEED_CAP_REDUCED : BALL_SPEED_CAP;
+  return Math.min(cap, BALL_SPEED_START + BALL_SPEED_STEP * (w.round - 1)) * w.pace;
+}
+
+/** Paddle width for the current round: narrower each round, down to a floor. @param {World} w */
+export function paddleWFor(w) {
+  const start = Math.max(PADDLE_W_START_PX, PADDLE_W_START * w.unit);
+  const least = Math.max(PADDLE_W_MIN_PX, PADDLE_W_MIN * w.unit);
+  return Math.max(least, start - PADDLE_W_STEP * w.unit * (w.round - 1));
+}
+
+/** Sit the ball on the paddle's center and clear its trail. @param {World} w */
+function holdBall(w) {
+  w.bx = w.px;
+  w.by = w.paddleY - w.ballR;
+  w.vx = 0;
+  w.vy = 0;
+  w.trailX.fill(w.bx);
+  w.trailY.fill(w.by);
+}
+
+/** @param {World} w @param {Intent} intent @param {number} dt */
+function movePaddle(w, intent, dt) {
+  if (intent.move !== 0) {
+    w.px += intent.move * PADDLE_SPEED * w.pace * dt;
+    w.facing = intent.move;
+  } else if (intent.targetX !== null) {
+    const reach = POINTER_SPEED * w.pace * dt;
+    const d = clamp(intent.targetX - w.px, -reach, reach);
+    w.px += d;
+    if (Math.abs(d) > 0.5) w.facing = d < 0 ? -1 : 1;
+  }
+  const half = paddleWFor(w) / 2;
+  w.px = clamp(w.px, w.left + half, w.right - half);
+}
+
+/** @param {World} w */
+function serve(w) {
+  const speed = speedFor(w);
+  const angle = (w.random() * 2 - 1) * SERVE_SPREAD;
+  w.vx = speed * Math.sin(angle);
+  w.vy = -speed * Math.cos(angle);
+  w.serving = false;
+  w.served = true;
+  w.events |= EVENT_SERVE;
+}
+
+/** Bounce off the side walls and the ceiling. @param {World} w */
+function bounceWalls(w) {
+  const r = w.ballR;
+  if (w.bx - r < w.left) {
+    w.bx = w.left + r;
+    w.vx = Math.abs(w.vx);
+  } else if (w.bx + r > w.right) {
+    w.bx = w.right - r;
+    w.vx = -Math.abs(w.vx);
+  }
+  if (w.by - r < w.ceiling) {
+    w.by = w.ceiling + r;
+    w.vy = Math.abs(w.vy);
+  }
+}
+
+/**
+ * Bounce off the paddle top when falling onto it. The further from center, the wider the angle.
+ * @param {World} w @param {number} speed
+ */
+function bouncePaddle(w, speed) {
+  const half = paddleWFor(w) / 2;
+  const r = w.ballR;
+  if (w.vy <= 0 || w.by + r < w.paddleY || w.by > w.paddleY + w.paddleH) return;
+  if (Math.abs(w.bx - w.px) > half + r) return;
+  const angle = clamp((w.bx - w.px) / half, -1, 1) * MAX_BOUNCE;
+  w.vx = speed * Math.sin(angle);
+  w.vy = -speed * Math.cos(angle);
+  w.by = w.paddleY - r;
+  w.events |= EVENT_BOUNCE;
+}
+
+/**
+ * @template {{ active: boolean }} T
+ * @param {T[]} list
+ * @returns {T | null}
+ */
+function free(list) {
+  for (let i = 0; i < list.length; i++) if (!list[i].active) return list[i];
+  return null;
+}
+
+/** @param {World} w @param {number} brick */
+function popBrick(w, brick) {
+  const p = w.reducedMotion ? null : free(w.pops);
+  if (!p) return;
+  p.active = true;
+  p.brick = brick;
+  p.t = 0;
+}
+
+/** Score a brick, and start the next round when the wall is gone. @param {World} w @param {number} brick */
+function scoreBrick(w, brick) {
+  w.score += BRICK_SCORE * w.round;
+  w.bricksHit += 1;
+  w.events |= EVENT_BRICK;
+  popBrick(w, brick);
+  if (bricksLeft(w) > 0) return;
+  w.score += WALL_BONUS * w.round;
+  w.round += 1;
+  w.events |= EVENT_ROUND;
+  refillBricks(w);
+  w.serving = true;
+  w.px = clamp(w.px, w.left + paddleWFor(w) / 2, w.right - paddleWFor(w) / 2);
+  holdBall(w);
+}
+
+/** The ball fell past the bottom: a life gone, or the run. @param {World} w */
+function loseBall(w) {
+  w.lives -= 1;
+  if (w.lives > 0) {
+    w.losing = true;
+    w.lostT = 0;
+    w.events |= EVENT_LOST;
+    return;
+  }
+  w.dead = true;
+  w.hit = 'lost';
+  w.deadT = 0;
+  w.events |= EVENT_HIT;
+}
+
+/**
+ * Move the ball in sub-steps no longer than its radius, so it never tunnels through a brick.
+ * @param {World} w @param {number} dt
+ */
+function moveBall(w, dt) {
+  const speed = Math.hypot(w.vx, w.vy);
+  const steps = Math.max(1, Math.ceil((speed * dt) / w.ballR));
+  const h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    w.bx += w.vx * h;
+    w.by += w.vy * h;
+    bounceWalls(w);
+    bouncePaddle(w, speed);
+    const brick = hitBrick(w, speed);
+    if (brick >= 0) {
+      scoreBrick(w, brick);
+      if (w.serving) return;
+    }
+    if (w.by > w.bottom + w.ballR) {
+      loseBall(w);
+      return;
+    }
+  }
+}
+
+/** @param {World} w @param {number} dt */
+function agePops(w, dt) {
+  for (const p of w.pops) {
+    if (!p.active) continue;
+    p.t += dt;
+    if (p.t >= POP_T) p.active = false;
+  }
+}
+
+/** Remember where things were, for render interpolation and the trail. @param {World} w */
+function keepPrevious(w) {
+  w.prevPx = w.px;
+  if (!w.serving && !w.losing) {
+    w.trailX.copyWithin(1, 0);
+    w.trailY.copyWithin(1, 0);
+    w.trailX[0] = w.bx;
+    w.trailY[0] = w.by;
+  }
+  w.prevBx = w.bx;
+  w.prevBy = w.by;
+}
+
+/**
+ * Advance the world one fixed step. Mutates and returns `w`.
+ * @param {World} w
+ * @param {Intent} intent
+ * @param {number} dt
+ * @returns {World}
+ */
+export function stepWorld(w, intent, dt) {
+  keepPrevious(w);
+  w.events = 0;
+  w.time += dt;
+  agePops(w, dt);
+  if (w.dead) {
+    w.deadT += dt;
+    return w;
+  }
+  if (w.losing) {
+    w.lostT += dt;
+    if (w.lostT < LOSE_T) return w;
+    w.losing = false;
+    w.serving = true;
+  }
+  const live = w.time > START_GRACE;
+  movePaddle(w, live ? intent : IDLE, dt);
+  if (w.serving) {
+    holdBall(w);
+    if (live && intent.serve) serve(w);
+    return w;
+  }
+  moveBall(w, dt);
+  return w;
+}
+
+/**
+ * Fit a running world to a new canvas size. Positions scale with the play rect, speeds with
+ * the pace, and the bricks are laid out again, so the run carries on where it was.
+ * @param {World} w
+ * @param {Area} size
+ * @returns {World}
+ */
+export function resizeWorld(w, size) {
+  const l = layout(size);
+  const kx = (l.right - l.left) / (w.right - w.left);
+  const ky = (l.bottom - l.ceiling) / (w.bottom - w.ceiling);
+  const ku = l.pace / w.pace;
+  /** @param {number} x */
+  const sx = (x) => l.left + (x - w.left) * kx;
+  /** @param {number} y */
+  const sy = (y) => l.ceiling + (y - w.ceiling) * ky;
+  w.px = sx(w.px);
+  w.prevPx = sx(w.prevPx);
+  w.bx = sx(w.bx);
+  w.prevBx = sx(w.prevBx);
+  w.by = sy(w.by);
+  w.prevBy = sy(w.prevBy);
+  for (let i = 0; i < TRAIL; i++) {
+    w.trailX[i] = sx(w.trailX[i]);
+    w.trailY[i] = sy(w.trailY[i]);
+  }
+  w.vx *= ku;
+  w.vy *= ku;
+  Object.assign(w, l);
+  layoutBricks(w);
+  const half = paddleWFor(w) / 2;
+  w.px = clamp(w.px, w.left + half, w.right - half);
+  if (w.serving) holdBall(w);
+  w.bx = clamp(w.bx, w.left + w.ballR, w.right - w.ballR);
+  w.by = clamp(w.by, w.ceiling + w.ballR, w.bottom - w.ballR);
+  return w;
+}

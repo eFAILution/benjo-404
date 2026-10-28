@@ -7,12 +7,19 @@
 import { createTracker, readTurn, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { DEATH_PAUSE, HINT_T, NEW_BEST_T } from './tuning.js';
-import { centerX, centerY, createWorld, resizeWorld, stepWorld } from './world.js';
+import { centerX, centerY, createWorld, headX, headY, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('./world.js').Aid} Aid */
+/**
+ * Everything update and render read, for Rollback. The world goes without its random source,
+ * which stays the host's.
+ * @typedef {{ world: Omit<World, 'random'>, status: string, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 
 const BEST_KEY = 'best';
 const HINT = 'ARROWS TO TURN';
@@ -35,15 +42,20 @@ function createTail(host) {
   let paused = false;
   let ended = false;
   let lastScore = 0;
+  let status = '';
   let statusT = 0;
   let best = 0;
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
 
+  /** @type {Aid} */
+  const aid = { magnet: false, absorb: () => host.power?.absorb() ?? false };
+
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
     host.setStatus(text);
+    status = text;
     statusT = seconds;
   }
 
@@ -69,7 +81,7 @@ function createTail(host) {
     }
     if (statusT <= 0 || w.ready) return;
     statusT -= dt;
-    if (statusT <= 0) host.setStatus('');
+    if (statusT <= 0) showStatus('', 0);
   }
 
   /** @param {World} w */
@@ -98,11 +110,14 @@ function createTail(host) {
       if (!world || paused || ended) return;
       syncLayout();
       const { score, dead } = world;
-      stepWorld(world, readInput(world), dt);
+      aid.magnet = host.power?.active('magnet') ?? false;
+      stepWorld(world, readInput(world), dt, aid);
       // The snake's world raises no events, so the sound comes from what changed this step.
       if (world.dead && !dead) host.audio?.play(world.hit === 'full' ? 'clear' : 'hit');
       else if (world.score > score) host.audio?.play('pickup');
       syncHud(world, dt);
+      const p = world.dead || world.reducedMotion ? 1 : world.progress;
+      host.track?.(headX(world, p), headY(world, p));
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;
         const reason = REASONS[world.hit ?? 'wall'];
@@ -127,6 +142,26 @@ function createTail(host) {
       ended = true;
       world = null;
     },
+
+    snapshot() {
+      if (!world) return null;
+      const { random: _random, ...rest } = world;
+      /** @type {Snapshot} */
+      const snap = { world: rest, status, statusT, cheered, seenWidth, seenHeight };
+      return structuredClone(snap);
+    },
+
+    restore(saved) {
+      if (!saved) return;
+      const snap = /** @type {Snapshot} */ (structuredClone(saved));
+      world = { ...snap.world, random: host.random };
+      ({ cheered, seenWidth, seenHeight } = snap);
+      showStatus(snap.status, snap.statusT);
+      ended = false;
+      lastScore = world.score;
+      host.setScore(lastScore);
+      resetTracker(tracker, host.input);
+    },
   };
 }
 
@@ -140,6 +175,8 @@ const tail = {
   },
   bestKey: BEST_KEY,
   create: createTail,
+  // No 'gc': nothing on the grid is a hazard to clear, only the walls and Benjo's own tail.
+  powers: ['twin', 'rollback', 'magnet'],
 };
 
 export default tail;

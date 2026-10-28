@@ -117,6 +117,12 @@ export function resetFormation(w) {
   w.biteT = biteIntervalFor(w);
 }
 
+/** Push the formation back up to its start height, keeping who is alive. @param {World} w */
+export function liftFormation(w) {
+  w.originY = w.ceiling + FORM_TOP * w.unit;
+  w.prevOriginY = w.originY;
+}
+
 /**
  * Slide the formation; at an edge it turns and drops instead.
  * @param {World} w

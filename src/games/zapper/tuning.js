@@ -99,3 +99,9 @@ export const EVENT_FIRE = 1;
 export const EVENT_KILL = 2;
 export const EVENT_HIT = 4;
 export const EVENT_WAVE = 8;
+
+// Power-ups (#22)
+/** After the Digital Twin takes a hit, further hits miss Benjo for this long. */
+export const GRACE_T = 1;
+export const BLINK_EVERY = 0.1;
+export const GRACE_ALPHA = 0.35;

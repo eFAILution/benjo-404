@@ -7,6 +7,7 @@ import { bugX, bugY } from './formation.js';
 import {
   BITE_H,
   BITE_W,
+  BLINK_EVERY,
   BOB_AMP,
   BOB_RATE,
   BOLT_H,
@@ -14,6 +15,7 @@ import {
   FLAME_GAP,
   FLAME_R,
   FLASH_EVERY,
+  GRACE_ALPHA,
   HIT_T,
   POP_GROW,
   POP_T,
@@ -128,10 +130,16 @@ function drawLives(ctx, palette, w) {
   ctx.fill();
 }
 
-/** Benjo noses up and flashes the hazard color while hurt. @param {HostContext} host @param {World} w @param {number} blend */
+/**
+ * Benjo noses up, flashes the hazard color while hurt, and blinks while the Digital Twin's grace
+ * lasts.
+ * @param {HostContext} host @param {World} w @param {number} blend
+ */
 function drawBenjo(host, w, blend) {
   const t = hurtT(w);
   const flashOn = t >= 0 && (w.reducedMotion || Math.floor(t / FLASH_EVERY) % 2 === 0);
+  const blink = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   hitOpts.tint = host.theme.palette.hazard;
   const x = w.prevBx + (w.bx - w.prevBx) * blend;
   host.drawSprite(host.theme.sprites.benjo, x, w.benjoY, w.benjoH, flashOn ? hitOpts : benjoOpts);

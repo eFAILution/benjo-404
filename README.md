@@ -43,9 +43,9 @@ Query overrides, for testing only. Bad values are ignored.
 
 ### Add a game, a theme, or a message
 
-1. Make a folder or file: `src/games/<id>/index.js` exports a game module, `src/themes/<id>/index.js` exports a theme pack, and `src/messages/<id>.js` exports a message. The shapes are in `src/contracts.d.ts`. There is no registry to edit; the build finds them by name.
+1. Make a folder or file: `src/games/<id>/index.js` exports a game module, `src/themes/<id>/index.js` exports a theme pack, and `src/messages/<id>.js` exports a message. The shapes are in `src/contracts.d.ts`. A game also exports a `howTo`: its goal, its key and touch controls, and each thing on the board. The page shows it as a How to play card before the game's first run. There is no registry to edit; the build finds them by name.
 2. Add the id to `games` or `themes` in `benjo.config.json`, or set `message` to it. Every message is bundled, so `?message=<id>` works without a config change. A theme's `holiday` field names a holiday in `src/holidays/calendar.js`; a new holiday also needs an entry there.
-3. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack.
+3. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack. `tests/games/howto.test.js` checks every game's `howTo` and fails if one is missing or a line is too long.
 4. Run `make test`. It fails if the game is over 16 KB or the theme over 4 KB gzipped.
 
 ### Known limitations

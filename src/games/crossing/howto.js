@@ -23,17 +23,17 @@ export const HOW_TO = {
     {
       sprite: { set: 'pickups', index: 1 },
       name: 'Orb',
-      tip: `+${ORB_SCORE} points. Hop onto it as it rides past`,
+      tip: `+${ORB_SCORE} points. Hop onto one as it rides past; each lane has its own look`,
     },
     {
-      swatch: 'muted',
+      swatch: 'ink',
       name: 'Far curb',
       tip: `+${ROW_SCORE} for each new lane and +${GOAL_SCORE} for reaching it`,
     },
     {
-      swatch: 'ink',
+      swatch: 'accent',
       name: 'Timer bar',
-      tip: `${CROSS_T} seconds per crossing. Running out costs a life`,
+      tip: `${CROSS_T} seconds per crossing. It changes color, then costs a life at zero`,
     },
   ],
 };

@@ -20,7 +20,7 @@ export const HOW_TO = {
       tip: `+${PICKUP_SCORE} points. It floats between two gaps`,
     },
     {
-      swatch: 'muted',
+      swatch: 'ink',
       name: 'Ground',
       tip: "Don't touch down. Flap before Benjo falls too low",
     },

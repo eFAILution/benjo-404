@@ -20,7 +20,7 @@ export const HOW_TO = {
       tip: `Land it almost exactly. ${PERFECT_STREAK} in a row make the block wider`,
     },
     {
-      swatch: 'hazard',
+      swatch: 'ink',
       name: 'Overhang',
       tip: 'Cut off and lost, so the next block is narrower',
     },

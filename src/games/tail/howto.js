@@ -21,7 +21,7 @@ export const HOW_TO = {
       tip: "Don't run into it. You can't turn straight back",
     },
     {
-      swatch: 'muted',
+      swatch: 'ink',
       name: 'Wall',
       tip: "The board's edge. Hitting it ends the run",
     },

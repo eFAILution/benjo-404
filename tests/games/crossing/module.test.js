@@ -108,8 +108,8 @@ describe('instance', () => {
   });
 
   test('reaching the goal curb announces the next level', () => {
-    // Seed 6 leaves a gap at every hop when Benjo hops up every 0.2 s.
-    const host = fakeHost({ random: seeded(6) });
+    // Seed 1 leaves a gap at every hop when Benjo hops up every 0.2 s.
+    const host = fakeHost({ random: seeded(1) });
     const game = crossing.create(host);
     game.start();
     play(host, game, 2, hopEvery(0.2));

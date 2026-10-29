@@ -54,10 +54,14 @@ export const LEN_MIN = 1;
 export const LEN_MAX = 3;
 export const GAP_MIN = 2;
 export const GAP_MAX = 4;
-export const ORB_CHANCE = 0.5;
+/** Chance that one gap of a train carries an orb. Each gap rolls on its own (#26). */
+export const ORB_CHANCE = 0.15;
 export const LANE_SPEED_BASE = 60;
+/** Added per speed rank. Each level deals the ranks 1..LANES to the lanes at random. */
 export const LANE_SPEED_STEP = 18;
 export const LEVEL_SPEED = 15;
+/** Each lane's speed is scaled by a random factor in 1 ± this, never past the level's top rank. */
+export const SPEED_JITTER = 0.15;
 export const LANE_SPEED_CAP = 260;
 export const LANE_SPEED_CAP_REDUCED = 200;
 /** A block's hit interval is shrunk by this many cells on each side, so near misses miss. */

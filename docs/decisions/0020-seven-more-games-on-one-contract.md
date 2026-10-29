@@ -30,7 +30,7 @@ Seven games built at once raise questions the first two did not. The games are b
 
 9. **The idle picker is a horizontal wheel** (`src/shell/wheel.js`). The chosen game sits in the middle with an accent border, its neighbors shrink and fade toward both ends, and the list wraps around. Arrow buttons, a sideways swipe, or the Left and Right keys spin it, and a counter such as `06 / 09` shows where you are. It takes one row at every width, so nine games never push Return Home down. Spinning or tapping a neighbor only selects, as ADR-0014 asks. Pressing the game already in the middle plays it, so Space on the focused wheel starts a run the same way the play prompt does. The arrow buttons never take focus, so Space after clicking one still plays.
 
-10. **Every game has sound, and so does the end of a run** (issue #11, A-8.4, A-20.3). `src/shell/audio.js` synthesizes a fixed set of named cues with the Web Audio API, so no audio files ship: `jump`, `shoot`, `land`, `turn`, `score`, `pickup`, `hit`, `clear`, `best`, and `over`. A game plays a cue through the optional `host.audio`, picking one per step from its own world events. The host plays `over` when a run ends, or `best` when it beats a saved best. A theme pack may replace any cue, so Halloween jumps slide down like a ghost and Christmas pickups ring like sleigh bells. The audio context is made on the player's first input. A speaker button next to pause and the M key mute it, and the choice is remembered.
+10. **Every game has sound, and so does the end of a run.** That is issue #11's own decision, recorded in ADR-0011 (#36). This PR is where it was built.
 
 ## Alternatives considered
 

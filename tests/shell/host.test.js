@@ -76,16 +76,14 @@ describe('createHost lifecycle', () => {
     assert.equal(options.storage.getNumber('best', 0), 50);
   });
 
-  it('plays the game over cue, or the new best cue when a saved best is beaten', () => {
+  it('plays the new best cue whenever the best goes up, the first score included', () => {
     const cues = [];
     const { game, host } = setup(undefined, { audio: { play: (cue) => cues.push(cue) } });
-    host.play();
-    game.host.end({ score: 5 });
-    host.play();
-    game.host.end({ score: 9 });
-    host.play();
-    game.host.end({ score: 3 });
-    assert.deepEqual(cues, ['over', 'best', 'over']);
+    for (const score of [0, 5, 9, 3, 9]) {
+      host.play();
+      game.host.end({ score });
+    }
+    assert.deepEqual(cues, ['over', 'best', 'best', 'over', 'over']);
   });
 
   it('passes game cues through until the run ends', () => {

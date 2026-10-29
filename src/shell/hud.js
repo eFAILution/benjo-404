@@ -3,6 +3,7 @@
 
 import { benjoMarkSvg, SVG_NS } from '../assets/benjo.js';
 import { el, text } from './dom.js';
+import { howToBody } from './howto.js';
 import { gameWheel } from './wheel.js';
 
 const PROMPT_ICON_PX = 20;
@@ -61,7 +62,7 @@ function speakerSvg() {
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
  *   onPlay: () => void, onRestart?: () => void, onSelect?: (id: string) => void,
- *   onSwitch?: (id: string) => void, onMute?: () => void }} options
+ *   onSwitch?: (id: string) => void, onMute?: () => void, onHowTo?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -108,17 +109,27 @@ export function createHud(options) {
    * @param {string} titleId
    * @param {Array<Node>} children
    * @param {HTMLElement | null} focusTarget null leaves focus where it is
+   * @param {string} [extraClass] added to the card's class list
    */
-  function showCard(titleId, children, focusTarget) {
+  function showCard(titleId, children, focusTarget, extraClass = '') {
     cardSlot.replaceChildren(
       el(
         'div',
-        { class: 'card', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': titleId },
+        {
+          class: extraClass ? `card ${extraClass}` : 'card',
+          role: 'dialog',
+          'aria-modal': 'false',
+          'aria-labelledby': titleId,
+        },
         children,
       ),
     );
     focusTarget?.focus();
   }
+
+  /** Opens the How to play card, when the shell offers one. */
+  const howToButton = () =>
+    options.onHowTo ? button('How to play', 'btn btn-ghost', options.onHowTo) : null;
 
   /** @param {Element} node */
   function showPrompt(node) {
@@ -185,11 +196,35 @@ export function createHud(options) {
           el('div', { class: 'card-actions' }, [
             resume,
             options.onRestart ? button('Play again', 'btn btn-ghost', options.onRestart) : null,
+            howToButton(),
           ]),
           wheel,
           el('div', { class: 'card-actions' }, [button('Quit', 'btn btn-ghost', options.onQuit)]),
         ].filter((node) => node !== null),
         focus ? resume : null,
+      );
+    },
+    /**
+     * The How to play card. `go` starts or resumes the run; `back` returns to where it opened.
+     * @param {string} name the game's name
+     * @param {import('../contracts').HowTo} howTo
+     * @param {import('../contracts').ThemePack} theme
+     * @param {{ goLabel: string, onGo: () => void, onBack: () => void }} actions
+     */
+    showHowTo(name, howTo, theme, actions) {
+      const go = button(actions.goLabel, 'btn btn-primary', actions.onGo);
+      showCard(
+        'card-title',
+        [
+          el('p', { class: 'card-kicker', id: 'card-title' }, [`How to play ${name}`]),
+          ...howToBody(howTo, theme),
+          el('div', { class: 'card-actions' }, [
+            go,
+            button('Back', 'btn btn-ghost', actions.onBack),
+          ]),
+        ],
+        go,
+        'card-howto',
       );
     },
     /**
@@ -230,8 +265,14 @@ export function createHud(options) {
       node.addEventListener('click', options.onPlay);
       showPrompt(node);
       const { onSelect } = options;
-      if (!picker || !onSelect) return;
-      promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
+      if (picker && onSelect) {
+        promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
+      }
+      const help = howToButton();
+      if (help) {
+        help.className = 'btn btn-ghost btn-small';
+        promptSlot.append(help);
+      }
     },
     showError() {
       showPrompt(

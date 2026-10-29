@@ -111,10 +111,50 @@ export function boot(registry, config, holidays = null) {
   const page = new AbortController();
   const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
 
+  /** Games whose How to play card the visitor has already seen (#28). */
+  const howToSeen = createStorage('howto');
+
+  /** Play, unless this game's How to play card has not been seen yet: show that first. */
   function play() {
+    if (game?.howTo && host?.state === 'idle' && howToSeen.getNumber(game.id, 0) === 0) {
+      openHowTo(false);
+      return;
+    }
+    startRun();
+  }
+
+  function startRun() {
     const active = document.activeElement;
     if (active instanceof HTMLElement && message?.contains(active)) active.blur();
     host?.play();
+  }
+
+  /**
+   * From the start screen the card plays the game; from the paused card it resumes, and Back
+   * returns to the paused card. Either way the game counts as seen.
+   * @param {boolean} paused
+   */
+  function openHowTo(paused) {
+    const current = game;
+    if (!current?.howTo) return;
+    hud.showHowTo(current.name, current.howTo, theme, {
+      goLabel: paused ? 'Resume' : 'Got it, play',
+      onGo: () => {
+        howToSeen.setNumber(current.id, 1);
+        hud.clearCard();
+        if (paused) host?.resume();
+        else startRun();
+      },
+      onBack: () => {
+        if (paused) {
+          // The host's own HUD wrapper, so the paused card gets its game wheel back.
+          hostHud.showPaused({});
+          return;
+        }
+        hud.clearCard();
+        byId('play-prompt')?.focus();
+      },
+    });
   }
 
   const hud = createHud({
@@ -137,6 +177,7 @@ export function boot(registry, config, holidays = null) {
       selectGame(id, true);
     },
     onMute: toggleMute,
+    onHowTo: () => openHowTo(host?.state === 'paused'),
   });
   hud.setMuted(audio.muted);
 

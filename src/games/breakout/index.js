@@ -4,6 +4,7 @@
 
 import { createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import {
   DEATH_PAUSE,
   EVENT_BOUNCE,
@@ -159,6 +160,7 @@ const breakout = {
     keyboard: HINT_KEYS,
     touch: HINT_TOUCH,
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createBreakout,
 };

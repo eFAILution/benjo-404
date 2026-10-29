@@ -4,6 +4,7 @@
 
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import { END_T, EVENT_SOLVED, EVENT_TURN, HINT_T, NEW_BEST_T, SOLVED_T } from './tuning.js';
 import { createWorld, resizeWorld, stepWorld } from './world.js';
 
@@ -142,6 +143,7 @@ const links = {
     keyboard: HINT_KEYS,
     touch: HINT_TOUCH,
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createLinks,
 };

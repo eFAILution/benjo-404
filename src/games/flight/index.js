@@ -6,6 +6,7 @@
 
 import { createTracker, readFlap, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import {
   DEATH_PAUSE,
   EVENT_FLAP,
@@ -152,6 +153,7 @@ const flight = {
     keyboard: 'SPACE OR UP TO FLAP',
     touch: 'TAP TO FLAP',
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createFlight,
 };

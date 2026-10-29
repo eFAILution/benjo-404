@@ -8,6 +8,7 @@
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { createFx, stepFx } from './fx.js';
+import { HOW_TO } from './howto.js';
 import { contentAspect } from './sprite-bounds.js';
 import { DEATH_PAUSE, EVENT_HIT, EVENT_JUMP, EVENT_PICKUP, HINT_T, NEW_BEST_T } from './tuning.js';
 import { cloneWorld, createWorld, resizeWorld, stepWorld } from './world.js';
@@ -159,6 +160,7 @@ const runner = {
     keyboard: 'SPACE OR UP TO JUMP, DOWN TO DUCK',
     touch: 'TAP TO JUMP, SWIPE DOWN TO DUCK',
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createRun,
 };

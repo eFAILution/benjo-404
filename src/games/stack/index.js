@@ -6,6 +6,7 @@
 
 import { createTracker, readDrop, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import {
   DEATH_PAUSE,
   EVENT_LAND,
@@ -156,6 +157,7 @@ const stack = {
     keyboard: 'SPACE OR TAP TO DROP',
     touch: 'TAP TO DROP',
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createStack,
 };

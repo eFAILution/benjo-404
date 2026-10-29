@@ -6,6 +6,7 @@
 
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import {
   DEATH_PAUSE,
   EVENT_FIRE,
@@ -154,6 +155,7 @@ const zapper = {
   id: 'zapper',
   name: 'Bug Zapper',
   controls: { keyboard: KEY_HINT, touch: TOUCH_HINT },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createZapper,
 };

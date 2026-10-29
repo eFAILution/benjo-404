@@ -268,6 +268,11 @@
   gap: 0.75rem;
 }
 
+/* The paused card's wheel stays inside the card's padding on every width. */
+.card .wheel {
+  width: min(30rem, calc(100vw - 2 * var(--pad) - 4rem));
+}
+
 @media (pointer: coarse) {
   .hud-mute,
   .hud-pause {

@@ -254,6 +254,31 @@ describe('createHost loop', () => {
     assert.equal(attract.running, true);
   });
 
+  it('restart from pause destroys the run and starts a fresh one', () => {
+    const { game, host, frames, classes, attract, hud } = setup();
+    host.play();
+    frames.run(0);
+    const firstSignal = game.host.signal;
+    host.pause();
+    host.restart();
+    assert.equal(host.state, 'playing');
+    assert.equal(firstSignal.aborted, true);
+    assert.equal(game.host.signal.aborted, false);
+    assert.deepEqual(game.log.slice(-3), ['destroy', 'create', 'start']);
+    assert.ok(classes.has('is-playing'));
+    assert.ok(!classes.has('is-paused'));
+    assert.equal(attract.running, false);
+    assert.equal(hud.events.at(-4)[0], 'clear');
+    assert.equal(frames.pending, 1);
+  });
+
+  it('restart does nothing while idle', () => {
+    const { game, host } = setup();
+    host.restart();
+    assert.equal(host.state, 'idle');
+    assert.deepEqual(game.log, []);
+  });
+
   it('justPressed is true for exactly one update tick', () => {
     const seen = [];
     const { game, host, frames } = setup({

@@ -162,11 +162,39 @@ export interface HostContext {
 
 // ---------- Game ----------
 
+/** A theme sprite, picked the way the game picks it, so the card matches the holiday art. */
+export type HowToSprite = { set: 'benjo' } | { set: 'hazards' | 'pickups'; index: number };
+
+/** One thing on the board: what it looks like and what to do about it. */
+export interface HowToThing {
+  /** The theme sprite the game draws for it... */
+  sprite?: HowToSprite;
+  /** ...or, for something the game draws as a shape, a square in this palette color. */
+  swatch?: keyof Palette;
+  /** Max 24 chars. */
+  name: string;
+  /** Max 72 chars. */
+  tip: string;
+}
+
+/** Each line pairs an input with what it does: ['Space', 'Whack the center hole']. Max 24 and 48 chars. */
+export type HowToLine = [input: string, action: string];
+
+export interface HowTo {
+  /** What a run is about and how it ends. Max 140 chars. */
+  goal: string;
+  keys: HowToLine[];
+  touch: HowToLine[];
+  things: HowToThing[];
+}
+
 export interface GameModule {
   id: Id;
   name: string;
   /** Short hints for the HUD. Max 40 chars each. */
   controls: { keyboard: string; touch: string };
+  /** The How to play card, shown before a game's first run (#28). Every bundled game has one. */
+  howTo?: HowTo;
   /** Storage key for best score. Host shows it on the game over card. */
   bestKey: string;
   /** Build a fresh instance. Must not start the loop or touch the DOM beyond host.root. */

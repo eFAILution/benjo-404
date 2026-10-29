@@ -118,6 +118,9 @@ export interface GameStorage {
   set(key: string, value: string): boolean;
   getNumber(key: string, fallback: number): number;
   setNumber(key: string, value: number): boolean;
+  /** A yes or no, stored as '1' or '0'. Missing or anything else reads as false. */
+  getFlag(key: string): boolean;
+  setFlag(key: string, on: boolean): boolean;
 }
 
 export interface Size {

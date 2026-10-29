@@ -5,20 +5,19 @@
 // A pointer press fires on its down edge, so a tap feels instant. The host also reports a tap
 // as `primary` when the pointer comes back up; that echo of a press we already used is dropped.
 
-import { TAP_ECHO } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
 /** @typedef {import('./world.js').Intent} Intent */
 /**
  * `armed` is false while the press that started or resumed the run is still held, so holding
  * it does not start auto fire.
- * @typedef {{ pointerDown: boolean, pointerAt: number, armed: boolean }} PointerTracker
+ * @typedef {import('../../shell/press.js').PressTracker & { armed: boolean }} PointerTracker
  */
 
 /** @returns {PointerTracker} */
 export const createTracker = () => ({
-  pointerDown: false,
-  pointerAt: Number.NEGATIVE_INFINITY,
+  ...createPress(),
   armed: true,
 });
 
@@ -32,8 +31,7 @@ export const createIntent = () => ({ move: 0, targetX: null, fire: false, firing
  * @param {InputState} input
  */
 export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
+  resetPress(tracker, input);
   tracker.armed = !(tracker.pointerDown || input.isDown('primary') || input.isDown('up'));
 }
 
@@ -48,11 +46,9 @@ export function resetTracker(tracker, input) {
  */
 export function readIntent(input, tracker, now, intent) {
   const { pointer } = input;
-  const pointerDown = Boolean(pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
-  if (pointerEdge) tracker.pointerAt = now;
-  const echo = !pointerEdge && now - tracker.pointerAt < TAP_ECHO;
+  const pointerEdge = pointerPressed(tracker, input, now);
+  const pointerDown = tracker.pointerDown;
+  const echo = !pointerEdge && isTapEcho(tracker, now);
 
   intent.move = Number(input.isDown('right')) - Number(input.isDown('left'));
   intent.targetX = pointer && pointerDown ? pointer.x : null;

@@ -47,7 +47,7 @@ export const CUES = {
  */
 export function createAudio({ storage, cues = {} }) {
   const table = { ...CUES, ...cues };
-  let muted = storage.get(MUTED_KEY) === '1';
+  let muted = storage.getFlag(MUTED_KEY);
   /** @type {AudioContext | null} */
   let context = null;
   /** @type {GainNode | null} */
@@ -106,7 +106,7 @@ export function createAudio({ storage, cues = {} }) {
     /** @param {boolean} value */
     setMuted(value) {
       muted = value;
-      storage.set(MUTED_KEY, value ? '1' : '0');
+      storage.setFlag(MUTED_KEY, value);
     },
   };
 }

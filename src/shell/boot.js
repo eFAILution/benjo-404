@@ -9,6 +9,7 @@
 /** @typedef {(date: DayDate, themes: Record<string, ThemePack>) => ThemePack | null | undefined} PickTheme */
 
 import { DATE_PATTERN, ID_PATTERN } from './dom.js';
+import { wrap } from './wrap.js';
 
 /**
  * @param {unknown} value
@@ -111,7 +112,7 @@ export function nextGames(games, current, max = OVER_SWITCH_MAX) {
   const count = Math.min(max, games.length - 1);
   return Array.from(
     { length: Math.max(count, 0) },
-    (_, step) => games[(start + 1 + step) % games.length],
+    (_, step) => games[wrap(start + 1 + step, games.length)],
   );
 }
 

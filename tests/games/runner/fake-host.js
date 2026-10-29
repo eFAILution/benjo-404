@@ -98,6 +98,11 @@ export function fakeStorage(initial = {}) {
       map.set(key, String(value));
       return true;
     },
+    getFlag: (key) => map.get(key) === '1',
+    setFlag: (key, on) => {
+      map.set(key, on ? '1' : '0');
+      return true;
+    },
   };
 }
 

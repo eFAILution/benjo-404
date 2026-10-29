@@ -116,7 +116,7 @@ export function boot(registry, config, holidays = null) {
 
   /** Play, unless this game's How to play card has not been seen yet: show that first. */
   function play() {
-    if (game?.howTo && host?.state === 'idle' && howToSeen.getNumber(game.id, 0) === 0) {
+    if (game?.howTo && host?.state === 'idle' && !howToSeen.getFlag(game.id)) {
       openHowTo(false);
       return;
     }
@@ -140,7 +140,7 @@ export function boot(registry, config, holidays = null) {
     hud.showHowTo(current.name, current.howTo, theme, {
       goLabel: paused ? 'Resume' : 'Got it, play',
       onGo: () => {
-        howToSeen.setNumber(current.id, 1);
+        howToSeen.setFlag(current.id, true);
         hud.clearCard();
         if (paused) host?.resume();
         else startRun();

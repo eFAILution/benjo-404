@@ -6,16 +6,17 @@
 // would also turn every swipe toward where the finger first touched. A `primary` with no pointer
 // press just before it is Space or Enter, which do nothing here.
 
-import { DOWN, LEFT, NONE, RIGHT, TAP_ECHO, UP } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
+import { DOWN, LEFT, NONE, RIGHT, UP } from './tuning.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
-/** @typedef {{ pointerDown: boolean, pointerAt: number }} PointerTracker */
+/** @typedef {import('../../shell/press.js').PressTracker} PointerTracker */
 
 /** @type {Record<string, number>} */
 const SWIPES = { right: RIGHT, down: DOWN, left: LEFT, up: UP };
 
 /** @returns {PointerTracker} */
-export const createTracker = () => ({ pointerDown: false, pointerAt: Number.NEGATIVE_INFINITY });
+export const createTracker = createPress;
 
 /**
  * Forget pointer history, treating a pointer that is already down as used.
@@ -23,10 +24,7 @@ export const createTracker = () => ({ pointerDown: false, pointerAt: Number.NEGA
  * @param {PointerTracker} tracker
  * @param {InputState} input
  */
-export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
-}
+export const resetTracker = resetPress;
 
 /** @param {InputState} input */
 function readKeys(input) {
@@ -47,13 +45,10 @@ function readKeys(input) {
  */
 export function readTurn(input, tracker, now, headX, headY) {
   const { pointer } = input;
-  const pointerDown = Boolean(pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
-  if (pointerEdge) tracker.pointerAt = now;
+  pointerPressed(tracker, input, now);
 
   const key = readKeys(input);
-  const tap = input.justPressed('primary') && now - tracker.pointerAt < TAP_ECHO;
+  const tap = input.justPressed('primary') && isTapEcho(tracker, now);
   if (key !== NONE || !tap || !pointer) return key;
   const dx = pointer.x - headX;
   const dy = pointer.y - headY;

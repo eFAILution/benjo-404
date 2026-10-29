@@ -4,6 +4,7 @@
 // position is a data-offset the CSS places, so the shell never writes a style attribute.
 
 import { el, text } from './dom.js';
+import { wrap } from './wrap.js';
 
 /** Neighbors shown on each side of the chosen game. The CSS parks anything farther out. */
 export const WHEEL_REACH = 2;
@@ -18,7 +19,7 @@ const SWIPE_PX = 24;
  */
 export function wheelOffset(index, current, count) {
   const half = Math.floor(count / 2);
-  return ((((index - current + half) % count) + count) % count) - half;
+  return wrap(index - current + half, count) - half;
 }
 
 /**
@@ -28,7 +29,7 @@ export function wheelOffset(index, current, count) {
  * @param {number} count
  */
 export function wheelStep(current, step, count) {
-  return (((current + step) % count) + count) % count;
+  return wrap(current + step, count);
 }
 
 /** @param {number} value */

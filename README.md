@@ -34,7 +34,7 @@ Query overrides, for testing only. Bad values are ignored.
 
 | Query | Effect |
 |-------|--------|
-| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run), `flight` (Benjo Flight), `stack` (Stack the Server), `tail` (Dragon Tail), `breakout` (Break the 404), `crossing` (Code Crossing), `zapper` (Bug Zapper), `whack` (Whack-a-Bug), or `links` (Fix the Link). `?game=none` shows the page with no game. |
+| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run), `flight` (Benjo Flight), `stack` (Stack the Server), `tail` (Dragon Tail), `breakout` (Break the 404), `crossing` (Code Crossing), `zapper` (Bug Zapper), `whack` (Whack-a-Bug), `links` (Fix the Link), or `muncher` (Cache Muncher). `?game=none` shows the page with no game. |
 | `?theme=halloween` | Pick a bundled theme. `?theme=none` forces the default look. |
 | `?date=2026-10-24` | Pretend today is this date (`YYYY-MM-DD`), to preview a holiday. |
 | `?message=short` | Pick a bundled message. |
@@ -55,7 +55,7 @@ Query overrides, for testing only. Bad values are ignored.
 - The game needs Safari 14 or Chrome 90 and up. Older browsers still get the plain message and the Return Home link.
 - Holidays follow the visitor's own clock and a US calendar (A-8.3). Sound starts after the first tap or key press, is on by default, and mutes with the speaker button or M (A-8.4, A-20.3). Phones on silent mode play no sound.
 - The best score lives in the browser's `localStorage`, so a private window or another device starts from zero.
-- The Webflow embed script is above the 50,000 character limit per embed once nine games are bundled; issue #10 splits it. `dist/404.html` is the deploy target until then.
+- The Webflow embed script is above the 50,000 character limit per embed once nine or more games are bundled; issue #10 splits it. `dist/404.html` is the deploy target until then.
 
 ## How we work
 

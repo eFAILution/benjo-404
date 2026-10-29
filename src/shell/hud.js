@@ -1,8 +1,8 @@
 // @ts-check
 // The strip HUD, the paused and game over cards, and the play prompt. Built only with dom.el().
 
-import { benjoMarkSvg, SVG_NS } from '../assets/benjo.js';
-import { el, text } from './dom.js';
+import { benjo } from '../assets/benjo.js';
+import { el, svgIcon, text } from './dom.js';
 import { howToBody } from './howto.js';
 import { gameWheel } from './wheel.js';
 
@@ -44,19 +44,19 @@ const SPEAKER_PATHS = [
 ];
 
 /** A speaker icon. The CSS shows the waves while sound is on and the cross while muted. */
-function speakerSvg() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('focusable', 'false');
-  for (const [className, d] of SPEAKER_PATHS) {
-    const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('class', className);
-    path.setAttribute('d', d);
-    svg.appendChild(path);
-  }
-  return svg;
-}
+const speakerSvg = () =>
+  svgIcon({
+    viewBox: '0 0 24 24',
+    paths: SPEAKER_PATHS.map(([className, d]) => ({ class: className, d })),
+  });
+
+/** The Benjo mark, in the current text color. @param {number} size CSS px */
+const benjoMarkSvg = (size) =>
+  svgIcon({
+    viewBox: benjo.viewBox.join(' '),
+    size,
+    paths: benjo.paths.map(({ d }) => ({ d, fill: 'currentColor' })),
+  });
 
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
@@ -107,7 +107,7 @@ export function createHud(options) {
 
   /**
    * @param {string} titleId
-   * @param {Array<Node>} children
+   * @param {Array<Node | null>} children null entries are skipped, as el() skips them
    * @param {HTMLElement | null} focusTarget null leaves focus where it is
    * @param {string} [extraClass] added to the card's class list
    */
@@ -127,9 +127,12 @@ export function createHud(options) {
     focusTarget?.focus();
   }
 
-  /** Opens the How to play card, when the shell offers one. */
-  const howToButton = () =>
-    options.onHowTo ? button('How to play', 'btn btn-ghost', options.onHowTo) : null;
+  /**
+   * Opens the How to play card, when the shell offers one.
+   * @param {string} [className]
+   */
+  const howToButton = (className = 'btn btn-ghost') =>
+    options.onHowTo ? button('How to play', className, options.onHowTo) : null;
 
   /** @param {Element} node */
   function showPrompt(node) {
@@ -200,18 +203,17 @@ export function createHud(options) {
           ]),
           wheel,
           el('div', { class: 'card-actions' }, [button('Quit', 'btn btn-ghost', options.onQuit)]),
-        ].filter((node) => node !== null),
+        ],
         focus ? resume : null,
       );
     },
     /**
      * The How to play card. `go` starts or resumes the run; `back` returns to where it opened.
-     * @param {string} name the game's name
-     * @param {import('../contracts').HowTo} howTo
+     * @param {{ name: string, howTo: import('../contracts').HowTo }} game
      * @param {import('../contracts').ThemePack} theme
      * @param {{ goLabel: string, onGo: () => void, onBack: () => void }} actions
      */
-    showHowTo(name, howTo, theme, actions) {
+    showHowTo({ name, howTo }, theme, actions) {
       const go = button(actions.goLabel, 'btn btn-primary', actions.onGo);
       showCard(
         'card-title',
@@ -246,7 +248,7 @@ export function createHud(options) {
           el('p', { class: 'card-best' }, [`Best ${pad4(card.best)}`]),
           card.reason ? el('p', { class: 'card-reason' }, [card.reason]) : null,
           el('div', { class: 'card-actions' }, [again, ...switches, homeLink(cta)]),
-        ].filter((node) => node !== null),
+        ],
         again,
       );
     },
@@ -268,11 +270,8 @@ export function createHud(options) {
       if (picker && onSelect) {
         promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
       }
-      const help = howToButton();
-      if (help) {
-        help.className = 'btn btn-ghost btn-small';
-        promptSlot.append(help);
-      }
+      const help = howToButton('btn btn-ghost btn-small');
+      if (help) promptSlot.append(help);
     },
     showError() {
       showPrompt(

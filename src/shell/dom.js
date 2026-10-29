@@ -1,5 +1,8 @@
 // @ts-check
 // The only way the shell builds DOM: createElement, setAttribute on an allowlist, and text nodes.
+// svgIcon() is the same for inline icons, with its own allowlist.
+
+import { SVG_NS } from '../assets/benjo.js';
 
 export const ID_PATTERN = /^[a-z0-9-]{1,32}$/;
 export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -35,6 +38,35 @@ export function el(tag, attrs = {}, children = []) {
     node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
   }
   return node;
+}
+
+const SVG_ATTRIBUTES = new Set(['class', 'viewBox', 'width', 'height', 'd', 'fill', 'focusable']);
+
+/**
+ * An inline SVG icon from path data, the SVG twin of el(): attributes outside its allowlist
+ * throw, and it is always hidden from assistive tech, because the button around it is labelled.
+ * @param {{ viewBox: string, size?: number, paths: Array<{ d: string, class?: string,
+ *   fill?: string }> }} icon
+ * @returns {SVGSVGElement}
+ */
+export function svgIcon({ viewBox, size, paths }) {
+  /** @param {Element} node @param {Record<string, string | undefined>} attrs */
+  const set = (node, attrs) => {
+    for (const [name, value] of Object.entries(attrs)) {
+      if (!SVG_ATTRIBUTES.has(name)) throw new Error(`dom.svgIcon: attribute not allowed: ${name}`);
+      if (value !== undefined) node.setAttribute(name, value);
+    }
+  };
+  const svg = /** @type {SVGSVGElement} */ (document.createElementNS(SVG_NS, 'svg'));
+  const px = size === undefined ? undefined : String(size);
+  set(svg, { viewBox, width: px, height: px, focusable: 'false' });
+  svg.setAttribute('aria-hidden', 'true');
+  for (const path of paths) {
+    const node = document.createElementNS(SVG_NS, 'path');
+    set(node, path);
+    svg.appendChild(node);
+  }
+  return svg;
 }
 
 /**

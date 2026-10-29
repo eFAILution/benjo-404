@@ -6,7 +6,10 @@ import {
   createLane,
   hitAt,
   laneSpeed,
+  orbIn,
+  orbNear,
   rerollLane,
+  shuffledRanks,
 } from '../../../src/games/crossing/lanes.js';
 import {
   CELL_MAX,
@@ -15,13 +18,16 @@ import {
   GOAL_SCORE,
   HIT_T,
   HOP_T,
+  LANE_SPEED_BASE,
   LANE_SPEED_CAP,
   LANE_SPEED_CAP_REDUCED,
   LANES,
   LEN_MAX,
+  ORB_CHANCE,
   ORB_SCORE,
   ROW_SCORE,
   ROWS,
+  SPEED_JITTER,
   START_GRACE,
 } from '../../../src/games/crossing/tuning.js';
 import { createWorld, resizeWorld, stepWorld } from '../../../src/games/crossing/world.js';
@@ -40,7 +46,7 @@ function run(w, seconds) {
 /** Still lanes whose blocks sit two cells away from Benjo's column, with no orbs. */
 function calm(w) {
   for (const lane of w.lanes) {
-    Object.assign(lane, { len: 1, gap: 4, period: 5, speed: 0, orbAt: -1, orbTaken: false });
+    Object.assign(lane, { len: 1, gap: 4, period: 5, speed: 0, orbChance: 0 });
     lane.offset = lane.prevOffset = w.col + 0.5 - 2.5;
   }
   return w;
@@ -119,32 +125,36 @@ describe('score and levels', () => {
     hop(w, 'down');
     hop(w, 'up');
     assert.equal(w.score, 2 * ROW_SCORE, 'a row already scored does not score again');
-    const before = w.lanes.map((lane) => laneSpeed(lane.index, 1, false));
     for (let i = 0; i < 6; i++) hop(w, 'up');
     assert.equal(w.score, LANES * ROW_SCORE + GOAL_SCORE);
     assert.equal(w.level, 2);
     assert.equal(w.row, 0, 'Benjo is back on the start curb');
     assert.equal(w.clock, CROSS_T);
-    for (const [i, lane] of w.lanes.entries()) assert.ok(lane.speed > before[i], `lane ${i + 1}`);
+    for (const lane of w.lanes) assert.equal(lane.taken.size, 0, 'a new level brings orbs back');
   });
 
-  test('collecting an orb scores once', () => {
+  test('collecting an orb scores once and removes only that orb', () => {
     const w = ready();
     const lane = w.lanes[0];
-    lane.orbAt = 2;
-    lane.offset = w.col + 0.5 - 2.5;
+    Object.assign(lane, { seed: 7, orbChance: 1 });
+    // Every car carries an orb; slide car 0's orb under Benjo's column.
+    lane.offset = lane.prevOffset = w.col - orbIn(lane, 0);
     hop(w, 'up');
     assert.equal(w.score, ROW_SCORE + ORB_SCORE);
-    assert.equal(lane.orbTaken, true);
+    assert.deepEqual([...lane.taken], [0]);
+    assert.equal(orbIn(lane, 0), -1);
+    for (const car of [-2, -1, 1, 2]) assert.ok(orbIn(lane, car) >= 0, `car ${car} keeps its orb`);
     hop(w, 'down');
     hop(w, 'up');
     assert.equal(w.score, ROW_SCORE + ORB_SCORE);
     assert.equal(w.orbs, 1);
   });
 
-  test('lane speed grows by lane and level up to the cap, lower with reduced motion', () => {
+  test('lane speed grows by rank and level up to the cap, lower with reduced motion', () => {
     assert.ok(laneSpeed(2, 1, false) > laneSpeed(1, 1, false));
     assert.ok(laneSpeed(1, 2, false) > laneSpeed(1, 1, false));
+    assert.ok(laneSpeed(1, 1, false, 1.1) > laneSpeed(1, 1, false));
+    assert.equal(laneSpeed(LANES, 1, false, 1.1), laneSpeed(LANES, 1, false), 'never past the top');
     assert.equal(laneSpeed(7, 100, false) * CELL_MAX, LANE_SPEED_CAP);
     assert.equal(laneSpeed(7, 100, true) * CELL_MAX, LANE_SPEED_CAP_REDUCED);
     assert.ok(laneSpeed(7, 3, false) <= 4, 'four cells a second or less through level 3');
@@ -170,6 +180,61 @@ describe('lanes', () => {
       for (let c = 0; c < lane.period; c++) if (!blockAt(lane, c + 0.5)) open += 1;
       assert.ok(open >= GAP_MIN - 1, 'at least one open cell per period');
     }
+  });
+
+  test('orbs scatter: each car rolls on its own, inside its gap', () => {
+    const random = seeded(4);
+    const lane = createLane(2);
+    let cars = 0;
+    let orbs = 0;
+    let mixed = 0;
+    for (let i = 0; i < 200; i++) {
+      rerollLane(lane, 1, random, false);
+      let here = 0;
+      for (let k = -10; k < 10; k++) {
+        const at = orbIn(lane, k);
+        if (at < 0) continue;
+        here += 1;
+        assert.ok(at >= lane.len && at < lane.period, 'an orb rides in the gap');
+        assert.ok(!blockAt(lane, lane.offset + k * lane.period + at + 0.5));
+      }
+      cars += 20;
+      orbs += here;
+      if (here > 0 && here < 20) mixed += 1;
+    }
+    assert.ok(Math.abs(orbs / cars - ORB_CHANCE) < 0.03, `orb rate ${orbs / cars}`);
+    assert.ok(mixed > 150, 'most lanes mix cars with and without orbs');
+  });
+
+  test('orbNear names the car within reach', () => {
+    const lane = Object.assign(createLane(1), { len: 2, gap: 3, period: 5, offset: 0 });
+    Object.assign(lane, { seed: 3, orbChance: 1 });
+    const at = orbIn(lane, 4);
+    const x = 4 * lane.period + at + 0.5;
+    assert.equal(orbNear(lane, x), 4);
+    assert.equal(orbNear(lane, x + 0.6), null);
+    lane.taken.add(4);
+    assert.equal(orbNear(lane, x), null);
+  });
+
+  test('each level deals the speed ranks out at random, within the jitter', () => {
+    const slowest = new Set();
+    for (let seed = 1; seed <= 20; seed++) {
+      const random = seeded(seed);
+      const ranks = shuffledRanks(LANES, random);
+      assert.deepEqual(
+        [...ranks].sort((a, b) => a - b),
+        Array.from({ length: LANES }, (_, i) => i + 1),
+      );
+      const w = createWorld(SIZE, seeded(seed));
+      const speeds = w.lanes.map((lane) => lane.speed);
+      slowest.add(speeds.indexOf(Math.min(...speeds)));
+      for (const speed of speeds) {
+        assert.ok(speed * CELL_MAX >= (LANE_SPEED_BASE + 18) * (1 - SPEED_JITTER) - 1e-9);
+        assert.ok(speed <= laneSpeed(LANES, 1, false) + 1e-9, 'never past the top rank');
+      }
+    }
+    assert.ok(slowest.size >= 4, `the slowest lane moves around: ${[...slowest]}`);
   });
 
   test('a block edge inside the hit margin is a near miss', () => {

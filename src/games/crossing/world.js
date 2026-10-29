@@ -5,7 +5,7 @@
 // `bx`/`by` are his drawn center in cells, tweened between hops. Lane offsets are in cells too,
 // so a resize only changes the cell size and the column count.
 
-import { createLane, hitAt, orbNear, rerollLane } from './lanes.js';
+import { createLane, hitAt, orbNear, rerollLane, shuffledRanks } from './lanes.js';
 import {
   BOTTOM_PAD,
   CEILING,
@@ -130,9 +130,12 @@ function toCurb(w) {
   w.topRow = 0;
 }
 
-/** @param {World} w */
+/** New lanes for this level, with the speed ranks dealt out at random. @param {World} w */
 function rerollAll(w) {
-  for (const lane of w.lanes) rerollLane(lane, w.level, w.random, w.reducedMotion);
+  const ranks = shuffledRanks(w.lanes.length, w.random);
+  for (const [i, lane] of w.lanes.entries()) {
+    rerollLane(lane, w.level, w.random, w.reducedMotion, ranks[i]);
+  }
 }
 
 /**
@@ -243,8 +246,9 @@ function checkLane(w) {
     loseLife(w, 'block');
     return;
   }
-  if (!orbNear(lane, x)) return;
-  lane.orbTaken = true;
+  const car = orbNear(lane, x);
+  if (car === null) return;
+  lane.taken.add(car);
   w.orbs += 1;
   w.score += ORB_SCORE;
   w.events |= EVENT_ORB | EVENT_SCORE;

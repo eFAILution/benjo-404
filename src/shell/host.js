@@ -261,11 +261,23 @@ export function createHost(options) {
     backToIdle();
   }
 
+  /** Drop the run and start the same game from zero: the paused card's Play again. */
+  function restart() {
+    if (state === 'idle') return;
+    releaseRun();
+    setClass('is-paused', false);
+    setClass('is-over', false);
+    hud.clearCard();
+    state = 'idle';
+    play();
+  }
+
   return {
     play,
     pause,
     resume,
     quit,
+    restart,
     redraw,
     get state() {
       return state;

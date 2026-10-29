@@ -61,8 +61,8 @@ function speakerSvg() {
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
- *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void,
- *   onMute?: () => void, onHowTo?: () => void }} options
+ *   onPlay: () => void, onRestart?: () => void, onSelect?: (id: string) => void,
+ *   onSwitch?: (id: string) => void, onMute?: () => void, onHowTo?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -170,21 +170,37 @@ export function createHud(options) {
     },
     /**
      * A pause from focus entering the message strip passes focus false, so Tab can carry on to
-     * Return Home instead of being pulled back to Resume.
+     * Return Home instead of being pulled back to Resume. With a picker, the wheel sits between
+     * Play again and Quit; spinning it only chooses, and pressing the middle game starts it.
      * @param {{ focus?: boolean }} [how]
+     * @param {{ games: GameChoice[], current: string } | null} [picker]
      */
-    showPaused({ focus = true } = {}) {
+    showPaused({ focus = true } = {}, picker = null) {
       const resume = button('Resume', 'btn btn-primary', options.onResume);
+      let chosen = picker?.current ?? '';
+      const wheel =
+        picker && options.onSwitch
+          ? gameWheel(
+              picker.games,
+              picker.current,
+              (id) => {
+                chosen = id;
+              },
+              () => options.onSwitch?.(chosen),
+            )
+          : null;
       showCard(
         'card-title',
         [
           el('p', { class: 'card-kicker', id: 'card-title' }, ['Paused']),
           el('div', { class: 'card-actions' }, [
             resume,
+            options.onRestart ? button('Play again', 'btn btn-ghost', options.onRestart) : null,
             howToButton(),
-            button('Quit', 'btn btn-ghost', options.onQuit),
           ]),
-        ],
+          wheel,
+          el('div', { class: 'card-actions' }, [button('Quit', 'btn btn-ghost', options.onQuit)]),
+        ].filter((node) => node !== null),
         focus ? resume : null,
       );
     },

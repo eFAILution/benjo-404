@@ -80,7 +80,7 @@
   margin-left: -0.5rem;
 }
 
-.is-playing .body,
+.is-playing .message-body,
 .is-playing #prompt-slot {
   display: none;
 }

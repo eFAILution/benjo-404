@@ -27,7 +27,6 @@ export const HOW_TO = {
   ],
   powers: {
     twin: 'Takes one hit. Towers pass through Benjo while he blinks',
-    gc: 'Clears every 404 tower on screen',
     magnet: 'Nearby orbs fly to Benjo',
   },
 };

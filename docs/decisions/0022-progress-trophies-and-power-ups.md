@@ -34,7 +34,8 @@ The page has no server and no accounts, holds no personal data (AGENTS.md), and 
 
      | Game | Twin | Rollback | Garbage Collector | Load Balancer |
      |---|---|---|---|---|
-     | runner, flight, crossing, breakout | yes | yes | yes | yes |
+     | runner, crossing, breakout | yes | yes | yes | yes |
+     | flight | yes | yes | no: the owner took it out (#90) | yes |
      | tail | yes | yes | no hazards | yes |
      | zapper | yes | yes | yes | no pickups |
      | stack | yes | yes | no hazards | nothing to pull |

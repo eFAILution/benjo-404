@@ -363,24 +363,6 @@ function pullOrbs(w, dt) {
 }
 
 /**
- * Garbage Collector: remove every tower on screen, each with a pop at its gap. Mutates `w`.
- * @param {World} w
- * @returns {number} how many were removed
- */
-export function clearTowers(w) {
-  const towerW = TOWER_W * w.unit;
-  let cleared = 0;
-  for (let i = 0; i < w.towers.length; i++) {
-    const t = w.towers[i];
-    if (!t.active || t.x - w.scroll >= w.width) continue;
-    t.active = false;
-    cleared += 1;
-    pop(w, t.x + towerW / 2, t.gapY);
-  }
-  return cleared;
-}
-
-/**
  * Advance the world one fixed step. Mutates and returns `w`.
  * @param {World} w
  * @param {boolean} flap the player flapped this step

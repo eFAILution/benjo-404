@@ -69,13 +69,19 @@ export interface ThemePack {
   };
   /** Shown in the HUD status line during attract mode. Max 32 chars. */
   tagline?: string;
-  /** Optional sound overrides, one cue at a time. Missing cues use the shell's defaults. */
-  cues?: Partial<Record<AudioCue, Tone[]>>;
+  /**
+   * Optional sound overrides, one cue at a time, by name: a shared AudioCue or a game's own cue
+   * (GameModule.cues). Missing cues use the game's, then the shell's defaults.
+   */
+  cues?: Partial<Record<string, Tone[]>>;
 }
 
 // ---------- Sound ----------
 
-/** Named sound cues. Games pick the closest one; the host plays 'best' or 'over' at the end. */
+/**
+ * The shared sound cues. Games pick the closest one, or add their own in GameModule.cues; the host
+ * plays 'best' or 'over' at the end.
+ */
 export type AudioCue =
   | 'jump' | 'shoot' | 'land' | 'turn' | 'score' | 'pickup' | 'hit' | 'clear' | 'best' | 'over';
 
@@ -92,6 +98,25 @@ export interface Tone {
   d: number;
   /** Peak gain, 0 to 1. Default 0.3. */
   g?: number;
+}
+
+/** A looping tune (ADR-0076). One step is a sixteenth note. */
+export interface MusicTrack {
+  bpm: number;
+  channels: MusicChannel[];
+}
+
+export interface MusicChannel {
+  /** 'noise' plays a short noise hit, for drums; its note sets a high-pass cutoff. */
+  type: 'sine' | 'square' | 'sawtooth' | 'triangle' | 'noise';
+  /** Peak gain, 0 to 1. */
+  g: number;
+  /**
+   * One character per step. '.' is a rest. '-' holds the previous note one more step.
+   * 'A' is C2 (MIDI 36), each next letter one semitone higher: 'A'..'Z' are MIDI 36..61 and
+   * 'a'..'z' are MIDI 62..87. Each channel loops on its own length.
+   */
+  notes: string;
 }
 
 // ---------- Host (what a game receives) ----------
@@ -159,8 +184,18 @@ export interface HostContext {
   setStatus(text: string): void;
   /** Ask the host to end the run. Host calls instance.destroy() after this. */
   end(result: EndResult): void;
-  /** Optional sound. Silent while muted or before the player's first input. */
-  audio?: { play(cue: AudioCue): void };
+  /**
+   * Optional sound. Silent while muted or before the player's first input. Plays a shared cue or
+   * one of the game's own (GameModule.cues); an unknown name plays nothing. At most 6 tones sound
+   * at once, and a cue replayed within 40 ms is skipped.
+   */
+  audio?: { play(cue: AudioCue | string): void };
+  /**
+   * Optional looping music (ADR-0076), at half the master volume. Playing the track already
+   * playing does nothing; another track switches at once. The host holds it while paused and
+   * stops it when the run ends.
+   */
+  music?: { play(track: MusicTrack): void; stop(): void };
   /** Optional power-ups (#22). Absent in tests and older hosts, so always call with `?.`. */
   power?: PowerPort;
   /**
@@ -265,6 +300,8 @@ export interface GameModule {
   create(host: HostContext): GameInstance;
   /** Game-assisted power-ups this game supports (#22). 'cache' and 'breakpoint' need no entry. */
   powers?: Array<'twin' | 'rollback' | 'gc' | 'magnet'>;
+  /** The game's own named cues (ADR-0076), played through host.audio. A theme may restyle them. */
+  cues?: Record<string, Tone[]>;
 }
 
 // ---------- Registry and config ----------

@@ -7,6 +7,7 @@
 /** @typedef {import('../contracts').EndResult} EndResult */
 /** @typedef {import('../contracts').Size} Size */
 /** @typedef {import('../contracts').ThemePack} ThemePack */
+/** @typedef {import('../contracts').Tone} Tone */
 /** @typedef {import('./input.js').HostInput} HostInput */
 /** @typedef {'idle' | 'playing' | 'paused' | 'over'} HostState */
 /**
@@ -39,6 +40,12 @@
  */
 /** @typedef {{ random?: () => number, nightly?: boolean }} RunOptions */
 /**
+ * The music player (music.js). The host ticks it each frame of a run, holds it while paused, and
+ * stops it when the run ends.
+ * @typedef {{ play(track: import('../contracts').MusicTrack): void, stop(): void,
+ *   hold(on: boolean): void, tick(): void }} HostMusic
+ */
+/**
  * @typedef {object} HostOptions
  * @property {HTMLElement} root
  * @property {HTMLCanvasElement} canvas
@@ -56,7 +63,9 @@
  * @property {{ request(cb: (t: number) => void): number, cancel(id: number): void }} frames
  * @property {(failures: number) => void} [onFailure]
  * @property {(error: unknown) => void} [logError]
- * @property {{ play(cue: import('../contracts').AudioCue): void }} [audio]
+ * @property {{ play(cue: import('../contracts').AudioCue | string,
+ *   gameCues?: Partial<Record<string, Tone[]>>): void }} [audio] gameCues is the game's own cues
+ * @property {HostMusic} [music]
  * @property {(ctx: CanvasRenderingContext2D, sprite: import('../contracts').Sprite, x: number,
  *   y: number, h: number, opts?: object) => void} [drawSprite]
  * @property {(event: RunEvent) => void} [onEvent]
@@ -143,6 +152,7 @@ export function createHost(options) {
 
   function releaseRun() {
     stopLoop();
+    options.music?.stop();
     controller?.abort();
     destroyOnce();
     run?.clear();
@@ -202,7 +212,7 @@ export function createHost(options) {
     setClass('is-over', true);
     hud.setBest(best);
     // Any run that raises the best cheers, a visitor's first score included (#36).
-    options.audio?.play(score > previous ? 'best' : 'over');
+    options.audio?.play(score > previous ? 'best' : 'over', game.cues);
     hud.showOver({
       score,
       best,
@@ -233,6 +243,7 @@ export function createHost(options) {
     if (lastTime === null) lastTime = time;
     const seconds = Math.min(Math.max(time - lastTime, 0) / 1000, MAX_FRAME_SECONDS);
     lastTime = time;
+    options.music?.tick();
     // Power timers run on real time; Breakpoint only slows the game.
     run?.powers.tick(seconds);
     accumulator += run?.powers.isActive('breakpoint') ? seconds / 2 : seconds;
@@ -305,6 +316,7 @@ export function createHost(options) {
     const game = instance;
     stopLoop();
     if (!guard(() => game.pause())) return;
+    options.music?.hold(true);
     state = 'paused';
     setClass('is-paused', true);
     hud.showPaused({ focus });
@@ -317,6 +329,7 @@ export function createHost(options) {
     hud.clearCard();
     state = 'playing';
     if (!guard(() => game.resume())) return;
+    options.music?.hold(false);
     accumulator = 0;
     lastTime = null;
     scheduleLoop();

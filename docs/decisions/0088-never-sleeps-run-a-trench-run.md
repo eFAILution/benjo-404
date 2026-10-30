@@ -6,11 +6,11 @@
 
 ## Context
 
-The owner asked for a new game: Benjo flying the USS Never Sleeps on a trench run, and picked the name Never Sleeps Run (#88). Ten games already share the `GameModule` contract (ADR-0008, ADR-0020). Every game gets a How to play card (ADR-0028) and power-ups (ADR-0022). The ship's 3D model was said to be at demo.beastcore.com, but the public page there loads only a workspace picker with no model in it, so the real ship isn't available yet.
+The owner asked for a new game: Benjo flying the USS Never Sleeps on a trench run, and picked the name Never Sleeps Run (#88). Eleven games already share the `GameModule` contract (ADR-0008, ADR-0020, ADR-0076). Every game gets a How to play card (ADR-0028) and power-ups (ADR-0022). The ship's 3D model was said to be at demo.beastcore.com, but the public page there loads only a workspace picker with no model in it, so the real ship isn't available yet.
 
 ## Decision
 
-Never Sleeps Run lives in `src/games/neversleeps/` with the usual split, plus `ship.js` for the ship's art. It needs no shell or contract change. It is the eleventh entry in `games` and in the save code's `KNOWN_GAMES`.
+Never Sleeps Run lives in `src/games/neversleeps/` with the usual split, plus `ship.js` for the ship's art. It needs no shell or contract change. It is the twelfth entry in `games` and in the save code's `KNOWN_GAMES`, after Benjo Pinball (ADR-0076).
 
 - **A pseudo-3D trench on the 2D canvas.** The trench's cross-section is 2 by 2 units. A point at depth z is drawn at scale `CAM / (z + CAM)` toward the trench's center, so gates grow as they come in. The trench is at most 1.3 times wider than it is tall on screen, so wide screens don't stretch it. Everything in the world is in trench units, which makes a resize just a new layout.
 - **Gates on a 3 x 3 grid.** Each gate blocks some cells, and the open ones form one connected shape. Fewer cells are open as the run goes on: 6 at first, 1 fewer every 12 gates, and at least 2. The trench speeds up from 6 to 10 units per second, or 8 with reduced motion.
@@ -30,6 +30,6 @@ Never Sleeps Run lives in `src/games/neversleeps/` with the usual split, plus `s
 
 ## Consequences
 
-- The page ships eleven games. This one is about 4.8 KB gzipped of its 16 KB budget, and the page is now 84.1 KB of 90 KB, so about 5.9 KB is left for everything else.
+- The page ships twelve games. This one is about 4.8 KB gzipped of its 16 KB budget. With Benjo Pinball, the page is now 98.8 KB of the 110 KB that ADR-0076 set, so about 11 KB is left.
 - A save code from before this game still decodes. The Full Stack trophy now asks for one run of this game too.
 - When the real ship art arrives, only `ship.js` (and maybe `SHIP_ASPECT`) changes.

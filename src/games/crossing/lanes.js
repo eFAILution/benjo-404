@@ -6,6 +6,7 @@
 // The Garbage Collector removes blocks k in cutLo..cutHi, the ones that were on screen, and
 // the train refills from the edge. The magnet nudges an orb along its lane toward Benjo.
 
+import { wrap } from '../../shell/wrap.js';
 import {
   CELL_MAX,
   GAP_MAX,
@@ -41,9 +42,6 @@ import {
  * @property {number} cutLo first removed block index
  * @property {number} cutHi last removed block index; below cutLo means none
  */
-
-/** Positive remainder. @param {number} a @param {number} n */
-export const mod = (a, n) => ((a % n) + n) % n;
 
 /** @param {number} index */
 export const createLane = (index) =>
@@ -129,14 +127,14 @@ const blockIndex = (lane, x, offset) => Math.floor((x - offset) / lane.period);
  * @param {Lane} lane @param {number} x cells from the band's left edge @param {number} [offset]
  */
 export const blockAt = (lane, x, offset = lane.offset) =>
-  mod(x - offset, lane.period) < lane.len && !isCut(lane, blockIndex(lane, x, offset));
+  wrap(x - offset, lane.period) < lane.len && !isCut(lane, blockIndex(lane, x, offset));
 
 /**
  * Does a Benjo centered at `x` get hit? Like blockAt with the block shrunk by HIT_MARGIN.
  * @param {Lane} lane @param {number} x @param {number} [offset]
  */
 export function hitAt(lane, x, offset = lane.offset) {
-  const r = mod(x - offset, lane.period);
+  const r = wrap(x - offset, lane.period);
   return r > HIT_MARGIN && r < lane.len - HIT_MARGIN && !isCut(lane, blockIndex(lane, x, offset));
 }
 

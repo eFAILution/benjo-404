@@ -8,6 +8,7 @@
 // Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, collect()
 // clears the hazards on screen, and snapshot()/restore() copy the run for Rollback.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { createFx, stepFx } from './fx.js';
@@ -81,15 +82,6 @@ function createRun(host) {
   let seenHeight = 0;
   /** @type {Required<Powers>} */
   const powers = { magnet: false, absorb: () => host.power?.absorb() ?? false };
-
-  /** A world copy that shares nothing with `w`. The host's random is a function, so it stays out. @param {World} w */
-  function freeze(w) {
-    const { random: _, ...rest } = w;
-    return structuredClone(rest);
-  }
-
-  /** @param {Omit<World, 'random'>} w @returns {World} */
-  const thaw = (w) => ({ ...structuredClone(w), random: host.random });
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -189,7 +181,7 @@ function createRun(host) {
       if (!current) return null;
       /** @type {Snapshot} */
       const snap = {
-        world: freeze(current),
+        world: freezeWorld(current),
         fx: structuredClone(fx),
         statusT,
         cheered,
@@ -202,7 +194,7 @@ function createRun(host) {
     restore(saved) {
       const snap = /** @type {Snapshot | null} */ (saved);
       if (!snap) return;
-      current = thaw(snap.world);
+      current = thawWorld(snap.world, host.random);
       spare = cloneWorld(current);
       fx = structuredClone(snap.fx);
       statusT = snap.statusT;

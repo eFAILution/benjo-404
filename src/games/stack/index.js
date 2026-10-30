@@ -7,6 +7,7 @@
 // Power-ups (#22): the Digital Twin catches one missed block, Rollback rewinds a toppled stack,
 // and the host's twin and ghost follow Benjo. There are no hazards to collect and nothing to pull.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createTracker, readDrop, resetTracker } from './controls.js';
 import { benjoY, drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -162,16 +163,22 @@ function createStack(host) {
 
     snapshot() {
       if (!world) return null;
-      const { random: _random, ...rest } = world;
       /** @type {Snapshot} */
-      const snap = { world: rest, lastScore, statusT, cheered, seenWidth, seenHeight };
-      return structuredClone(snap);
+      const snap = {
+        world: freezeWorld(world),
+        lastScore,
+        statusT,
+        cheered,
+        seenWidth,
+        seenHeight,
+      };
+      return snap;
     },
 
     restore(value) {
       if (!value) return;
-      const snap = /** @type {Snapshot} */ (structuredClone(value));
-      world = { ...snap.world, random: host.random };
+      const snap = /** @type {Snapshot} */ (value);
+      world = thawWorld(snap.world, host.random);
       ({ lastScore, statusT, cheered, seenWidth, seenHeight } = snap);
       ended = false;
       // The press that died is not a drop in the restored run.

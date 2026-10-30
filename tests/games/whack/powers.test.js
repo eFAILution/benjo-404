@@ -81,7 +81,7 @@ describe('Digital Twin', () => {
     assert.equal(w.combo, 3);
     assert.equal(w.oopsT, 0, 'no shake');
     assert.equal(decoy.sinking, true);
-    assert.ok(w.grace > TWIN_GRACE - 2 * DT);
+    assert.ok(w.graceT > TWIN_GRACE - 2 * DT);
   });
 
   test('the grace forgives more mistakes for free, then they cost again', () => {
@@ -96,7 +96,7 @@ describe('Digital Twin', () => {
     assert.equal(w.combo, 3);
     assert.equal(assist.calls, 1, 'the grace, not a second twin, took them');
     for (let t = 0; t < TWIN_GRACE; t += DT) stepWorld(w, NONE, DT, assist);
-    assert.equal(w.grace, 0);
+    assert.equal(w.graceT, 0);
     place(w, 2, 'decoy');
     stepWorld(w, { hole: 2 }, DT, assist);
     assert.equal(w.score, 30 - DECOY_COST);

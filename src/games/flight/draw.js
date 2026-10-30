@@ -3,6 +3,7 @@
 // alpha blends Benjo's height and the scroll between the last two steps, so motion stays smooth
 // on displays faster than the 60 Hz step.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BRICK_H,
   BRICK_W,
@@ -167,7 +168,7 @@ function drawBenjo(host, w, by) {
   const tilt = w.ready ? 0 : w.vy < 0 ? TILT_UP : (w.vy / (MAX_FALL * w.unit)) * TILT_DOWN;
   const flashOn = w.dead && (w.reducedMotion || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
-  const faint = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / GRACE_BLINK) % 2 === 0);
+  const faint = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
   opts.rotate = tilt;
   opts.alpha = faint ? GRACE_ALPHA : 1;
   hitOpts.tint = host.theme.palette.hazard;

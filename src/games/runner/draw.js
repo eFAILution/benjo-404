@@ -3,6 +3,7 @@
 // `prev` and `cur` are the last two steps; alpha blends between them so motion stays smooth
 // on displays faster than the 60 Hz step.
 
+import { graceFaint } from '../../shell/blink.js';
 import { drawBackdrop, drawGround } from './backdrop.js';
 import { drawFx } from './fx.js';
 import { contentAspect, spriteBounds } from './sprite-bounds.js';
@@ -147,7 +148,7 @@ function drawBenjo(host, w, groundY, by) {
   const tilt = w.grounded ? 0 : clamp((-w.vy / w.jumpV) * TILT_MAX, -TILT_MAX, TILT_MAX);
   const flashOn = w.dead && (still || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
-  const faint = w.graceT > 0 && (still || Math.floor(w.graceT / GRACE_BLINK) % 2 === 0);
+  const faint = graceFaint(w.graceT, GRACE_BLINK, still);
   opts.rotate = tilt;
   opts.alpha = faint ? GRACE_ALPHA : 1;
   hitOpts.tint = host.theme.palette.hazard;

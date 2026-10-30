@@ -7,6 +7,7 @@
 // Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, collect()
 // clears the blocks on the band, and snapshot()/restore() copy the run for Rollback.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createTracker, readHop, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -182,17 +183,15 @@ function createCrossing(host) {
 
     snapshot() {
       if (!world) return null;
-      // The host's random is a function, so it stays out of the copy.
-      const { random: _, ...rest } = world;
       /** @type {Snapshot} */
-      const snap = { world: structuredClone(rest), statusT, cheered, seenWidth, seenHeight };
+      const snap = { world: freezeWorld(world), statusT, cheered, seenWidth, seenHeight };
       return snap;
     },
 
     restore(saved) {
       const snap = /** @type {Snapshot | null} */ (saved);
       if (!snap) return;
-      world = { ...structuredClone(snap.world), random: host.random };
+      world = thawWorld(snap.world, host.random);
       statusT = snap.statusT;
       cheered = snap.cheered;
       seenWidth = snap.seenWidth;

@@ -3,6 +3,7 @@
 // The board reads as lines of code with five slots; bugs rise out of the slots, clipped so
 // they appear to climb out, and Benjo hovers over the last hole he whacked.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BENJO_H,
   BENJO_LIFT,
@@ -143,7 +144,7 @@ function drawBenjo(host, w, time) {
   const hover = Math.max(w.ceiling + base / 2, w.holeY[i] - w.cell * BENJO_LIFT + bob);
   const flashOn = w.oopsT > 0 && (w.reducedMotion || Math.floor(w.oopsT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
-  const blink = w.grace > 0 && (w.reducedMotion || Math.floor(w.grace / FLASH_EVERY) % 2 === 0);
+  const blink = graceFaint(w.graceT, FLASH_EVERY, w.reducedMotion);
   benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   opts.flipX = i === 4;
   hitOpts.tint = host.theme.palette.hazard;

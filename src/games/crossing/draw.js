@@ -2,7 +2,9 @@
 // Renders a Code Crossing world onto the host canvas. Reads the world, never changes it.
 // alpha blends lane offsets and Benjo's hop between the last two steps.
 
-import { isCut, mod, orbX } from './lanes.js';
+import { graceFaint } from '../../shell/blink.js';
+import { wrap } from '../../shell/wrap.js';
+import { isCut, orbX } from './lanes.js';
 import {
   BENJO_H,
   BLOCK_ALPHA,
@@ -129,7 +131,7 @@ function drawBlock(host, w, lane, x0, cy) {
 function drawLane(host, w, lane, blend) {
   const offset = lane.prevOffset + (lane.offset - lane.prevOffset) * blend;
   const cy = w.bandBottom - (lane.index + 0.5) * w.cell;
-  const first = mod(offset, lane.period) - lane.period;
+  const first = wrap(offset, lane.period) - lane.period;
   for (let x0 = first; x0 < w.cols; x0 += lane.period) {
     if (!isCut(lane, Math.round((x0 - offset) / lane.period))) drawBlock(host, w, lane, x0, cy);
   }
@@ -156,7 +158,7 @@ function drawBenjo(host, w, blend) {
   const hurt = w.dead || w.hitT > 0;
   const flashOn = hurt && (w.reducedMotion || Math.floor(w.hitAge / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
-  const faint = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / GRACE_BLINK) % 2 === 0);
+  const faint = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
   opts.alpha = faint ? GRACE_ALPHA : 1;
   opts.flipX = w.facing === 'left';
   opts.rotate = ROTATE[w.facing];

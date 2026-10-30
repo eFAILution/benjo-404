@@ -3,8 +3,8 @@
 // Every segment slides from the cell the one behind it held toward its own cell, so the whole
 // tail glides between moves; alpha blends that slide between the last two steps.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
-  BLINK_EVERY,
   BORDER_ALPHA,
   DOT_ALPHA,
   DOWN,
@@ -13,6 +13,7 @@ import {
   FOOD_PULSE,
   FOOD_PULSE_RATE,
   GRACE_ALPHA,
+  GRACE_BLINK,
   HEAD_H,
   LEFT,
   SEG_ROUND,
@@ -116,7 +117,7 @@ function drawFood(host, w) {
 function drawHead(host, w, p) {
   const x = headX(w, p);
   const y = headY(w, p);
-  const blink = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  const blink = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
   benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   const lost = w.dead && w.hit !== 'full';
   const flashOn = lost && (w.reducedMotion || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);

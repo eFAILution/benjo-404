@@ -2,9 +2,9 @@
 // Renders a Cache Muncher world onto the host canvas. Reads the world, never changes it.
 // alpha blends Benjo and the cache misses between the last two steps.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BENJO_H,
-  BLINK_EVERY,
   BOTTOM_PAD,
   BYTE_ALPHA,
   BYTE_SIZE,
@@ -12,6 +12,7 @@ import {
   FLASH_EVERY,
   FRIGHT_WARN_T,
   GRACE_ALPHA,
+  GRACE_BLINK,
   LIFE_R,
   LIFE_SPACING,
   MISS_H,
@@ -140,7 +141,7 @@ function drawBenjo(host, w, blend) {
   const hurt = w.dead || w.hitT > 0;
   const flashOn = hurt && (w.reducedMotion || Math.floor(w.hitAge / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
-  const faint = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  const faint = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
   benjoOpts.alpha = faint ? GRACE_ALPHA : 1;
   opts.flipX = b.facing === 2;
   opts.rotate = ROTATE[b.facing];

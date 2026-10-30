@@ -88,7 +88,7 @@ import {
  * @property {number} lastHole where Benjo hovers
  * @property {number} stompT
  * @property {number} oopsT time left on the decoy shake
- * @property {number} grace seconds left of the twin's save, while mistakes cost nothing
+ * @property {number} graceT seconds left of the twin's save, while mistakes cost nothing
  * @property {boolean} reducedMotion
  * @property {() => number} random
  * @property {Hole[]} holes
@@ -144,7 +144,7 @@ export function createWorld(size, random, options = {}) {
     lastHole: 0,
     stompT: 0,
     oopsT: 0,
-    grace: 0,
+    graceT: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
     holes: HOLE_COL.map(() => ({
@@ -202,9 +202,9 @@ const NO_ASSIST = {};
  * @param {World} w @param {Assist} assist
  */
 function forgiven(w, assist) {
-  if (w.grace > 0) return true;
+  if (w.graceT > 0) return true;
   if (!assist.absorb?.()) return false;
-  w.grace = TWIN_GRACE;
+  w.graceT = TWIN_GRACE;
   return true;
 }
 
@@ -343,7 +343,7 @@ export function stepWorld(w, intent, dt, assist = NO_ASSIST) {
   w.time += dt;
   w.stompT = Math.max(0, w.stompT - dt);
   w.oopsT = Math.max(0, w.oopsT - dt);
-  w.grace = Math.max(0, w.grace - dt);
+  w.graceT = Math.max(0, w.graceT - dt);
   ageHoles(w, dt, assist);
 
   if (w.dead) {

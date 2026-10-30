@@ -101,8 +101,6 @@ export const HIT_R = 0.6;
 export const READY_T = 1;
 /** Inputs this early in a run are the press that started it. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 
 // Feedback
 /** Hit stop after a lost life, and before the next level. */

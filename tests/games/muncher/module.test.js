@@ -42,10 +42,10 @@ describe('controls', () => {
     const input = fakeInput();
     const tracker = createTracker();
     input.pressed.add('left');
-    assert.equal(readTurn(input, tracker, 0, 0), 2);
+    assert.equal(readTurn(input, tracker, 0, 0, 0), 2);
     input.tick();
     input.pressed.add('primary');
-    assert.equal(readTurn(input, tracker, 0, 0), -1, 'Space does not turn');
+    assert.equal(readTurn(input, tracker, 0, 0, 0), -1, 'Space does not turn');
   });
 
   test('a swipe wins, and a tap turns toward the tapped spot along the longer axis', () => {
@@ -57,11 +57,11 @@ describe('controls', () => {
     const tracker = createTracker();
     resetTracker(tracker, input);
     input.pointer = { x: 50, y: 10, down: true };
-    assert.equal(readTurn(input, tracker, 10, 10), -1, 'a press waits for its release');
+    assert.equal(readTurn(input, tracker, 0, 10, 10), -1, 'a press waits for its release');
     input.pointer = { x: 50, y: 10, down: false };
-    assert.equal(readTurn(input, tracker, 10, 10), 0);
+    assert.equal(readTurn(input, tracker, 0, 10, 10), 0);
     input.swipe = 'up';
-    assert.equal(readTurn(input, tracker, 10, 10), 3);
+    assert.equal(readTurn(input, tracker, 0, 10, 10), 3);
   });
 });
 

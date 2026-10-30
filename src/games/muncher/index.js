@@ -120,7 +120,7 @@ function createMuncher(host) {
   function readIntent(w) {
     const x = screenX(w, w.benjo.x);
     const y = screenY(w, w.benjo.y);
-    intent.dir = readTurn(host.input, tracker, x, y);
+    intent.dir = readTurn(host.input, tracker, w.time, x, y);
     return intent;
   }
 

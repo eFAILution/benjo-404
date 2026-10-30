@@ -11,7 +11,8 @@
     "whack",
     "links",
     "muncher",
-    "pinball"
+    "pinball",
+    "neversleeps"
   ],
   "startGame": "random",
   "gamePicker": true,

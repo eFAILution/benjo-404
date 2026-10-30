@@ -18,6 +18,7 @@ export const KNOWN_GAMES = /** @type {const} */ ([
   'links',
   'muncher',
   'pinball',
+  'neversleeps',
 ]);
 
 /** The progress fields a code carries, in order, after the format number. */

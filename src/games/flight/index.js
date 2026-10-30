@@ -4,8 +4,8 @@
 // The world keeps its own previous Benjo height and scroll, so a single world mutated in place
 // is enough for render(alpha) to interpolate, and nothing in the update path allocates.
 //
-// Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, collect()
-// clears the towers on screen, and snapshot()/restore() copy the run for Rollback.
+// Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, and
+// snapshot()/restore() copy the run for Rollback. There is no Garbage Collector here (#90).
 
 import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createTracker, readFlap, resetTracker } from './controls.js';
@@ -20,7 +20,7 @@ import {
   HINT_T,
   NEW_BEST_T,
 } from './tuning.js';
-import { clearTowers, createWorld, resizeWorld, stepWorld } from './world.js';
+import { createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
@@ -157,10 +157,6 @@ function createFlight(host) {
       world = null;
     },
 
-    collect() {
-      return world ? clearTowers(world) : 0;
-    },
-
     snapshot() {
       if (!world) return null;
       /** @type {Snapshot} */
@@ -195,7 +191,7 @@ const flight = {
   howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createFlight,
-  powers: ['twin', 'rollback', 'gc', 'magnet'],
+  powers: ['twin', 'rollback', 'magnet'],
 };
 
 export default flight;

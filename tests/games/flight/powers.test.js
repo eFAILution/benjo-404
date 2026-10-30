@@ -65,10 +65,8 @@ function flying() {
   return w;
 }
 
-const onScreen = (w) => w.towers.filter((t) => t.active && t.x - w.scroll < w.width);
-
 test('the module lists every game-assisted power', () => {
-  assert.deepEqual(flight.powers, ['twin', 'rollback', 'gc', 'magnet']);
+  assert.deepEqual(flight.powers, ['twin', 'rollback', 'magnet']);
 });
 
 describe('digital twin', () => {
@@ -156,24 +154,9 @@ describe('magnet', () => {
 });
 
 describe('garbage collector', () => {
-  test('clears every tower on screen and returns the count', () => {
-    const host = fakeHost();
-    const game = launch(host);
-    assert.equal(game.collect(), 0, 'no towers yet');
-    while (onScreen(game.snapshot().world).length === 0) play(host, game, 0.35, 0.35);
-    const count = onScreen(game.snapshot().world).length;
-    assert.equal(game.collect(), count);
-    assert.equal(onScreen(game.snapshot().world).length, 0);
-    assert.ok(
-      game.snapshot().world.pops.some((p) => p.active),
-      'leaves a pop at each gap',
-    );
-    assert.equal(game.collect(), 0);
-    play(host, game, 0.5, 0.35);
-  });
-
-  test('returns 0 before start', () => {
-    assert.equal(flight.create(fakeHost()).collect(), 0);
+  test('is not a power in this game (#90)', () => {
+    assert.ok(!flight.powers.includes('gc'));
+    assert.equal(flight.create(fakeHost()).collect, undefined, 'so the host never drops it');
   });
 });
 
@@ -205,7 +188,6 @@ describe('rollback', () => {
     const saved = structuredClone(snap);
     host.input.pressed.add('primary');
     play(host, game, 2, 0.4);
-    game.collect();
     assert.deepEqual(snap, saved);
   });
 });

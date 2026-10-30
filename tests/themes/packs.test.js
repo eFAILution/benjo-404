@@ -52,8 +52,31 @@ const allSprites = (pack) => [
 ];
 
 describe('theme folders', () => {
-  test('ship default, halloween, and christmas', () => {
-    assert.deepEqual(Object.keys(themes).sort(), ['christmas', 'default', 'halloween']);
+  test('ship default and eight holiday packs (#12)', () => {
+    assert.deepEqual(Object.keys(themes).sort(), [
+      'christmas',
+      'default',
+      'easter',
+      'halloween',
+      'independence',
+      'newyear',
+      'stpatricks',
+      'thanksgiving',
+      'valentines',
+    ]);
+  });
+
+  test('benjo.config.json bundles every pack, so auto can pick each one', () => {
+    const config = JSON.parse(
+      readFileSync(new URL('../../benjo.config.json', import.meta.url), 'utf8'),
+    );
+    assert.deepEqual([...config.themes].sort(), Object.keys(themes).sort());
+  });
+
+  test('remembrance days have no pack (A-8.3)', () => {
+    const holidays = new Set(packEntries.map(([, pack]) => pack.holiday));
+    for (const id of ['mlk', 'memorial', 'juneteenth', 'veterans'])
+      assert.ok(!holidays.has(id), id);
   });
 
   test('folder names match pack ids', () => {
@@ -176,15 +199,39 @@ describe('bundled packs with the real calendar', () => {
     assert.equal(on(2026, 7, 20), 'default');
   });
 
-  test('December resolves christmas, early November resolves default', () => {
+  test('December resolves christmas, and the days between holidays resolve default', () => {
     assert.equal(on(2026, 12, 1), 'christmas');
     assert.equal(on(2026, 12, 26), 'christmas');
     assert.equal(on(2026, 11, 30), 'default');
-    assert.equal(on(2026, 11, 26), 'default');
+    assert.equal(on(2026, 11, 5), 'default');
   });
 
-  test('without a newyear pack, late December falls back to default', () => {
-    assert.equal(on(2026, 12, 28), 'default');
-    assert.equal(on(2027, 1, 1), 'default');
+  // Each new pack across its window: the first day, the day itself, the last day, and the day
+  // after (#12).
+  const WINDOWS = [
+    ['newyear', [2026, 12, 27], [2027, 1, 1], [2027, 1, 4], [2027, 1, 5]],
+    ['valentines', [2027, 1, 31], [2027, 2, 14], [2027, 2, 15], [2027, 2, 16]],
+    ['stpatricks', [2027, 3, 7], [2027, 3, 17], [2027, 3, 18], [2027, 3, 19]],
+    ['easter', [2026, 3, 22], [2026, 4, 5], [2026, 4, 6], [2026, 4, 7]],
+    ['independence', [2026, 6, 20], [2026, 7, 4], [2026, 7, 5], [2026, 7, 6]],
+    ['thanksgiving', [2026, 11, 12], [2026, 11, 26], [2026, 11, 27], [2026, 11, 28]],
+  ];
+  for (const [id, first, day, last, after] of WINDOWS) {
+    test(`${id} covers its window and ends after it`, () => {
+      assert.equal(on(...first), id, 'first day');
+      assert.equal(on(...day), id, 'the day itself');
+      assert.equal(on(...last), id, 'last day');
+      assert.notEqual(on(...after), id, 'the day after');
+    });
+  }
+
+  test('Christmas keeps Boxing Day; New Year takes over the day after', () => {
+    assert.equal(on(2026, 12, 26), 'christmas');
+    assert.equal(on(2026, 12, 27), 'newyear');
+  });
+
+  test('Juneteenth and Veterans Day stay on the brand theme', () => {
+    assert.equal(on(2026, 6, 19), 'default');
+    assert.equal(on(2026, 11, 11), 'default');
   });
 });

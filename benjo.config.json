@@ -22,5 +22,15 @@
   "startGame": "random",
   "gamePicker": true,
   "theme": "auto",
-  "themes": ["default", "halloween", "christmas"]
+  "themes": [
+    "default",
+    "newyear",
+    "valentines",
+    "stpatricks",
+    "easter",
+    "independence",
+    "halloween",
+    "thanksgiving",
+    "christmas"
+  ]
 }

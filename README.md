@@ -35,11 +35,29 @@ Query overrides, for testing only. Bad values are ignored.
 | Query | Effect |
 |-------|--------|
 | `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run), `flight` (Benjo Flight), `stack` (Stack the Server), `tail` (Dragon Tail), `breakout` (Break the 404), `crossing` (Code Crossing), `zapper` (Bug Zapper), `whack` (Whack-a-Bug), `links` (Fix the Link), `muncher` (Cache Muncher), `pinball` (Benjo Pinball), `neversleeps` (Never Sleeps Run), `savefile` (Save the File), `tower` (Uptime Tower), `bugbelt` (Bug Belt), or `benjotower` (Tower of Benjo). `?game=none` shows the page with no game. |
-| `?theme=halloween` | Pick a bundled theme. `?theme=none` forces the default look. |
+| `?theme=halloween` | Pick a bundled theme by its id from [Themes](#themes). `?theme=none` forces the default look. |
 | `?date=2026-10-24` | Pretend today is this date (`YYYY-MM-DD`), to preview a holiday. |
 | `?message=short` | Pick a bundled message. |
 | `?rm=1` | Act as if the OS asks for reduced motion. |
 | `?debug=1` | Show a line with the game, theme, date, and frame rate. |
+
+### Themes
+
+With `theme` set to `auto` in `benjo.config.json`, the page picks the theme for the visitor's date. When two windows overlap, the nearest holiday wins. Outside every window it shows the default look. To see a theme on any day, add its trigger to the page URL, for example `dist/404.html?theme=valentines`.
+
+| Theme | Trigger | Shown automatically | Benjo wears | To dodge | To collect |
+|---|---|---|---|---|---|
+| Beast Code (default) | `?theme=default` | Outside every holiday window | Nothing extra | Broken link, missing file | Glowing orb, HUD diamond |
+| New Year's | `?theme=newyear` | Dec 27 to Jan 4 (Dec 26 stays Christmas) | Party hat | Midnight alarm clock, firework rocket | Gold star, party horn |
+| Valentine's Day | `?theme=valentines` | Jan 31 to Feb 15 | Heart headband | Broken heart, stray arrow | Heart, love letter |
+| St. Patrick's Day | `?theme=stpatricks` | Mar 7 to Mar 18 | Green top hat with a gold buckle | Storm cloud, black cat | Shamrock, gold coin |
+| Easter | `?theme=easter` | Two weeks before Easter Sunday to the day after | Bunny ears | Hatching egg, rain cloud | Painted egg, tulip |
+| Independence Day | `?theme=independence` | Jun 20 to Jul 5 | Striped top hat with a star | Firecracker, rocket | Gold star, sparkler |
+| Halloween | `?theme=halloween` | Oct 10 to Nov 1 | Witch hat | Jack-o'-lantern, tombstone, ghost | Wrapped candy, bat |
+| Thanksgiving | `?theme=thanksgiving` | Two weeks before the fourth Thursday of November to the day after | Buckled brown hat | Turkey, acorn | Slice of pie, maple leaf |
+| Christmas | `?theme=christmas` | Dec 1 to Dec 26 | Santa hat | Snowman, stacked presents | Snowflake, candy cane |
+
+Remembrance days (Martin Luther King Jr. Day, Memorial Day, Juneteenth, Veterans Day) keep the default look (A-8.3). The windows are set in `src/holidays/calendar.js`. To check what the page picks on a date, add `?date=`, for example `?date=2026-11-20` for Thanksgiving.
 
 ### Add a game, a theme, or a message
 

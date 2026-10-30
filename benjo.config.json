@@ -12,7 +12,8 @@
     "links",
     "muncher",
     "pinball",
-    "neversleeps"
+    "neversleeps",
+    "savefile"
   ],
   "startGame": "random",
   "gamePicker": true,

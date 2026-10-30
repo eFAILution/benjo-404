@@ -32,10 +32,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm run check
+      # Two paths keep their parent, so the artifact holds embed/ and 404.html side by side.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: embed
-          path: dist/embed/
+          path: |
+            dist/embed/
+            dist/404.html
           if-no-files-found: error
           retention-days: 1
 
@@ -57,10 +60,11 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: embed
-          path: ${{ runner.temp }}/embed
+          path: ${{ runner.temp }}/dist
       - name: Add this build to the gh-pages branch
         env:
-          EMBED_DIR: ${{ runner.temp }}/embed
+          EMBED_DIR: ${{ runner.temp }}/dist/embed
+          PAGE_FILE: ${{ runner.temp }}/dist/404.html
           SITE_DIR: ${{ runner.temp }}/site
         run: |
           owner="${GITHUB_REPOSITORY_OWNER,,}"
@@ -70,7 +74,8 @@ jobs:
           else
             git worktree add --orphan -b gh-pages "${SITE_DIR}"
           fi
-          node build/pages.js --embed "${EMBED_DIR}" --site "${SITE_DIR}" --base "${base_url}"
+          node build/pages.js --embed "${EMBED_DIR}" --page "${PAGE_FILE}" \
+            --site "${SITE_DIR}" --base "${base_url}"
           cd "${SITE_DIR}"
           git add -A
           if git diff --cached --quiet; then

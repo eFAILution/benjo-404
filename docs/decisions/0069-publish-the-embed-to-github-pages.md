@@ -17,8 +17,9 @@ The repo is private on GitHub's Free plan, which cannot serve Pages. Pages needs
 1. `.github/workflows/pages.yml` runs on every push to `main` and on demand. It builds `dist/embed/`, adds it to the `gh-pages` branch, and deploys that branch to GitHub Pages.
 2. `build/pages.js` names each build after the first 12 hex characters of a sha256 over its files, writes it to `<build id>/`, and never touches a folder that exists. `latest.txt` holds the newest id.
 3. Each folder has a `webflow.txt` with the three pieces to paste into Webflow, SRI hashes already filled in.
-4. The workflow splits its jobs by what they can do. The build job installs and runs dependencies with a read-only token and no stored git credentials. The publish job can push to `gh-pages` but installs nothing. The deploy job holds the Pages and OIDC (identity token) permissions only. Every action is pinned to a commit SHA, and Dependabot already updates them.
-5. The workflow is a deploy, not a check. Tests stay in the local hooks, and ADR-0006 stands.
+4. The site root also gets the latest `dist/404.html` as `index.html` and `404.html` (#72). The Pages address shows the page, and any wrong path on the Pages site gets it too. Only the build folders are kept; the root page always follows the newest build.
+5. The workflow splits its jobs by what they can do. The build job installs and runs dependencies with a read-only token and no stored git credentials. The publish job can push to `gh-pages` but installs nothing. The deploy job holds the Pages and OIDC (identity token) permissions only. Every action is pinned to a commit SHA, and Dependabot already updates them.
+6. The workflow is a deploy, not a check. Tests stay in the local hooks, and ADR-0006 stands.
 
 ## Alternatives considered
 

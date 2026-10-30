@@ -124,6 +124,28 @@ describe('publish', () => {
     assert.deepEqual((await readdir(siteDir)).sort(), [first.id, second.id, 'latest.txt'].sort());
   });
 
+  it('puts the full page at the site root, as the home page and the 404 page', async () => {
+    const pagePath = join(root, '404.html');
+    await writeFile(pagePath, '<!doctype html><title>404</title>\n');
+    await publish({ embedDir, siteDir, baseUrl: BASE, pagePath });
+    for (const name of ['index.html', '404.html']) {
+      assert.equal(
+        await readFile(join(siteDir, name), 'utf8'),
+        '<!doctype html><title>404</title>\n',
+      );
+    }
+  });
+
+  it('updates the root page even when the build folder already exists', async () => {
+    const pagePath = join(root, '404.html');
+    await writeFile(pagePath, 'first\n');
+    await publish({ embedDir, siteDir, baseUrl: BASE, pagePath });
+    await writeFile(pagePath, 'second\n');
+    const again = await publish({ embedDir, siteDir, baseUrl: BASE, pagePath });
+    assert.equal(again.created, false);
+    assert.equal(await readFile(join(siteDir, 'index.html'), 'utf8'), 'second\n');
+  });
+
   it('fails when a required embed file is missing', async () => {
     await rm(join(embedDir, 'benjo-404.css'));
     await assert.rejects(publish({ embedDir, siteDir, baseUrl: BASE }), /benjo-404\.css/);

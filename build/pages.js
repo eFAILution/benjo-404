@@ -88,15 +88,23 @@ async function readEmbed(embedDir) {
 
 /**
  * Add this build to the site as <id>/ and point latest.txt at it. An existing <id>/ is left alone.
- * @param {{ embedDir: string, siteDir: string, baseUrl: string }} options
+ * With a pagePath, the full single-file page becomes the site's index.html and 404.html, so the
+ * site itself shows the latest build and any wrong path on it gets the 404 page.
+ * @param {{ embedDir: string, siteDir: string, baseUrl: string, pagePath?: string }} options
  * @returns {Promise<{ id: string, created: boolean }>}
  */
-export async function publish({ embedDir, siteDir, baseUrl }) {
+export async function publish({ embedDir, siteDir, baseUrl, pagePath }) {
   checkBaseUrl(baseUrl);
   const files = await readEmbed(embedDir);
   const id = releaseId(files);
   const folder = join(siteDir, id);
   await writeFile(join(siteDir, 'latest.txt'), `${id}\n`);
+  if (pagePath) {
+    const page = await readFile(pagePath);
+    await Promise.all(
+      ['index.html', '404.html'].map((name) => writeFile(join(siteDir, name), page)),
+    );
+  }
   if (existsSync(folder)) return { id, created: false };
 
   const bytes = Object.fromEntries(files.map((file) => [file.name, file.bytes]));
@@ -126,13 +134,21 @@ if (invokedDirectly) {
       embed: { type: 'string', default: fileURLToPath(new URL('../dist/embed', import.meta.url)) },
       site: { type: 'string' },
       base: { type: 'string' },
+      page: { type: 'string' },
     },
   });
   if (!values.site || !values.base) {
-    console.error('usage: node build/pages.js --site <dir> --base <https url> [--embed <dir>]');
+    console.error(
+      'usage: node build/pages.js --site <dir> --base <https url> [--embed <dir>] [--page <file>]',
+    );
     process.exitCode = 2;
   } else {
-    publish({ embedDir: values.embed, siteDir: values.site, baseUrl: values.base })
+    publish({
+      embedDir: values.embed,
+      siteDir: values.site,
+      baseUrl: values.base,
+      pagePath: values.page,
+    })
       .then(({ id, created }) => {
         console.log(`[pages] ${created ? 'added' : 'already have'} ${id}`);
       })

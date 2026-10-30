@@ -61,6 +61,8 @@ GitHub Pages hosts the files (ADR-0069). Every merge to `main` runs `.github/wor
 
 One-time setup: the repo needs GitHub Pro or public visibility, then Settings, Pages, Source: **GitHub Actions**. Run the workflow once from the Actions tab if nothing has merged since.
 
+To see the newest build before you touch Webflow, open `https://efailution.github.io/benjo-404/`. It shows the full single-file page, and its Return Home link goes to the github.io root, not to beast-code.com.
+
 1. Find the build: `https://efailution.github.io/benjo-404/latest.txt` holds the newest build id. Open `https://efailution.github.io/benjo-404/<build id>/webflow.txt`.
 2. `webflow.txt` has three pieces, each with its SRI hash (a fingerprint the browser checks) already filled in. Paste piece 1 into the Webflow 404 page settings, Inside `<head>` tag.
 3. Paste piece 2 into the same settings, Before `</body>` tag.

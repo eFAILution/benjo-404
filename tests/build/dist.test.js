@@ -35,6 +35,10 @@ describe('real build output', () => {
     assert.deepEqual(problems, []);
   });
 
+  it('links Return Home to beast-code.com (#98)', () => {
+    assert.equal(readCtaHref(html), 'https://beast-code.com/');
+  });
+
   it('has no template tokens left', () => {
     assert.ok(!html.includes('{{'));
   });

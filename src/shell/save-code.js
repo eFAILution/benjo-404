@@ -21,6 +21,7 @@ export const KNOWN_GAMES = /** @type {const} */ ([
   'neversleeps',
   'savefile',
   'tower',
+  'bugbelt',
   'benjotower',
 ]);
 

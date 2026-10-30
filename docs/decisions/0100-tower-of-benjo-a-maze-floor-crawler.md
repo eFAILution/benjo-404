@@ -6,11 +6,11 @@
 
 ## Context
 
-The owner asked for a game like the classic maze-floor tower crawler, with Benjo as the hero (#100). Fourteen games already share the `GameModule` contract. The page was at 105.2 KB of its 110 KB gzip budget before this game, and the owner asked not to let the budget hold the game back.
+The owner asked for a game like the classic maze-floor tower crawler, with Benjo as the hero (#100). Fifteen games already share the `GameModule` contract, the last being Bug Belt (ADR-0094). ADR-0101 raised the page budget to 150 KB gzipped while this was in review.
 
 ## Decision
 
-Tower of Benjo lives in `src/games/benjotower/` with the usual split, plus `maze.js` for the floors. It needs no shell or contract change. It is the fifteenth entry in `games` and in the save code's `KNOWN_GAMES`. It uses no names, characters, or art from the original game.
+Tower of Benjo lives in `src/games/benjotower/` with the usual split, plus `maze.js` for the floors. It needs no shell or contract change. It is the sixteenth entry in `games` and in the save code's `KNOWN_GAMES`, after Bug Belt. It uses no names, characters, or art from the original game.
 
 - **Each floor is an 11 x 9 maze.** It is carved as a perfect maze by a random depth-first walk, and then 14 walls are knocked out so there are ways round. The key sits at least 60% of the way to the farthest cell from the start. The door goes at the cell farthest from both the start and the key.
 - **Grid movement.** Benjo and the walking enemies move from cell middle to cell middle, at cells per second, and turn only at middles. They can turn straight back at once.
@@ -39,10 +39,9 @@ Tower of Benjo lives in `src/games/benjotower/` with the usual split, plus `maze
 
 - **A sword drawn only with a button, as in the original.** It is truer to it, but two buttons on touch are hard. A sword that always points the way Benjo faces keeps the duel of facing an enemy with one control.
 - **Fixed hand-made floors.** They are learnable, but each takes bytes, and a fresh maze per floor gives endless floors for a few hundred bytes of code.
-- **Raising the page budget to 120 KB.** It was prepared, but the page came out at 109.0 KB of 110, so the budget stays.
 
 ## Consequences
 
-- The page ships fifteen games. This one is about 5.5 KB gzipped on its own, and the page is now 109.0 KB of 110 KB, with less than 1 KB left. The next game, or any sizable fix, needs the budget raised or a game moved out.
+- The page ships sixteen games. This one is about 5.5 KB gzipped on its own, and with Bug Belt the page is now 113.4 KB of the 150 KB that ADR-0101 set.
 - The fairness test takes about 10 s, because of the lookahead.
 - Changing the maze size, speeds, the roster, or the sword's angle must keep the autopilot clearing three floors (A-100.1).

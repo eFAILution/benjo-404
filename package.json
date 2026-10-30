@@ -1,6 +1,7 @@
 {
   "name": "benjo-404",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "engines": {
     "node": ">=22",

@@ -27,7 +27,13 @@ lint: scripts-lint ## Run every linter (shellcheck, Biome, tsc --noEmit)
 
 .PHONY: test
 test: ## Run every test suite, then build dist/ and check it (budgets, CSP hashes, content)
-	pnpm run test
+	@# Node's runner exits 0 when its glob matches nothing, which is how #32 passed on Windows with
+	@# no tests run. The summary line is "ℹ tests N" (or "# tests N" from the TAP reporter).
+	@log="$$(mktemp)"; trap 'rm -f "$${log}"' EXIT; \
+	pnpm run test 2>&1 | tee "$${log}"; \
+	if ! grep -Eq '^(ℹ|#) tests [1-9]' "$${log}"; then \
+	  echo "::error::the test run found no tests; check the glob in package.json (#53)"; exit 1; \
+	fi
 	pnpm run build
 	pnpm run check
 

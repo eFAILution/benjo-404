@@ -21,6 +21,7 @@ export const KNOWN_GAMES = /** @type {const} */ ([
   'neversleeps',
   'savefile',
   'tower',
+  'benjotower',
 ]);
 
 /** The progress fields a code carries, in order, after the format number. */

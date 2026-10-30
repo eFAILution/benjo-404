@@ -14,7 +14,8 @@
     "pinball",
     "neversleeps",
     "savefile",
-    "tower"
+    "tower",
+    "benjotower"
   ],
   "startGame": "random",
   "gamePicker": true,

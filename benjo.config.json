@@ -16,7 +16,8 @@
     "savefile",
     "tower",
     "bugbelt",
-    "benjotower"
+    "benjotower",
+    "memleak"
   ],
   "startGame": "random",
   "gamePicker": true,

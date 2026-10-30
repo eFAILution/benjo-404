@@ -52,7 +52,8 @@ function playCue(host, events) {
 }
 
 const BEST_KEY = 'best';
-const HINT = 'SPACE OR TAP TO FLAP';
+const HINT_KEYS = 'SPACE TO FLAP';
+const HINT_TOUCH = 'TAP TO FLAP';
 const NEW_BEST = 'NEW BEST';
 const SCORE_LABEL = 'SCORE';
 const REASON_TOWER = 'Benjo clipped a 404 tower.';
@@ -120,7 +121,7 @@ function createFlight(host) {
       resetTracker(tracker, host.input);
       lastScore = 0;
       host.setScore(0);
-      showStatus(HINT, HINT_T);
+      showStatus(host.input.touch ? HINT_TOUCH : HINT_KEYS, HINT_T);
     },
 
     update(dt) {

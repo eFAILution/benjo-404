@@ -20,8 +20,10 @@ import { createAttract } from './attract.js';
 import { createAudio } from './audio.js';
 import { formatDay, nextGames, resolve } from './boot.js';
 import { createDebugMeter } from './debug-meter.js';
+import { watchDevice } from './device.js';
 import { byId, readQuery, text } from './dom.js';
 import { createHost } from './host.js';
+import { cardPowers } from './howto.js';
 import { createHud } from './hud.js';
 import { attachInput } from './input.js';
 import { createProgressWiring } from './progress-wiring.js';
@@ -120,6 +122,8 @@ export function boot(registry, config, holidays = null) {
   let host = null;
   const page = new AbortController();
   const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
+  /** Touch or keys, so the How to play card and the first hint show only the visitor's controls. */
+  const device = watchDevice(window, page.signal);
 
   /** Games whose How to play card the visitor has already seen (#28). */
   const howToSeen = createStorage('howto');
@@ -153,7 +157,8 @@ export function boot(registry, config, holidays = null) {
     const current = game;
     const howTo = current?.howTo;
     if (!current || !howTo) return;
-    hud.showHowTo({ name: current.name, howTo }, theme, {
+    const shown = { touch: device.touch, powers: cardPowers(current.powers) };
+    hud.showHowTo({ name: current.name, howTo }, theme, shown, {
       goLabel: paused ? 'Resume' : 'Got it, play',
       onGo: () => {
         howToSeen.setFlag(current.id, true);
@@ -276,7 +281,13 @@ export function boot(registry, config, holidays = null) {
         syncMeter();
       },
       createInput: (signal) =>
-        attachInput({ canvas, signal, pauseButton: hud.pauseButton, onPause: () => host?.pause() }),
+        attachInput({
+          canvas,
+          signal,
+          pauseButton: hud.pauseButton,
+          onPause: () => host?.pause(),
+          touch: device.touch,
+        }),
       drawSprite: progress.drawSprite,
       onEvent: progress.onEvent,
       onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),

@@ -1,7 +1,14 @@
 // @ts-check
 // Cache Muncher's How to play card (#28): the goal, the controls, and what each thing on the board does.
 
-import { BYTE_SCORE, LIVES, MISS_SCORE, MISS_SCORE_MAX, PELLET_SCORE } from './tuning.js';
+import {
+  BYTE_SCORE,
+  LIVES,
+  MAGNET_CELLS,
+  MISS_SCORE,
+  MISS_SCORE_MAX,
+  PELLET_SCORE,
+} from './tuning.js';
 
 /** @type {import('../../contracts').HowTo} */
 export const HOW_TO = {
@@ -33,4 +40,9 @@ export const HOW_TO = {
       tip: `Munch it: ${MISS_SCORE}, then double, up to ${MISS_SCORE_MAX}. It flashes before it turns back`,
     },
   ],
+  powers: {
+    twin: 'Takes one touch, so no life is lost. Misses pass through while he blinks',
+    gc: 'Sends every cache miss home, for no points',
+    magnet: `Pulls in bytes up to ${MAGNET_CELLS} cells away along the paths`,
+  },
 };

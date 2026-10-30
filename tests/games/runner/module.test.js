@@ -59,9 +59,16 @@ describe('instance', () => {
     const host = fakeHost();
     const game = runner.create(host);
     game.start();
-    assert.equal(host.log.statuses[0], 'SPACE OR TAP TO JUMP');
+    assert.equal(host.log.statuses[0], 'SPACE TO JUMP');
     play(host, game, 3.2);
     assert.equal(host.log.statuses.at(-1), '');
+  });
+
+  test('shows the touch hint on a touch device (#64)', () => {
+    const host = fakeHost();
+    host.input.touch = true;
+    runner.create(host).start();
+    assert.equal(host.log.statuses[0], 'TAP TO JUMP');
   });
 
   test('a run with no input ends once, with the spec result', () => {

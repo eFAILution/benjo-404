@@ -8,7 +8,7 @@ import { createWorld, stepWorld, topBlock } from '../../../src/games/stack/world
 import { DT, fakeHost, fakeInput, seeded } from '../runner/fake-host.js';
 
 const METHODS = ['start', 'update', 'render', 'pause', 'resume', 'destroy'];
-const HINT = 'SPACE OR TAP TO DROP';
+const HINT = 'SPACE TO DROP';
 const REASON = 'The server stack toppled over.';
 
 /** Run the instance like the host loop: update then render, rolling input each tick. */

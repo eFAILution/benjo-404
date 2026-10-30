@@ -55,7 +55,8 @@ function playCue(host, events) {
 }
 
 const BEST_KEY = 'best';
-const HINT = 'SPACE OR TAP TO JUMP';
+const HINT_KEYS = 'SPACE TO JUMP';
+const HINT_TOUCH = 'TAP TO JUMP';
 const NEW_BEST = 'NEW BEST';
 const SCORE_LABEL = 'DISTANCE';
 const REASON = 'Benjo hit a broken link.';
@@ -132,7 +133,7 @@ function createRun(host) {
       resetTracker(tracker, host.input);
       lastScore = 0;
       host.setScore(0);
-      showStatus(HINT, HINT_T);
+      showStatus(host.input.touch ? HINT_TOUCH : HINT_KEYS, HINT_T);
     },
 
     update(dt) {

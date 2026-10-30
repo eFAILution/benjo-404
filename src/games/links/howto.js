@@ -1,7 +1,7 @@
 // @ts-check
 // Fix the Link's How to play card (#28): the goal, the controls, and what each thing on the board does.
 
-import { CLOCK_CAP, SOLVE_BONUS_T } from './tuning.js';
+import { CLOCK_CAP, GC_FIX, SOLVE_BONUS_T, TWIN_CLOCK } from './tuning.js';
 
 /** @type {import('../../contracts').HowTo} */
 export const HOW_TO = {
@@ -28,4 +28,9 @@ export const HOW_TO = {
       tip: "Some tile arms lead nowhere. You don't need every arm",
     },
   ],
+  powers: {
+    twin: `When time runs out, puts ${TWIN_CLOCK} seconds back on the clock`,
+    rollback: "Can't be fired. If time runs out while it waits, rewinds 3 seconds",
+    gc: `Turns up to ${GC_FIX} wrong tiles the right way, nearest Benjo first`,
+  },
 };

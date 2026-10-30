@@ -162,10 +162,12 @@ export function applyKey(input, { type, code, repeat }) {
 /**
  * Wire DOM events into an input state. All listeners use the signal, so abort() removes them.
  * @param {{ canvas: HTMLCanvasElement, signal: AbortSignal, pauseButton?: Element | null,
- *   onPause?: () => void }} options
+ *   onPause?: () => void, touch?: boolean }} options `touch` is the starting guess (#64), until
+ *   the first input says otherwise
  */
-export function attachInput({ canvas, signal, pauseButton = null, onPause }) {
+export function attachInput({ canvas, signal, pauseButton = null, onPause, touch = false }) {
   const input = createInputState();
+  input.setTouch(touch);
   /** @type {{ x: number, y: number, t: number, id: number } | null} */
   let gesture = null;
 

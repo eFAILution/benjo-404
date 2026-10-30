@@ -60,11 +60,18 @@ describe('instance', () => {
     const host = fakeHost();
     const game = flight.create(host);
     game.start();
-    assert.equal(host.log.statuses[0], 'SPACE OR TAP TO FLAP');
+    assert.equal(host.log.statuses[0], 'SPACE TO FLAP');
     play(host, game, 5);
     assert.equal(host.log.statuses.length, 1, 'still waiting for the first flap');
     play(host, game, 3.5, flapEvery(0.3));
     assert.equal(host.log.statuses.at(-1), '');
+  });
+
+  test('shows the touch hint on a touch device (#64)', () => {
+    const host = fakeHost();
+    host.input.touch = true;
+    flight.create(host).start();
+    assert.equal(host.log.statuses[0], 'TAP TO FLAP');
   });
 
   test('a run that never flaps waits instead of ending', () => {

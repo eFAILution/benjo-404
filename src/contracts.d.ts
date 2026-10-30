@@ -245,6 +245,11 @@ export interface HowTo {
   keys: HowToLine[];
   touch: HowToLine[];
   things: HowToThing[];
+  /**
+   * What each power-up in GameModule.powers does in this game (#64), like 'Clears every tower
+   * on screen'. Max 72 chars. The shell words the rest, and any power left out here.
+   */
+  powers?: Partial<Record<PowerId, string>>;
 }
 
 export interface GameModule {

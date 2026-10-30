@@ -28,4 +28,9 @@ export const HOW_TO = {
       tip: 'Whacking an empty hole resets the combo',
     },
   ],
+  powers: {
+    twin: 'Takes one mistake. Mistakes cost nothing for a moment after',
+    gc: "Squashes every bug that's up. Features stay",
+    magnet: 'Bugs pop up next to Benjo and features keep away',
+  },
 };

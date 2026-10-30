@@ -508,18 +508,23 @@ html:not(.is-playing) #card-slot:not(:empty) {
   line-height: 1.5;
 }
 
-.howto-columns {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.75rem 2rem;
+/* Controls for the visitor's device, and the power-ups (#64), each under a small label. */
+.howto-section {
+  display: grid;
+  gap: 0.375rem;
   width: 100%;
   max-width: 34rem;
   text-align: left;
 }
 
+.howto-fire {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .howto-label {
-  margin: 0 0 0.375rem;
+  margin: 0;
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 0.625rem;
@@ -567,6 +572,20 @@ html:not(.is-playing) #card-slot:not(:empty) {
   flex: none;
   width: 32px;
   height: 32px;
+}
+
+/* The power-up's HUD badge, drawn like the slot that holds it. */
+.howto-badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 32px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 
 .howto-thing-text {

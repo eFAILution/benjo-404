@@ -25,4 +25,7 @@ export const HOW_TO = {
       tip: 'Cut off and lost, so the next block is narrower',
     },
   ],
+  powers: {
+    twin: 'Saves one missed drop, then the next block waits a moment',
+  },
 };

@@ -1,8 +1,10 @@
 // @ts-check
 // The strip HUD, the paused and game over cards, and the play prompt. Built only with dom.el().
 
-import { benjoMarkSvg } from '../assets/benjo.js';
+import { benjoMarkSvg, SVG_NS } from '../assets/benjo.js';
 import { el, text } from './dom.js';
+import { howToBody } from './howto.js';
+import { gameWheel } from './wheel.js';
 
 const PROMPT_ICON_PX = 20;
 
@@ -33,35 +35,34 @@ function homeLink(cta) {
   return link;
 }
 
-/** @typedef {{ id: string, name: string }} GameChoice */
+/** @typedef {import('./wheel.js').GameChoice} GameChoice */
 
-/**
- * The idle picker: one toggle button per game, with the current one pressed. Picking a game
- * only selects it; the play prompt starts it.
- * @param {GameChoice[]} games
- * @param {string} current
- * @param {(id: string) => void} onSelect
- */
-function gamePicker(games, current, onSelect) {
-  const buttons = games.map((game) => {
-    const node = el(
-      'button',
-      { type: 'button', class: 'picker-option', 'aria-pressed': String(game.id === current) },
-      [game.name],
-    );
-    node.addEventListener('click', () => {
-      for (const other of buttons) other.setAttribute('aria-pressed', String(other === node));
-      onSelect(game.id);
-    });
-    return node;
-  });
-  return el('div', { class: 'picker', role: 'group', 'aria-label': 'Choose a game' }, buttons);
+const SPEAKER_PATHS = [
+  ['hud-mute-body', 'M4 9h4l5-4v14l-5-4H4z'],
+  ['hud-mute-wave', 'M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11'],
+  ['hud-mute-cross', 'M16 9l5 6M21 9l-5 6'],
+];
+
+/** A speaker icon. The CSS shows the waves while sound is on and the cross while muted. */
+function speakerSvg() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  for (const [className, d] of SPEAKER_PATHS) {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('class', className);
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+  }
+  return svg;
 }
 
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
- *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void }} options
+ *   onPlay: () => void, onRestart?: () => void, onSelect?: (id: string) => void,
+ *   onSwitch?: (id: string) => void, onMute?: () => void, onHowTo?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -79,6 +80,14 @@ export function createHud(options) {
     ],
   );
   pauseButton.addEventListener('click', options.onPause);
+  const muteButton = el(
+    'button',
+    { type: 'button', class: 'hud-mute', 'aria-label': 'Mute sound', 'aria-pressed': 'false' },
+    [speakerSvg()],
+  );
+  // A click never takes focus, so Space and the arrows keep going to the game.
+  muteButton.addEventListener('pointerdown', (event) => event.preventDefault());
+  muteButton.addEventListener('click', () => options.onMute?.());
   hudRoot.append(
     status,
     debugLine,
@@ -87,6 +96,7 @@ export function createHud(options) {
       scoreValue,
       el('span', { class: 'hud-label' }, ['Best']),
       bestValue,
+      options.onMute ? muteButton : null,
       pauseButton,
     ]),
   );
@@ -99,17 +109,27 @@ export function createHud(options) {
    * @param {string} titleId
    * @param {Array<Node>} children
    * @param {HTMLElement | null} focusTarget null leaves focus where it is
+   * @param {string} [extraClass] added to the card's class list
    */
-  function showCard(titleId, children, focusTarget) {
+  function showCard(titleId, children, focusTarget, extraClass = '') {
     cardSlot.replaceChildren(
       el(
         'div',
-        { class: 'card', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': titleId },
+        {
+          class: extraClass ? `card ${extraClass}` : 'card',
+          role: 'dialog',
+          'aria-modal': 'false',
+          'aria-labelledby': titleId,
+        },
         children,
       ),
     );
     focusTarget?.focus();
   }
+
+  /** Opens the How to play card, when the shell offers one. */
+  const howToButton = () =>
+    options.onHowTo ? button('How to play', 'btn btn-ghost', options.onHowTo) : null;
 
   /** @param {Element} node */
   function showPrompt(node) {
@@ -118,6 +138,10 @@ export function createHud(options) {
 
   return {
     pauseButton,
+    /** @param {boolean} muted */
+    setMuted(muted) {
+      muteButton.setAttribute('aria-pressed', String(muted));
+    },
     /** @param {number} value */
     setScore(value) {
       const next = pad4(value);
@@ -146,24 +170,65 @@ export function createHud(options) {
     },
     /**
      * A pause from focus entering the message strip passes focus false, so Tab can carry on to
-     * Return Home instead of being pulled back to Resume.
+     * Return Home instead of being pulled back to Resume. With a picker, the wheel sits between
+     * Play again and Quit; spinning it only chooses, and pressing the middle game starts it.
      * @param {{ focus?: boolean }} [how]
+     * @param {{ games: GameChoice[], current: string } | null} [picker]
      */
-    showPaused({ focus = true } = {}) {
+    showPaused({ focus = true } = {}, picker = null) {
       const resume = button('Resume', 'btn btn-primary', options.onResume);
+      let chosen = picker?.current ?? '';
+      const wheel =
+        picker && options.onSwitch
+          ? gameWheel(
+              picker.games,
+              picker.current,
+              (id) => {
+                chosen = id;
+              },
+              () => options.onSwitch?.(chosen),
+            )
+          : null;
       showCard(
         'card-title',
         [
           el('p', { class: 'card-kicker', id: 'card-title' }, ['Paused']),
           el('div', { class: 'card-actions' }, [
             resume,
-            button('Quit', 'btn btn-ghost', options.onQuit),
+            options.onRestart ? button('Play again', 'btn btn-ghost', options.onRestart) : null,
+            howToButton(),
           ]),
-        ],
+          wheel,
+          el('div', { class: 'card-actions' }, [button('Quit', 'btn btn-ghost', options.onQuit)]),
+        ].filter((node) => node !== null),
         focus ? resume : null,
       );
     },
     /**
+     * The How to play card. `go` starts or resumes the run; `back` returns to where it opened.
+     * @param {string} name the game's name
+     * @param {import('../contracts').HowTo} howTo
+     * @param {import('../contracts').ThemePack} theme
+     * @param {{ goLabel: string, onGo: () => void, onBack: () => void }} actions
+     */
+    showHowTo(name, howTo, theme, actions) {
+      const go = button(actions.goLabel, 'btn btn-primary', actions.onGo);
+      showCard(
+        'card-title',
+        [
+          el('p', { class: 'card-kicker', id: 'card-title' }, [`How to play ${name}`]),
+          ...howToBody(howTo, theme),
+          el('div', { class: 'card-actions' }, [
+            go,
+            button('Back', 'btn btn-ghost', actions.onBack),
+          ]),
+        ],
+        go,
+        'card-howto',
+      );
+    },
+    /**
+     * With others, an "All games" button follows the switches and quits to the idle picker.
      * @param {{ score: number, best: number, scoreLabel: string, reason: string }} card
      * @param {GameChoice[]} [others] games the player can switch to, each started at once
      */
@@ -172,6 +237,7 @@ export function createHud(options) {
       const switches = others.map((game) =>
         button(`Play ${game.name}`, 'btn btn-ghost', () => options.onSwitch?.(game.id)),
       );
+      if (switches.length > 0) switches.push(button('All games', 'btn btn-ghost', options.onQuit));
       showCard(
         'card-title',
         [
@@ -199,7 +265,14 @@ export function createHud(options) {
       node.addEventListener('click', options.onPlay);
       showPrompt(node);
       const { onSelect } = options;
-      if (picker && onSelect) promptSlot.append(gamePicker(picker.games, picker.current, onSelect));
+      if (picker && onSelect) {
+        promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
+      }
+      const help = howToButton();
+      if (help) {
+        help.className = 'btn btn-ghost btn-small';
+        promptSlot.append(help);
+      }
     },
     showError() {
       showPrompt(

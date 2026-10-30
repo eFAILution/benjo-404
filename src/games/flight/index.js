@@ -6,13 +6,41 @@
 
 import { createTracker, readFlap, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
-import { DEATH_PAUSE, HINT_T, NEW_BEST_T } from './tuning.js';
+import { HOW_TO } from './howto.js';
+import {
+  DEATH_PAUSE,
+  EVENT_FLAP,
+  EVENT_HIT,
+  EVENT_PICKUP,
+  EVENT_SCORE,
+  HINT_T,
+  NEW_BEST_T,
+} from './tuning.js';
 import { createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('../../contracts').AudioCue} AudioCue */
+
+/** World events and their sounds, most important first. One cue plays per step. */
+/** @type {Array<[number, AudioCue]>} */
+const CUES = [
+  [EVENT_HIT, 'hit'],
+  [EVENT_PICKUP, 'pickup'],
+  [EVENT_SCORE, 'score'],
+  [EVENT_FLAP, 'jump'],
+];
+
+/**
+ * @param {HostContext} host
+ * @param {number} events
+ */
+function playCue(host, events) {
+  const match = CUES.find(([bit]) => events & bit);
+  if (match) host.audio?.play(match[1]);
+}
 
 const BEST_KEY = 'best';
 const HINT = 'SPACE OR TAP TO FLAP';
@@ -88,6 +116,7 @@ function createFlight(host) {
       if (!world || paused || ended) return;
       syncLayout();
       stepWorld(world, readFlap(host.input, tracker, world.time), dt);
+      playCue(host, world.events);
       syncHud(world, dt);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;
@@ -124,6 +153,7 @@ const flight = {
     keyboard: 'SPACE OR UP TO FLAP',
     touch: 'TAP TO FLAP',
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createFlight,
 };

@@ -99,4 +99,12 @@ export default {
     ],
   },
   tagline: 'HO HO HO',
+  // Sleigh bells: a high sine with a quieter inharmonic partial rings like a bell.
+  cues: {
+    pickup: [
+      { type: 'sine', f: 1568, d: 0.35, g: 0.35 },
+      { type: 'sine', f: 4328, d: 0.2, g: 0.08 },
+    ],
+    clear: [1319, 1319, 1319].map((f, i) => ({ type: 'sine', f, at: i * 0.12, d: 0.2, g: 0.35 })),
+  },
 };

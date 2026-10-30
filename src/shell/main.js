@@ -15,7 +15,8 @@
  */
 
 import { createAttract } from './attract.js';
-import { formatDay, resolve } from './boot.js';
+import { createAudio } from './audio.js';
+import { formatDay, nextGames, resolve } from './boot.js';
 import { createDebugMeter } from './debug-meter.js';
 import { byId, readQuery, text } from './dom.js';
 import { createHost } from './host.js';
@@ -108,11 +109,52 @@ export function boot(registry, config, holidays = null) {
   /** @type {ReturnType<typeof createHost> | null} */
   let host = null;
   const page = new AbortController();
+  const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
 
+  /** Games whose How to play card the visitor has already seen (#28). */
+  const howToSeen = createStorage('howto');
+
+  /** Play, unless this game's How to play card has not been seen yet: show that first. */
   function play() {
+    if (game?.howTo && host?.state === 'idle' && howToSeen.getNumber(game.id, 0) === 0) {
+      openHowTo(false);
+      return;
+    }
+    startRun();
+  }
+
+  function startRun() {
     const active = document.activeElement;
     if (active instanceof HTMLElement && message?.contains(active)) active.blur();
     host?.play();
+  }
+
+  /**
+   * From the start screen the card plays the game; from the paused card it resumes, and Back
+   * returns to the paused card. Either way the game counts as seen.
+   * @param {boolean} paused
+   */
+  function openHowTo(paused) {
+    const current = game;
+    if (!current?.howTo) return;
+    hud.showHowTo(current.name, current.howTo, theme, {
+      goLabel: paused ? 'Resume' : 'Got it, play',
+      onGo: () => {
+        howToSeen.setNumber(current.id, 1);
+        hud.clearCard();
+        if (paused) host?.resume();
+        else startRun();
+      },
+      onBack: () => {
+        if (paused) {
+          // The host's own HUD wrapper, so the paused card gets its game wheel back.
+          hostHud.showPaused({});
+          return;
+        }
+        hud.clearCard();
+        byId('play-prompt')?.focus();
+      },
+    });
   }
 
   const hud = createHud({
@@ -123,13 +165,26 @@ export function boot(registry, config, holidays = null) {
     onPlay: play,
     onPause: () => host?.pause(),
     onResume: () => host?.resume(),
+    onRestart: () => host?.restart(),
     onQuit: () => {
       host?.quit();
       byId('play-prompt')?.focus();
     },
     onSelect: (id) => selectGame(id, false),
-    onSwitch: (id) => selectGame(id, true),
+    onSwitch: (id) => {
+      // The paused card's wheel ends the run first, so the chosen game starts fresh.
+      if (host?.state === 'paused') host.quit();
+      selectGame(id, true);
+    },
+    onMute: toggleMute,
+    onHowTo: () => openHowTo(host?.state === 'paused'),
   });
+  hud.setMuted(audio.muted);
+
+  function toggleMute() {
+    audio.setMuted(!audio.muted);
+    hud.setMuted(audio.muted);
+  }
 
   watchSize({
     root: gameRoot,
@@ -156,11 +211,15 @@ export function boot(registry, config, holidays = null) {
   attract.start();
   if (!game) return;
 
-  /** Games the player can switch to from the game over card. */
-  const others = () => (resolved.picker ? resolved.games.filter((choice) => choice !== game) : []);
-  // The host only knows its own game, so the game over card gets the switch buttons here.
+  /** Games the player can switch to from the game over card: the next two in config order. */
+  const others = () => (resolved.picker ? nextGames(resolved.games, game) : []);
+  /** The paused card's wheel, starting on the game in play. */
+  const pausePicker = () =>
+    resolved.picker && game ? { games: resolved.games, current: game.id } : null;
+  // The host only knows its own game, so the paused and game over cards get the games here.
   const hostHud = {
     ...hud,
+    showPaused: (/** @type {{ focus?: boolean }} */ how) => hud.showPaused(how, pausePicker()),
     showOver: (/** @type {OverCard} */ card) => hud.showOver(card, others()),
   };
 
@@ -189,6 +248,7 @@ export function boot(registry, config, holidays = null) {
       drawSprite: (target, sprite, x, y, h, opts) =>
         drawSprite(target, theme.palette, sprite, x, y, h, opts),
       onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
+      audio,
     });
 
   /**
@@ -233,9 +293,24 @@ export function boot(registry, config, holidays = null) {
   message.addEventListener('focusin', () => host?.pause({ focus: false }), options);
   const canStart = () => host?.state === 'idle' && promptSlot.firstElementChild !== null;
   overlay?.addEventListener('click', () => canStart() && play(), options);
+  // Browsers only allow sound after a gesture, so every input tries to wake the audio. A touch
+  // pointerdown is not a gesture, and iOS Safari interrupts a context made there.
+  for (const type of ['pointerup', 'touchend', 'keydown']) {
+    window.addEventListener(type, audio.unlock, { ...options, capture: true, passive: true });
+  }
   window.addEventListener(
     'keydown',
     (event) => {
+      if (
+        event.code === 'KeyM' &&
+        !event.repeat &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        toggleMute();
+        return;
+      }
       const onBody = document.activeElement === document.body;
       if (!onBody || event.code !== 'Space' || !canStart()) return;
       event.preventDefault();

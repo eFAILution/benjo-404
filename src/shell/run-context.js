@@ -34,5 +34,6 @@ export function createRunContext(options, { signal, input, end }) {
     },
     setStatus: (text) => signal.aborted || hud.setStatus(String(text)),
     end: (result) => signal.aborted || end(result),
+    audio: { play: (cue) => signal.aborted || options.audio?.play(cue) },
   };
 }

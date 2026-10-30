@@ -34,7 +34,7 @@ Query overrides, for testing only. Bad values are ignored.
 
 | Query | Effect |
 |-------|--------|
-| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run) or `flight` (Benjo Flight). `?game=none` shows the page with no game. |
+| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run), `flight` (Benjo Flight), `stack` (Stack the Server), `tail` (Dragon Tail), `breakout` (Break the 404), `crossing` (Code Crossing), `zapper` (Bug Zapper), `whack` (Whack-a-Bug), or `links` (Fix the Link). `?game=none` shows the page with no game. |
 | `?theme=halloween` | Pick a bundled theme. `?theme=none` forces the default look. |
 | `?date=2026-10-24` | Pretend today is this date (`YYYY-MM-DD`), to preview a holiday. |
 | `?message=short` | Pick a bundled message. |
@@ -43,9 +43,9 @@ Query overrides, for testing only. Bad values are ignored.
 
 ### Add a game, a theme, or a message
 
-1. Make a folder or file: `src/games/<id>/index.js` exports a game module, `src/themes/<id>/index.js` exports a theme pack, and `src/messages/<id>.js` exports a message. The shapes are in `src/contracts.d.ts`. There is no registry to edit; the build finds them by name.
+1. Make a folder or file: `src/games/<id>/index.js` exports a game module, `src/themes/<id>/index.js` exports a theme pack, and `src/messages/<id>.js` exports a message. The shapes are in `src/contracts.d.ts`. A game also exports a `howTo`: its goal, its key and touch controls, and each thing on the board. The page shows it as a How to play card before the game's first run. There is no registry to edit; the build finds them by name.
 2. Add the id to `games` or `themes` in `benjo.config.json`, or set `message` to it. Every message is bundled, so `?message=<id>` works without a config change. A theme's `holiday` field names a holiday in `src/holidays/calendar.js`; a new holiday also needs an entry there.
-3. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack.
+3. Add tests under `tests/games/<id>/` or let `tests/themes/packs.test.js` pick up the pack. `tests/games/howto.test.js` checks every game's `howTo` and fails if one is missing or a line is too long.
 4. Run `make test`. It fails if the game is over 16 KB or the theme over 4 KB gzipped.
 
 ### Known limitations
@@ -53,8 +53,9 @@ Query overrides, for testing only. Bad values are ignored.
 - How the page reaches the live Webflow site is not settled (A-8.1). See [`docs/runbooks/deploy-404.md`](docs/runbooks/deploy-404.md).
 - The CSP header holds hashes of the inline script and style. Any rebuild that changes them needs the new `dist/csp.txt` deployed with the file.
 - The game needs Safari 14 or Chrome 90 and up. Older browsers still get the plain message and the Return Home link.
-- Holidays follow the visitor's own clock and a US calendar (A-8.3). There is no sound (A-8.4).
+- Holidays follow the visitor's own clock and a US calendar (A-8.3). Sound starts after the first tap or key press, is on by default, and mutes with the speaker button or M (A-8.4, A-20.3). Phones on silent mode play no sound.
 - The best score lives in the browser's `localStorage`, so a private window or another device starts from zero.
+- The Webflow embed script is above the 50,000 character limit per embed once nine games are bundled; issue #10 splits it. `dist/404.html` is the deploy target until then.
 
 ## How we work
 

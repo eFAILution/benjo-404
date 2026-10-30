@@ -69,6 +69,29 @@ export interface ThemePack {
   };
   /** Shown in the HUD status line during attract mode. Max 32 chars. */
   tagline?: string;
+  /** Optional sound overrides, one cue at a time. Missing cues use the shell's defaults. */
+  cues?: Partial<Record<AudioCue, Tone[]>>;
+}
+
+// ---------- Sound ----------
+
+/** Named sound cues. Games pick the closest one; the host plays 'best' or 'over' at the end. */
+export type AudioCue =
+  | 'jump' | 'shoot' | 'land' | 'turn' | 'score' | 'pickup' | 'hit' | 'clear' | 'best' | 'over';
+
+/** One synthesized tone. Times in seconds from the cue start, frequencies in Hz. */
+export interface Tone {
+  type?: 'sine' | 'square' | 'sawtooth' | 'triangle';
+  /** Start frequency. */
+  f: number;
+  /** Optional end frequency for a slide. */
+  to?: number;
+  /** Delay before the tone starts. Default 0. */
+  at?: number;
+  /** Duration. */
+  d: number;
+  /** Peak gain, 0 to 1. Default 0.3. */
+  g?: number;
 }
 
 // ---------- Host (what a game receives) ----------
@@ -133,15 +156,45 @@ export interface HostContext {
   setStatus(text: string): void;
   /** Ask the host to end the run. Host calls instance.destroy() after this. */
   end(result: EndResult): void;
+  /** Optional sound. Silent while muted or before the player's first input. */
+  audio?: { play(cue: AudioCue): void };
 }
 
 // ---------- Game ----------
+
+/** A theme sprite, picked the way the game picks it, so the card matches the holiday art. */
+export type HowToSprite = { set: 'benjo' } | { set: 'hazards' | 'pickups'; index: number };
+
+/** One thing on the board: what it looks like and what to do about it. */
+export interface HowToThing {
+  /** The theme sprite the game draws for it... */
+  sprite?: HowToSprite;
+  /** ...or, for something the game draws as a shape, a square in this palette color. */
+  swatch?: keyof Palette;
+  /** Max 24 chars. */
+  name: string;
+  /** Max 72 chars. */
+  tip: string;
+}
+
+/** Each line pairs an input with what it does: ['Space', 'Whack the center hole']. Max 24 and 48 chars. */
+export type HowToLine = [input: string, action: string];
+
+export interface HowTo {
+  /** What a run is about and how it ends. Max 140 chars. */
+  goal: string;
+  keys: HowToLine[];
+  touch: HowToLine[];
+  things: HowToThing[];
+}
 
 export interface GameModule {
   id: Id;
   name: string;
   /** Short hints for the HUD. Max 40 chars each. */
   controls: { keyboard: string; touch: string };
+  /** The How to play card, shown before a game's first run (#28). Every bundled game has one. */
+  howTo?: HowTo;
   /** Storage key for best score. Host shows it on the game over card. */
   bestKey: string;
   /** Build a fresh instance. Must not start the loop or touch the DOM beyond host.root. */

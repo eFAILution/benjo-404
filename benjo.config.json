@@ -10,7 +10,8 @@
     "zapper",
     "whack",
     "links",
-    "muncher"
+    "muncher",
+    "pinball"
   ],
   "startGame": "random",
   "gamePicker": true,

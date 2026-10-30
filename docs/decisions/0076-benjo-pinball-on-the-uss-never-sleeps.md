@@ -49,7 +49,7 @@ Deck layouts are plain data (walls, arcs, bumpers, targets, lanes, and gates) in
   | Propulsion | both engine fin loops |
   | O2 Generation | the drop target bank |
   | Cryogenic Cooling | 15 pop bumper hits |
-  | Electrical Distribution | 40 spinner ticks (bridge) |
+  | Electrical Distribution | 40 spinner ticks (hull or bridge) |
   | Hangar Equipment | the hangar saucer |
   | Ship Access | the center ramp |
   | Hull | 5 slingshot hits |
@@ -77,12 +77,12 @@ Deck layouts are plain data (walls, arcs, bumpers, targets, lanes, and gates) in
 
 | | Keys | Touch |
 |---|---|---|
-| Left flipper | Left arrow or Z | Hold the left half |
-| Right flipper | Right arrow or / | Hold the right half |
+| Left flipper | Left arrow or A | Hold the left half |
+| Right flipper | Right arrow or D | Hold the right half |
 | Plunger | Hold Space or Down to pull, release to fire | Hold anywhere before launch, release to fire |
-| Nudge | Up arrow | Two-finger tap |
+| Nudge | Up arrow or W | Swipe up |
 
-Flippers on each deck move together, so a player never has to know which deck has which flipper. The How to play card (ADR-0028) lists these controls and the board pieces.
+Flippers on each deck move together, so a player never has to know which deck has which flipper. The shell's key map already gives A and D to left and right, so pinball uses them, not Z and /. The host reports one pointer, and pinball needs both flippers held at once, so `controls.js` tracks every pointer on the canvas itself. A swipe up nudges, since a two-finger tap would clash with holding both flippers. The How to play card (ADR-0028) lists these controls and the board pieces.
 
 ### 4. Physics
 
@@ -90,14 +90,23 @@ Flippers on each deck move together, so a player never has to know which deck ha
 - The ball is a circle (radius 8 units). Walls are line segments and arcs. Every collision pushes the ball out along the contact normal and reflects its velocity, with restitution and friction set per surface in `tuning.js`.
 - Pop bumpers and slingshots add a fixed kick along the normal on top of the bounce.
 - Flippers are capsules (rounded bars) that swing about a pivot at a set angular speed. The contact point's velocity is added to the bounce, so the tip hits harder than the base, and a held flipper can cradle the ball.
+- Each inlane guide ends straight above its flipper's pivot. Ending it beside the pivot left a notch where a ball could wedge.
+- Ball search, as on a real machine: a ball that sits still for 3 s with no flipper held gets a small kick.
 - The table tilts gravity toward the flippers. Tuning values (gravity, kicks, restitution, flipper speed) live in `tuning.js`, alongside every score value above.
 
 ### 5. Look and feel
 
-- The hull is drawn in the theme palette as a light hull on a dark starfield, with panel lines and the nose hatch grating. On the default theme it reads as the white ship in the demo. Holiday packs recolor it through the palette and swap bumper and bug art through their sprites (pumpkins at Halloween, ornaments at Christmas).
-- Static deck art is drawn once into an offscreen canvas on resize, and only the moving parts are drawn each frame.
-- Lights blink, chase, and flash on events. Score popups, bumper flashes, sparks from the theme's particles, and a short screen shake on big hits. Reduced motion drops the shake, the flashing, and the chasing lights, and keeps everything else.
-- A drain shows "ROLLBACK", the hangar lock "LOCKED", and so on, through `host.setStatus`.
+The table is drawn to read as a real machine, not a diagram. The first pass used flat outlines, and the owner found it too plain, so the art was redone before merge (`art.js`, `draw-static.js`, `draw-deck.js`, `draw.js`).
+
+- **The ship.** The hull deck sits inside the white USS Never Sleeps: a shaded white body that sweeps from a wide stern to a rounded nose, an engine fin down each side with an engine glow, and seams across the plating. Inside is a dark plated deck with rivets, the grated nose hatch, a clear ramp with chrome rails, and the hangar hole.
+- **Machine parts.** Walls are chrome rails (shadow, steel, and a highlight line). The ball is chrome with a shadow and a window glint, and leaves a short glow trail when fast. Bumpers are domed caps on dark skirts that blaze when hit. Flippers are white with red rubber and a chrome pivot. Targets are raised blocks with shadows, and slingshots have colored plastics under white rubber that flares on a kick.
+- **Light inserts.** Every shot has a dim arrow insert, and the ones for the offline system blink. S-H-I-P lane lights carry their letters, and the skill shot lane, ball save, outlane saves, and hangar locks each have their own insert.
+- **The bridge** is blue glass with chrome ribs and Captain Benjo at the top. **Benjo's Quarters** is a warm cabin with B-E-N-J-O letter inserts and a glowing countdown.
+- **The backbox.** A wide screen gets a panel beside the table with a dot-matrix display (score and the latest call-out) and the twin health board as status lights. A narrow screen gets the offline system's name and a row of lights in the table's top corner.
+- **Holidays.** Colors come from the theme palette, bugs are the theme's hazard sprites, and each bumper cap holds a theme pickup sprite, so Halloween brings purple bumpers with bats and Christmas green ones with snowflakes. The white hull stays white.
+- **Cost.** Each deck's fixed art is drawn once per size and theme into a cached canvas, and only the live pieces are drawn each frame. Where there is no DOM, as in tests, the art is drawn straight onto the frame.
+- **Motion.** Score popups float up from big hits, TILT and TWIN MODE glow across the table, a repair flashes the screen, and big bumper hits shake it. Reduced motion drops the shake, the flash, and the deck slide, and keeps everything else.
+- Call-outs like BALL SAVED, TWIN MODE, and JACKPOT go to the HUD status line through `host.setStatus` and to the dot-matrix display.
 
 ### 6. Sound and music (shell change)
 
@@ -118,7 +127,7 @@ ADR-0011 keeps ten shared cues and rejects per-game sound sets to save bytes. Th
 
 ### 8. Delivery
 
-Each item is a sub-issue of #76 with its own branch and PR. Each PR leaves the game playable and within budget.
+Each item is a sub-issue of #76. The owner asked for the whole game in one PR, so they land together, with the shell change as its own commit.
 
 1. Shell: per-game cues, the voice limit, `music.js`, the contract hooks, and the budget changes.
 2. First playable: physics, flippers, plunger, the hull deck, 3 balls, ball save, and the How to play card.
@@ -134,9 +143,10 @@ All tests use `node --test` under `tests/games/pinball/` and `tests/shell/`, lik
 - **Physics.** A ball fired at top speed at every wall and flipper of every deck never ends up outside the table. Flipper tip hits are faster than base hits. A cradled ball stays put.
 - **Deck data.** Every deck's outer wall is closed, no two pieces overlap, and every lane and gate leads somewhere.
 - **Rules.** Scoring, repair order from a seeded random, ball save timing, extra ball, the tilt count, Twin Mode start and end, and deck return paths.
-- **Autopilot.** A simple bot that flips when the ball nears a flipper survives 60 s on several seeds, so the table is fair.
+- **Autopilot.** A simple bot that flips when a falling ball nears a flipper plays whole games, so the table is fair.
 - **Shell.** Game cues play, theme overrides apply to them, the voice limit holds, and music stops on pause, end, hide, and mute.
 - **Existing suites.** The How to play test, the power-up tests, and the budget checks in `make test` cover pinball like any game.
+- **Autopilot details.** The bot plays six seeds to game over, lasting over a minute and scoring on each, with no ball ever leaving the table. A separate sweep checks the ramp can be made from a flipper but not on most shots.
 - **By hand.** Play `?game=pinball` on desktop and on a phone before each PR merges.
 
 ## Alternatives considered
@@ -154,4 +164,5 @@ All tests use `node --test` under `tests/games/pinball/` and `tests/shell/`, lik
 - Any game can now bring its own cues, and any game can add music later for the cost of its note data.
 - The `GameModule` and `HostContext` contracts gain optional fields. Older games and test hosts keep working unchanged.
 - The ship and system names come from the public Beast Core demo (A-76.1).
+- The Full Stack trophy (play every game) now needs a pinball run too.
 - The Webflow page keeps working through the GitHub Pages bundle (ADR-0069). A bigger bundle only changes the SRI hashes, as every release does.

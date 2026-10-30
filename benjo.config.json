@@ -14,7 +14,8 @@
     "pinball",
     "neversleeps",
     "savefile",
-    "tower"
+    "tower",
+    "bugbelt"
   ],
   "startGame": "random",
   "gamePicker": true,

@@ -1,0 +1,8 @@
+# Text files are LF in every working tree, whatever core.autocrlf says, so shellcheck, Biome and
+# the record checks see the same bytes on Windows as on macOS and Linux (#44).
+* text=auto eol=lf
+
+# Binary assets: never convert or diff.
+*.woff2 binary
+*.png binary
+*.ico binary

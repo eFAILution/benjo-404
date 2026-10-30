@@ -23,6 +23,7 @@ export const KNOWN_GAMES = /** @type {const} */ ([
   'tower',
   'bugbelt',
   'benjotower',
+  'memleak',
   'crackhash',
 ]);
 

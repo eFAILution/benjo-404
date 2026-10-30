@@ -31,7 +31,7 @@ const tamper = (code, at) => {
 describe('save codes', () => {
   it('lists the known games in their fixed order', () => {
     assert.deepEqual(KNOWN_GAMES.slice(0, 3), ['runner', 'flight', 'stack']);
-    assert.equal(KNOWN_GAMES.length, 17);
+    assert.equal(KNOWN_GAMES.length, 18);
     assert.equal(KNOWN_GAMES.at(-1), 'crackhash', 'new games append');
   });
 

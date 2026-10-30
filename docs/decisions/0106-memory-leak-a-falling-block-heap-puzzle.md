@@ -36,6 +36,6 @@ Memory Leak lives in `src/games/memleak/` with the usual split, plus `heap.js` f
 
 ## Consequences
 
-- The page ships seventeen games. This one is about 5.0 KB gzipped of its own 16 KB budget, and the page is now 116.3 KB of the 150 KB that ADR-0101 set.
+- The page ships seventeen games. This one is about 5.0 KB gzipped of its own 16 KB budget, and the page is now 119.4 KB of the 150 KB that ADR-0101 set, with the six holiday packs from #107.
 - A save code from before this game still decodes. The Full Stack trophy now asks for one run of this game too.
 - Changing the grid, the lane, the fall cap or the key repeat must keep the lane test and the autopilot passing (A-106.1).

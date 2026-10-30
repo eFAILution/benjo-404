@@ -2,7 +2,7 @@
 // Renders a Code Crossing world onto the host canvas. Reads the world, never changes it.
 // alpha blends lane offsets and Benjo's hop between the last two steps.
 
-import { isCut, mod } from './lanes.js';
+import { isCut, mod, orbX } from './lanes.js';
 import {
   BENJO_H,
   BLOCK_ALPHA,
@@ -134,11 +134,13 @@ function drawLane(host, w, lane, blend) {
     if (!isCut(lane, Math.round((x0 - offset) / lane.period))) drawBlock(host, w, lane, x0, cy);
   }
   const pickups = host.theme.sprites.pickups;
-  if (lane.orbAt < 0 || lane.orbTaken || !pickups.length) return;
+  if (!pickups.length) return;
   const sprite = pickups[lane.index % pickups.length];
   for (let x0 = first; x0 < w.cols; x0 += lane.period) {
-    const x = x0 + lane.orbAt + 0.5;
-    if (x > 0 && x < w.cols) host.drawSprite(sprite, w.bandX + x * w.cell, cy, w.cell * ORB_H);
+    const x = orbX(lane, Math.round((x0 - offset) / lane.period), offset);
+    if (x > 0 && x < w.cols) {
+      host.drawSprite(sprite, w.bandX + x * w.cell, cy, w.cell * ORB_H);
+    }
   }
 }
 

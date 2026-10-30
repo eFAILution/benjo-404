@@ -4,22 +4,21 @@
 // Direction keys come first, because ArrowUp raises both `up` and `primary` in the same tick.
 // A pointer press whacks on its down edge; the host's tap echo of that press is dropped.
 
-import { TAP_ECHO } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
 import { holeAt } from './world.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
 /** @typedef {import('../../contracts').Action} Action */
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('./world.js').Intent} Intent */
-/** @typedef {{ pointerDown: boolean, pointerAt: number, intent: Intent }} PointerTracker */
+/** @typedef {import('../../shell/press.js').PressTracker & { intent: Intent }} PointerTracker */
 
 /** Hole 1 to 4, in hole order. @type {Action[]} */
 const DIRECTIONS = ['up', 'right', 'down', 'left'];
 
 /** @returns {PointerTracker} */
 export const createTracker = () => ({
-  pointerDown: false,
-  pointerAt: Number.NEGATIVE_INFINITY,
+  ...createPress(),
   intent: { hole: -1 },
 });
 
@@ -29,10 +28,7 @@ export const createTracker = () => ({
  * @param {PointerTracker} tracker
  * @param {InputState} input
  */
-export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
-}
+export const resetTracker = resetPress;
 
 /** @param {InputState} input @returns {number} */
 function keyHole(input) {
@@ -49,13 +45,10 @@ function keyHole(input) {
  */
 export function readWhack(input, tracker, now, w) {
   const { pointer } = input;
-  const pointerDown = Boolean(pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
-  if (pointerEdge) tracker.pointerAt = now;
+  const pointerEdge = pointerPressed(tracker, input, now);
 
   const primary = input.justPressed('primary');
-  const echo = primary && !pointerEdge && now - tracker.pointerAt < TAP_ECHO;
+  const echo = primary && !pointerEdge && isTapEcho(tracker, now);
   let hole = keyHole(input);
   if (hole < 0 && primary && !echo) hole = 0;
   if (hole < 0 && pointerEdge && pointer) hole = holeAt(w, pointer.x, pointer.y);

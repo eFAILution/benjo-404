@@ -11,6 +11,7 @@
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { createFx, stepFx } from './fx.js';
+import { HOW_TO } from './howto.js';
 import { contentAspect } from './sprite-bounds.js';
 import {
   DEATH_PAUSE,
@@ -224,6 +225,7 @@ const runner = {
     keyboard: 'SPACE OR UP TO JUMP, DOWN TO DUCK',
     touch: 'TAP TO JUMP, SWIPE DOWN TO DUCK',
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createRun,
   powers: ['twin', 'rollback', 'gc', 'magnet'],

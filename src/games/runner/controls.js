@@ -5,11 +5,11 @@
 // holding it keeps the jump high. The host also reports a tap as `primary` when the pointer
 // comes back up; that echo of a press we already used is dropped. Swipe down ducks.
 
-import { TAP_ECHO } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
 /** @typedef {import('./world.js').RunnerInput} RunnerInput */
-/** @typedef {{ pointerDown: boolean, pointerAt: number }} PointerTracker */
+/** @typedef {import('../../shell/press.js').PressTracker} PointerTracker */
 
 /** @returns {RunnerInput} */
 export const createIntent = () => ({
@@ -20,7 +20,7 @@ export const createIntent = () => ({
 });
 
 /** @returns {PointerTracker} */
-export const createTracker = () => ({ pointerDown: false, pointerAt: Number.NEGATIVE_INFINITY });
+export const createTracker = createPress;
 
 /**
  * Forget pointer history, treating a pointer that is already down as used.
@@ -28,10 +28,7 @@ export const createTracker = () => ({ pointerDown: false, pointerAt: Number.NEGA
  * @param {PointerTracker} tracker
  * @param {InputState} input
  */
-export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
-}
+export const resetTracker = resetPress;
 
 /**
  * Fill `intent` from the host input for this step. Mutates `intent` and `tracker` only.
@@ -42,13 +39,11 @@ export function resetTracker(tracker, input) {
  * @returns {RunnerInput}
  */
 export function readIntent(input, intent, tracker, now) {
-  const pointerDown = Boolean(input.pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
-  if (pointerEdge) tracker.pointerAt = now;
+  const pointerEdge = pointerPressed(tracker, input, now);
+  const pointerDown = tracker.pointerDown;
 
   const primary = input.justPressed('primary');
-  const echo = primary && !pointerEdge && now - tracker.pointerAt < TAP_ECHO;
+  const echo = primary && !pointerEdge && isTapEcho(tracker, now);
   intent.jumpPressed = pointerEdge || (primary && !echo);
   intent.jumpHeld = pointerDown || input.isDown('primary');
   intent.duckHeld = input.isDown('down');

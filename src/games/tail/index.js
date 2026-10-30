@@ -6,6 +6,7 @@
 
 import { createTracker, readTurn, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import { DEATH_PAUSE, HINT_T, NEW_BEST_T } from './tuning.js';
 import { centerX, centerY, createWorld, headX, headY, resizeWorld, stepWorld } from './world.js';
 
@@ -173,6 +174,7 @@ const tail = {
     keyboard: 'ARROWS TO TURN',
     touch: 'SWIPE OR TAP TO TURN',
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createTail,
   // No 'gc': nothing on the grid is a hazard to clear, only the walls and Benjo's own tail.

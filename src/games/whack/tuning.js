@@ -44,8 +44,6 @@ export const STOMP_T = 0.1;
 export const ROUND_T = 45;
 /** Inputs this early in a run are the press that started it, not a whack. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 export const SPAWN_T_START = 0.9;
 export const SPAWN_T_MIN = 0.45;
 export const UP_T_START = 1.1;

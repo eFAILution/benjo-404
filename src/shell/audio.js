@@ -12,6 +12,15 @@ const VOLUME = 0.18;
 /** Exponential ramps cannot reach zero, so tones fade to this instead. */
 const SILENT = 0.0001;
 
+/**
+ * Notes played one after another, `step` seconds apart, all with the same wave, length, and gain.
+ * @param {Tone['type']} type @param {number[]} notes Hz @param {number} step
+ * @param {number} d @param {number} g
+ * @returns {Tone[]}
+ */
+const sequence = (type, notes, step, d, g) =>
+  notes.map((f, i) => ({ type, f, at: i * step, d, g }));
+
 /** @type {Record<AudioCue, Tone[]>} */
 export const CUES = {
   jump: [{ type: 'square', f: 330, to: 660, d: 0.09, g: 0.25 }],
@@ -24,21 +33,9 @@ export const CUES = {
     { type: 'square', f: 1320, at: 0.06, d: 0.08, g: 0.2 },
   ],
   hit: [{ type: 'sawtooth', f: 220, to: 55, d: 0.3, g: 0.3 }],
-  clear: [523, 659, 784, 1047].map((f, i) => ({
-    type: 'square',
-    f,
-    at: i * 0.08,
-    d: 0.1,
-    g: 0.18,
-  })),
-  best: [784, 988, 1175, 1568].map((f, i) => ({
-    type: 'triangle',
-    f,
-    at: i * 0.07,
-    d: 0.12,
-    g: 0.4,
-  })),
-  over: [392, 330, 262].map((f, i) => ({ type: 'triangle', f, at: i * 0.15, d: 0.18, g: 0.4 })),
+  clear: sequence('square', [523, 659, 784, 1047], 0.08, 0.1, 0.18),
+  best: sequence('triangle', [784, 988, 1175, 1568], 0.07, 0.12, 0.4),
+  over: sequence('triangle', [392, 330, 262], 0.15, 0.18, 0.4),
 };
 
 /**
@@ -47,7 +44,7 @@ export const CUES = {
  */
 export function createAudio({ storage, cues = {} }) {
   const table = { ...CUES, ...cues };
-  let muted = storage.get(MUTED_KEY) === '1';
+  let muted = storage.getFlag(MUTED_KEY);
   /** @type {AudioContext | null} */
   let context = null;
   /** @type {GainNode | null} */
@@ -106,7 +103,7 @@ export function createAudio({ storage, cues = {} }) {
     /** @param {boolean} value */
     setMuted(value) {
       muted = value;
-      storage.set(MUTED_KEY, value ? '1' : '0');
+      storage.setFlag(MUTED_KEY, value);
     },
   };
 }

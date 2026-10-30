@@ -17,24 +17,3 @@ export const benjo = {
     { d: RING, fill: 'ink' },
   ],
 };
-
-/**
- * The Benjo mark as an inline SVG element, built without markup strings.
- * @param {number} size CSS px
- * @returns {SVGSVGElement}
- */
-export function benjoMarkSvg(size) {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', benjo.viewBox.join(' '));
-  svg.setAttribute('width', String(size));
-  svg.setAttribute('height', String(size));
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('focusable', 'false');
-  for (const { d } of benjo.paths) {
-    const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'currentColor');
-    svg.appendChild(path);
-  }
-  return svg;
-}

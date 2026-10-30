@@ -41,8 +41,6 @@ export const SLIDE_CAP_REDUCED = 340;
 // Drop
 /** Inputs this early in a run are the press that started it, not a drop. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 /** The landed block's fall, for the eye only; the landing itself is instant. */
 export const DROP_T = 0.1;
 export const PERFECT_TOL = 4;

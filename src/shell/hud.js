@@ -1,8 +1,9 @@
 // @ts-check
 // The strip HUD, the paused and game over cards, and the play prompt. Built only with dom.el().
 
-import { benjoMarkSvg, SVG_NS } from '../assets/benjo.js';
-import { el, text } from './dom.js';
+import { benjo } from '../assets/benjo.js';
+import { el, svgIcon, text } from './dom.js';
+import { howToBody } from './howto.js';
 import { gameWheel } from './wheel.js';
 
 const PROMPT_ICON_PX = 20;
@@ -43,19 +44,19 @@ const SPEAKER_PATHS = [
 ];
 
 /** A speaker icon. The CSS shows the waves while sound is on and the cross while muted. */
-function speakerSvg() {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('focusable', 'false');
-  for (const [className, d] of SPEAKER_PATHS) {
-    const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('class', className);
-    path.setAttribute('d', d);
-    svg.appendChild(path);
-  }
-  return svg;
-}
+const speakerSvg = () =>
+  svgIcon({
+    viewBox: '0 0 24 24',
+    paths: SPEAKER_PATHS.map(([className, d]) => ({ class: className, d })),
+  });
+
+/** The Benjo mark, in the current text color. @param {number} size CSS px */
+const benjoMarkSvg = (size) =>
+  svgIcon({
+    viewBox: benjo.viewBox.join(' '),
+    size,
+    paths: benjo.paths.map(({ d }) => ({ d, fill: 'currentColor' })),
+  });
 
 /** @typedef {import('./host.js').PowerView} PowerView */
 
@@ -90,8 +91,9 @@ function powerSlot(onFire) {
 /**
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
- *   onPlay: () => void, onSelect?: (id: string) => void, onSwitch?: (id: string) => void,
- *   onMute?: () => void, onFire?: () => void }} options
+ *   onPlay: () => void, onRestart?: () => void, onSelect?: (id: string) => void,
+ *   onSwitch?: (id: string) => void, onMute?: () => void, onHowTo?: () => void,
+ *   onFire?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -138,19 +140,32 @@ export function createHud(options) {
 
   /**
    * @param {string} titleId
-   * @param {Array<Node>} children
+   * @param {Array<Node | null>} children null entries are skipped, as el() skips them
    * @param {HTMLElement | null} focusTarget null leaves focus where it is
+   * @param {string} [extraClass] added to the card's class list
    */
-  function showCard(titleId, children, focusTarget) {
+  function showCard(titleId, children, focusTarget, extraClass = '') {
     cardSlot.replaceChildren(
       el(
         'div',
-        { class: 'card', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': titleId },
+        {
+          class: extraClass ? `card ${extraClass}` : 'card',
+          role: 'dialog',
+          'aria-modal': 'false',
+          'aria-labelledby': titleId,
+        },
         children,
       ),
     );
     focusTarget?.focus();
   }
+
+  /**
+   * Opens the How to play card, when the shell offers one.
+   * @param {string} [className]
+   */
+  const howToButton = (className = 'btn btn-ghost') =>
+    options.onHowTo ? button('How to play', className, options.onHowTo) : null;
 
   /** @param {Element} node */
   function showPrompt(node) {
@@ -195,21 +210,60 @@ export function createHud(options) {
     },
     /**
      * A pause from focus entering the message strip passes focus false, so Tab can carry on to
-     * Return Home instead of being pulled back to Resume.
+     * Return Home instead of being pulled back to Resume. With a picker, the wheel sits between
+     * Play again and Quit; spinning it only chooses, and pressing the middle game starts it.
      * @param {{ focus?: boolean }} [how]
+     * @param {{ games: GameChoice[], current: string } | null} [picker]
      */
-    showPaused({ focus = true } = {}) {
+    showPaused({ focus = true } = {}, picker = null) {
       const resume = button('Resume', 'btn btn-primary', options.onResume);
+      let chosen = picker?.current ?? '';
+      const wheel =
+        picker && options.onSwitch
+          ? gameWheel(
+              picker.games,
+              picker.current,
+              (id) => {
+                chosen = id;
+              },
+              () => options.onSwitch?.(chosen),
+            )
+          : null;
       showCard(
         'card-title',
         [
           el('p', { class: 'card-kicker', id: 'card-title' }, ['Paused']),
           el('div', { class: 'card-actions' }, [
             resume,
-            button('Quit', 'btn btn-ghost', options.onQuit),
+            options.onRestart ? button('Play again', 'btn btn-ghost', options.onRestart) : null,
+            howToButton(),
           ]),
+          wheel,
+          el('div', { class: 'card-actions' }, [button('Quit', 'btn btn-ghost', options.onQuit)]),
         ],
         focus ? resume : null,
+      );
+    },
+    /**
+     * The How to play card. `go` starts or resumes the run; `back` returns to where it opened.
+     * @param {{ name: string, howTo: import('../contracts').HowTo }} game
+     * @param {import('../contracts').ThemePack} theme
+     * @param {{ goLabel: string, onGo: () => void, onBack: () => void }} actions
+     */
+    showHowTo({ name, howTo }, theme, actions) {
+      const go = button(actions.goLabel, 'btn btn-primary', actions.onGo);
+      showCard(
+        'card-title',
+        [
+          el('p', { class: 'card-kicker', id: 'card-title' }, [`How to play ${name}`]),
+          ...howToBody(howTo, theme),
+          el('div', { class: 'card-actions' }, [
+            go,
+            button('Back', 'btn btn-ghost', actions.onBack),
+          ]),
+        ],
+        go,
+        'card-howto',
       );
     },
     /**
@@ -233,7 +287,7 @@ export function createHud(options) {
           note ? el('p', { class: 'card-xp' }, [note]) : null,
           card.reason ? el('p', { class: 'card-reason' }, [card.reason]) : null,
           el('div', { class: 'card-actions' }, [again, ...switches, homeLink(cta)]),
-        ].filter((node) => node !== null),
+        ],
         again,
       );
     },
@@ -252,8 +306,11 @@ export function createHud(options) {
       node.addEventListener('click', options.onPlay);
       showPrompt(node);
       const { onSelect } = options;
-      if (!picker || !onSelect) return;
-      promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
+      if (picker && onSelect) {
+        promptSlot.append(gameWheel(picker.games, picker.current, onSelect, options.onPlay));
+      }
+      const help = howToButton('btn btn-ghost btn-small');
+      if (help) promptSlot.append(help);
     },
     showError() {
       showPrompt(

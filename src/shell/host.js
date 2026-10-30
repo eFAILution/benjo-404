@@ -226,7 +226,8 @@ export function createHost(options) {
     setClass('is-paused', false);
     setClass('is-over', true);
     hud.setBest(best);
-    options.audio?.play(score > previous && previous > 0 ? 'best' : 'over');
+    // Any run that raises the best cheers, a visitor's first score included (#36).
+    options.audio?.play(score > previous ? 'best' : 'over');
     hud.showOver({
       score,
       best,
@@ -396,12 +397,24 @@ export function createHost(options) {
     backToIdle();
   }
 
+  /** Drop the run and start the same game from zero: the paused card's Play again. */
+  function restart() {
+    if (state === 'idle') return;
+    releaseRun();
+    setClass('is-paused', false);
+    setClass('is-over', false);
+    hud.clearCard();
+    state = 'idle';
+    play();
+  }
+
   return {
     play,
     firePower,
     pause,
     resume,
     quit,
+    restart,
     redraw,
     get state() {
       return state;

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import crossing from '../../../src/games/crossing/index.js';
-import { blockAt, isCut } from '../../../src/games/crossing/lanes.js';
+import { blockAt, isCut, orbX } from '../../../src/games/crossing/lanes.js';
 import { GRACE_T, LIVES } from '../../../src/games/crossing/tuning.js';
 import { createWorld, screenX, screenY, stepWorld } from '../../../src/games/crossing/world.js';
 import { DT, fakeHost, seeded } from '../runner/fake-host.js';
@@ -119,27 +119,36 @@ describe('digital twin', () => {
 });
 
 describe('magnet', () => {
-  /** Benjo on the start curb; orbs on lanes 1 and 2, far from his column, lanes standing still. */
-  function farOrbs() {
+  /** Benjo on the start curb; every car on lanes 1 and 2 carries an orb, lanes standing still. */
+  function fullOrbs() {
     const w = createWorld(SIZE, seeded(1));
-    for (const lane of w.lanes.slice(0, 2)) {
-      Object.assign(lane, { speed: 0, offset: 0, orbAt: lane.len, orbTaken: false });
-    }
+    for (const lane of w.lanes.slice(0, 2))
+      Object.assign(lane, { speed: 0, offset: 0, orbChance: 1 });
     return w;
   }
 
-  test('slides an orb on the next lane to Benjo and he takes it', () => {
-    const pulled = farOrbs();
-    const left = farOrbs();
-    const before = pulled.lanes[1].orbAt;
+  test('slides orbs on the next lane to Benjo one at a time, and he takes them', () => {
+    const pulled = fullOrbs();
+    const left = fullOrbs();
     for (let i = 0; i < 60; i++) {
       stepWorld(pulled, still, DT, { magnet: true });
       stepWorld(left, still, DT);
     }
-    assert.equal(pulled.orbs, 1);
-    assert.equal(pulled.lanes[0].orbTaken, true);
-    assert.equal(pulled.lanes[1].orbAt, before, 'two lanes away is out of reach');
+    assert.ok(pulled.orbs >= 1);
+    assert.equal(pulled.lanes[0].taken.size, pulled.orbs, 'only the orbs that reached him');
+    assert.equal(pulled.lanes[1].nudge.size, 0, 'two lanes away is out of reach');
     assert.equal(left.orbs, 0);
+  });
+
+  test('a pulled orb is drawn where the magnet moved it', () => {
+    const w = fullOrbs();
+    const lane = w.lanes[0];
+    const x = w.col + 0.5;
+    const car = Math.floor((x - lane.offset) / lane.period);
+    const start = [car - 1, car, car + 1].map((k) => orbX(lane, k));
+    stepWorld(w, still, DT, { magnet: true });
+    const moved = [car - 1, car, car + 1].filter((k, i) => orbX(lane, k) !== start[i]);
+    assert.equal(moved.length, 1, 'one orb moves per lane per step');
   });
 
   test('the instance polls the host magnet each update', () => {
@@ -147,11 +156,10 @@ describe('magnet', () => {
     const game = crossing.create(host);
     game.start();
     const snap = game.snapshot();
-    Object.assign(snap.world.lanes[0], { speed: 0, offset: 0, orbAt: snap.world.lanes[0].len });
-    snap.world.lanes[0].orbTaken = false;
+    Object.assign(snap.world.lanes[0], { speed: 0, offset: 0, orbChance: 1 });
     game.restore(snap);
     play(host, game, 1);
-    assert.equal(game.snapshot().world.orbs, 1);
+    assert.ok(game.snapshot().world.orbs >= 1);
   });
 });
 

@@ -4,13 +4,13 @@
 // A pointer press drops on its down edge, so a tap feels instant. The host also reports a tap
 // as `primary` when the pointer comes back up; that echo of a press we already used is dropped.
 
-import { TAP_ECHO } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
-/** @typedef {{ pointerDown: boolean, pointerAt: number }} PointerTracker */
+/** @typedef {import('../../shell/press.js').PressTracker} PointerTracker */
 
 /** @returns {PointerTracker} */
-export const createTracker = () => ({ pointerDown: false, pointerAt: Number.NEGATIVE_INFINITY });
+export const createTracker = createPress;
 
 /**
  * Forget pointer history, treating a pointer that is already down as used.
@@ -18,10 +18,7 @@ export const createTracker = () => ({ pointerDown: false, pointerAt: Number.NEGA
  * @param {PointerTracker} tracker
  * @param {InputState} input
  */
-export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
-}
+export const resetTracker = resetPress;
 
 /**
  * @param {InputState} input
@@ -30,13 +27,10 @@ export function resetTracker(tracker, input) {
  * @returns {boolean}
  */
 export function readDrop(input, tracker, now) {
-  const pointerDown = Boolean(input.pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
-  if (pointerEdge) tracker.pointerAt = now;
+  const pointerEdge = pointerPressed(tracker, input, now);
 
   // ArrowUp and W raise primary too, so primary alone covers every drop key.
   const primary = input.justPressed('primary');
-  const echo = primary && !pointerEdge && now - tracker.pointerAt < TAP_ECHO;
+  const echo = primary && !pointerEdge && isTapEcho(tracker, now);
   return pointerEdge || (primary && !echo);
 }

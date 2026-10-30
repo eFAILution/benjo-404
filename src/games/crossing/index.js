@@ -9,6 +9,7 @@
 
 import { createTracker, readHop, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
+import { HOW_TO } from './howto.js';
 import {
   DEATH_PAUSE,
   EVENT_HIT,
@@ -212,6 +213,7 @@ const crossing = {
     keyboard: HINT_KEYS,
     touch: HINT_TOUCH,
   },
+  howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createCrossing,
   powers: ['twin', 'rollback', 'gc', 'magnet'],

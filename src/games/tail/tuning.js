@@ -39,8 +39,6 @@ export const MOVE_T_MIN_REDUCED = 0.09;
 export const QUEUE_MAX = 2;
 /** Inputs this early in a run are the press that started it, not a turn. */
 export const START_GRACE = 0.12;
-/** A host tap within this long of a pointer press is that press, so it turns. */
-export const TAP_ECHO = 0.4;
 
 // Drawing, as fractions of a cell
 export const SEG_SIZE = 0.8;

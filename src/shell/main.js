@@ -129,11 +129,56 @@ export function boot(registry, config, holidays = null) {
   const page = new AbortController();
   const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
 
-  /** @param {RunOptions} [run] */
+  /** Games whose How to play card the visitor has already seen (#28). */
+  const howToSeen = createStorage('howto');
+
+  /**
+   * Play, unless this game's How to play card has not been seen yet: show that first.
+   * @param {RunOptions} [run]
+   */
   function play(run) {
+    if (game?.howTo && host?.state === 'idle' && !howToSeen.getFlag(game.id)) {
+      openHowTo(false, run);
+      return;
+    }
+    startRun(run);
+  }
+
+  /** @param {RunOptions} [run] */
+  function startRun(run) {
     const active = document.activeElement;
     if (active instanceof HTMLElement && message?.contains(active)) active.blur();
     host?.play(run);
+  }
+
+  /**
+   * From the start screen the card plays the game; from the paused card it resumes, and Back
+   * returns to the paused card. Either way the game counts as seen.
+   * @param {boolean} paused
+   * @param {RunOptions} [run] what the run is for when it starts from here, such as the nightly build
+   */
+  function openHowTo(paused, run) {
+    const current = game;
+    const howTo = current?.howTo;
+    if (!current || !howTo) return;
+    hud.showHowTo({ name: current.name, howTo }, theme, {
+      goLabel: paused ? 'Resume' : 'Got it, play',
+      onGo: () => {
+        howToSeen.setFlag(current.id, true);
+        hud.clearCard();
+        if (paused) host?.resume();
+        else startRun(run);
+      },
+      onBack: () => {
+        if (paused) {
+          // The host's own HUD wrapper, so the paused card gets its game wheel back.
+          hostHud.showPaused({});
+          return;
+        }
+        hud.clearCard();
+        byId('play-prompt')?.focus();
+      },
+    });
   }
 
   const hud = createHud({
@@ -144,14 +189,20 @@ export function boot(registry, config, holidays = null) {
     onPlay: () => play(),
     onPause: () => host?.pause(),
     onResume: () => host?.resume(),
+    onRestart: () => host?.restart(),
     onQuit: () => {
       host?.quit();
       byId('play-prompt')?.focus();
     },
     onSelect: (id) => selectGame(id, false),
-    onSwitch: (id) => selectGame(id, true),
+    onSwitch: (id) => {
+      // The paused card's wheel ends the run first, so the chosen game starts fresh.
+      if (host?.state === 'paused') host.quit();
+      selectGame(id, true);
+    },
     onMute: toggleMute,
     onFire: firePower,
+    onHowTo: () => openHowTo(host?.state === 'paused'),
   });
   hud.setMuted(audio.muted);
 
@@ -249,13 +300,17 @@ export function boot(registry, config, holidays = null) {
 
   /** Games the player can switch to from the game over card: the next two in config order. */
   const others = () => (resolved.picker ? nextGames(resolved.games, game) : []);
-  // The host only knows its own game, so the game over card gets the switch buttons here.
+  /** The paused card's wheel, starting on the game in play. */
+  const pausePicker = () =>
+    resolved.picker && game ? { games: resolved.games, current: game.id } : null;
+  // The host only knows its own game, so the paused and game over cards get the games here.
   const hostHud = {
     ...hud,
     setPower: (/** @type {PowerView | null} */ view) => {
       power = view;
       hud.setPower(view);
     },
+    showPaused: (/** @type {{ focus?: boolean }} */ how) => hud.showPaused(how, pausePicker()),
     showOver: (/** @type {OverCard} */ card) =>
       hud.showOver(card, others(), xpNote(pipeline.lastRun)),
   };

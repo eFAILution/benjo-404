@@ -7,7 +7,15 @@
 // Power-ups come in through `powers`: the magnet flag and the Digital Twin's absorb(), which the
 // step calls at the moment a block would cost Benjo a life.
 
-import { createLane, cutLane, hitAt, mod, orbNear, rerollLane } from './lanes.js';
+import {
+  createLane,
+  cutLane,
+  hitAt,
+  orbNear,
+  pullOrb,
+  rerollLane,
+  shuffledRanks,
+} from './lanes.js';
 import {
   BOTTOM_PAD,
   CEILING,
@@ -140,9 +148,12 @@ function toCurb(w) {
   w.topRow = 0;
 }
 
-/** @param {World} w */
+/** New lanes for this level, with the speed ranks dealt out at random. @param {World} w */
 function rerollAll(w) {
-  for (const lane of w.lanes) rerollLane(lane, w.level, w.random, w.reducedMotion);
+  const ranks = shuffledRanks(w.lanes.length, w.random);
+  for (const [i, lane] of w.lanes.entries()) {
+    rerollLane(lane, w.level, w.random, w.reducedMotion, ranks[i]);
+  }
 }
 
 /**
@@ -245,9 +256,9 @@ function placeBenjo(w) {
   w.by = w.row + 0.5 + (w.fromRow - w.row) * t;
 }
 
-/** @param {World} w @param {Lane} lane */
-function takeOrb(w, lane) {
-  lane.orbTaken = true;
+/** @param {World} w @param {Lane} lane @param {number} car */
+function takeOrb(w, lane, car) {
+  lane.taken.add(car);
   w.orbs += 1;
   w.score += ORB_SCORE;
   w.events |= EVENT_ORB | EVENT_SCORE;
@@ -268,7 +279,8 @@ function checkLane(w, powers) {
     }
     w.graceT = GRACE_T;
   }
-  if (orbNear(lane, x)) takeOrb(w, lane);
+  const car = orbNear(lane, x);
+  if (car !== null) takeOrb(w, lane, car);
 }
 
 /**
@@ -280,11 +292,9 @@ function pullOrbs(w, dt) {
   const x = w.col + 0.5;
   const step = MAGNET_V * dt;
   for (const lane of w.lanes) {
-    if (lane.orbAt < 0 || lane.orbTaken || Math.abs(lane.index - w.row) > MAGNET_ROWS) continue;
-    const half = lane.period / 2;
-    const d = mod(x - lane.offset - lane.orbAt - 0.5 + half, lane.period) - half;
-    lane.orbAt = mod(lane.orbAt + Math.max(-step, Math.min(step, d)), lane.period);
-    if (Math.abs(d) <= step) takeOrb(w, lane);
+    if (Math.abs(lane.index - w.row) > MAGNET_ROWS) continue;
+    const car = pullOrb(lane, x, step);
+    if (car !== null) takeOrb(w, lane, car);
   }
 }
 

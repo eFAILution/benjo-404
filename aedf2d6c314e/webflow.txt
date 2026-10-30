@@ -1,0 +1,21 @@
+<!-- Benjo 404, build aedf2d6c314e. Steps: docs/runbooks/deploy-404.md, option B. -->
+<!-- 1. 404 page settings, Inside <head> tag: -->
+<link rel="stylesheet" href="https://efailution.github.io/benjo-404/aedf2d6c314e/benjo-404.css" integrity="sha384-44p08Yo3wp1YTdDoHK4xPecdpBTbz6868lI/bMaNIACEv9ks8H8Gq2Prz9mRWLo+" crossorigin="anonymous">
+
+<!-- 2. 404 page settings, Before </body> tag: -->
+<script type="module" src="https://efailution.github.io/benjo-404/aedf2d6c314e/benjo-404.js" integrity="sha384-22Zx3/IerpMREaeWDriDI55AtHjOZTSqH6a0LGISolkcSeJP5xKlCZ4v+kuR2T15" crossorigin="anonymous"></script>
+
+<!-- 3. One Code Embed element, as the only content of the page: -->
+<div id="page">
+  <div id="game-root" aria-hidden="true"><canvas id="game-canvas"></canvas></div>
+  <div id="overlay"></div>
+  <main id="message">
+    <p class="kicker" id="m-kicker">Page Not Found</p>
+    <h1 class="code" id="m-code">404</h1>
+    <p class="message-body" id="m-body">We&#39;re sorry, but the page you&#39;re looking for doesn&#39;t exist. It might have been moved, deleted, or perhaps it never existed at all.</p>
+    <a class="btn btn-primary" id="m-cta" href="/">Return Home</a>
+    <div id="prompt-slot"></div>
+  </main>
+  <div id="hud" hidden></div>
+  <div id="card-slot"></div>
+</div>

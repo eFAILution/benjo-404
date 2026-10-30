@@ -50,7 +50,7 @@ Query overrides, for testing only. Bad values are ignored.
 
 ### Known limitations
 
-- The page reaches the live Webflow site through GitHub Pages: every merge to `main` publishes `dist/embed/` as a new folder, with a `webflow.txt` snippet to paste into Webflow (ADR-0069). Pages needs GitHub Pro or a public repo. See [`docs/runbooks/deploy-404.md`](docs/runbooks/deploy-404.md).
+- The page reaches the live Webflow site through GitHub Pages: every merge to `main` publishes `dist/embed/` as a new folder, with a `webflow.txt` snippet to paste into Webflow, and shows the newest page at https://efailution.github.io/benjo-404/ (ADR-0069). Pages needs GitHub Pro or a public repo. See [`docs/runbooks/deploy-404.md`](docs/runbooks/deploy-404.md).
 - The CSP header holds hashes of the inline script and style. Any rebuild that changes them needs the new `dist/csp.txt` deployed with the file.
 - The game needs Safari 14 or Chrome 90 and up. Older browsers still get the plain message and the Return Home link.
 - Holidays follow the visitor's own clock and a US calendar (A-8.3). Sound starts after the first tap or key press, is on by default, and mutes with the speaker button or M (A-8.4, A-20.3). Phones on silent mode play no sound.

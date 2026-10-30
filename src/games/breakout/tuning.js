@@ -85,8 +85,6 @@ export const BRICK_SCORE = 10;
 export const WALL_BONUS = 100;
 /** Inputs this early in a run are the press that started it. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 
 // Feedback
 /** Hit stop after a lost ball that is not the last one. */

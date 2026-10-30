@@ -72,8 +72,6 @@ export const LIVES = 3;
 // Timing
 /** Inputs this early in a run are the press that started it, not a shot. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 /** Hit stop after a bite that costs a life. */
 export const HIT_T = 0.8;
 /** Gap between a cleared wave and the next formation. */

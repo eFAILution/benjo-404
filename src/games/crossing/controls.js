@@ -5,19 +5,17 @@
 // with a press: if the host reports a swipe, the swipe wins; otherwise Benjo hops toward the
 // spot that was pressed. The host's tap echo of that press is dropped, as in flight.
 
-import { TAP_ECHO } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
 /** @typedef {import('./world.js').Dir} Dir */
 /**
- * @typedef {{ pointerDown: boolean, pointerAt: number, pressed: boolean, pressX: number,
- *   pressY: number }} PointerTracker
+ * @typedef {import('../../shell/press.js').PressTracker & { pressed: boolean, pressX: number, pressY: number }} PointerTracker
  */
 
 /** @returns {PointerTracker} */
 export const createTracker = () => ({
-  pointerDown: false,
-  pointerAt: Number.NEGATIVE_INFINITY,
+  ...createPress(),
   pressed: false,
   pressX: 0,
   pressY: 0,
@@ -30,8 +28,7 @@ export const createTracker = () => ({
  * @param {InputState} input
  */
 export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
+  resetPress(tracker, input);
   tracker.pressed = false;
 }
 
@@ -57,12 +54,9 @@ export function towards(dx, dy) {
  * @returns {Dir | null}
  */
 export function readHop(input, tracker, now, benjoX, benjoY) {
-  const pointerDown = Boolean(input.pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  const released = !pointerDown && tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
+  const released = !input.pointer?.down && tracker.pointerDown;
+  const pointerEdge = pointerPressed(tracker, input, now);
   if (pointerEdge && input.pointer) {
-    tracker.pointerAt = now;
     tracker.pressed = true;
     tracker.pressX = input.pointer.x;
     tracker.pressY = input.pointer.y;
@@ -77,6 +71,6 @@ export function readHop(input, tracker, now, benjoX, benjoY) {
   }
   for (const dir of DIRS) if (input.justPressed(dir)) return dir;
   const primary = input.justPressed('primary');
-  const echo = now - tracker.pointerAt < TAP_ECHO;
+  const echo = isTapEcho(tracker, now);
   return primary && !echo ? 'up' : null;
 }

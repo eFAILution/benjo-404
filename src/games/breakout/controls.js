@@ -5,19 +5,17 @@
 // pointer comes back up; that echo of a press we already used is dropped. A pointer that moves
 // sets a target the paddle slides toward; a held arrow key overrides it.
 
-import { TAP_ECHO } from './tuning.js';
+import { createPress, isTapEcho, pointerPressed, resetPress } from '../../shell/press.js';
 
 /** @typedef {import('../../contracts').InputState} InputState */
 /** @typedef {import('./world.js').Intent} Intent */
 /**
- * @typedef {{ pointerDown: boolean, pointerAt: number, pointerX: number | null,
- *   intent: Intent }} PointerTracker
+ * @typedef {import('../../shell/press.js').PressTracker & { pointerX: number | null, intent: Intent }} PointerTracker
  */
 
 /** @returns {PointerTracker} */
 export const createTracker = () => ({
-  pointerDown: false,
-  pointerAt: Number.NEGATIVE_INFINITY,
+  ...createPress(),
   pointerX: null,
   intent: { move: 0, targetX: null, serve: false },
 });
@@ -29,8 +27,7 @@ export const createTracker = () => ({
  * @param {InputState} input
  */
 export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
-  tracker.pointerAt = Number.NEGATIVE_INFINITY;
+  resetPress(tracker, input);
   tracker.pointerX = input.pointer ? input.pointer.x : null;
   tracker.intent.targetX = null;
 }
@@ -42,13 +39,10 @@ export function resetTracker(tracker, input) {
  * @returns {boolean} the player served this step
  */
 export function readServe(input, tracker, now) {
-  const pointerDown = Boolean(input.pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
-  if (pointerEdge) tracker.pointerAt = now;
+  const pointerEdge = pointerPressed(tracker, input, now);
 
   const primary = input.justPressed('primary');
-  const echo = primary && !pointerEdge && now - tracker.pointerAt < TAP_ECHO;
+  const echo = primary && !pointerEdge && isTapEcho(tracker, now);
   return pointerEdge || (primary && !echo) || input.justPressed('up');
 }
 

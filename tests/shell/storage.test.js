@@ -14,6 +14,24 @@ describe('createStorage', () => {
     assert.equal(storage.get('missing'), null);
   });
 
+  it('round-trips yes or no flags as 1 and 0, so older saved values still read back', () => {
+    const backing = memoryBacking();
+    const storage = createStorage('audio', backing);
+    assert.equal(storage.getFlag('muted'), false, 'nothing saved reads as no');
+    assert.equal(storage.setFlag('muted', true), true);
+    assert.equal(backing.data.get('benjo404:audio:muted'), '1');
+    assert.equal(storage.getFlag('muted'), true);
+    storage.setFlag('muted', false);
+    assert.equal(backing.data.get('benjo404:audio:muted'), '0');
+    assert.equal(storage.getFlag('muted'), false);
+    // The How to play card stored "seen" with setNumber(id, 1) before flags existed.
+    const seen = createStorage('howto', backing);
+    seen.setNumber('whack', 1);
+    assert.equal(seen.getFlag('whack'), true);
+    seen.set('runner', 'yes');
+    assert.equal(seen.getFlag('runner'), false, 'anything but 1 reads as no');
+  });
+
   it('round-trips numbers', () => {
     const storage = createStorage('runner', memoryBacking());
     assert.equal(storage.setNumber('best', 420), true);

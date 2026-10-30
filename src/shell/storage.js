@@ -89,6 +89,10 @@ export function createStorage(gameId, backing = defaultBacking()) {
     set,
     getNumber,
     setNumber,
+    /** A yes or no, stored as '1' or '0'. Anything else, or nothing, reads as no. @param {string} key */
+    getFlag: (key) => get(key) === '1',
+    /** @param {string} key @param {boolean} on */
+    setFlag: (key, on) => set(key, on ? '1' : '0'),
     get dead() {
       return dead;
     },

@@ -78,8 +78,6 @@ export const GOAL_SCORE = 100;
 export const ORB_SCORE = 25;
 /** Inputs this early in a run are the press that started it. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 /** The timer bar turns hazard colored below this many seconds. */
 export const CLOCK_LOW = 5;
 

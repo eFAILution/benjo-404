@@ -28,8 +28,6 @@ export const MAX_FALL = 700;
 export const HIT_R = 0.34;
 /** Inputs this early in a run are the press that started it, not a flap. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 export const HOVER_AMP = 6;
 export const HOVER_RATE = 4;
 

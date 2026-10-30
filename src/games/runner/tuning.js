@@ -28,8 +28,6 @@ export const JUMP_BUFFER = 0.1;
 export const DUCK_TAP = 0.45;
 /** Inputs this early in a run are the press that started it, not a jump. */
 export const START_GRACE = 0.12;
-/** A host tap that echoes a pointer press within this window is the same press. */
-export const TAP_ECHO = 0.4;
 
 // Collision
 export const HIT_INSET = 6;

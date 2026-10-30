@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readdirSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import { decodeSave, encodeSave, KNOWN_GAMES, mergeSave } from '../../src/shell/save-code.js';
@@ -30,7 +31,20 @@ const tamper = (code, at) => {
 describe('save codes', () => {
   it('lists the known games in their fixed order', () => {
     assert.deepEqual(KNOWN_GAMES.slice(0, 3), ['runner', 'flight', 'stack']);
-    assert.equal(KNOWN_GAMES.length, 9);
+    assert.equal(KNOWN_GAMES.length, 10);
+    assert.equal(KNOWN_GAMES.at(-1), 'muncher', 'new games append');
+  });
+
+  it('knows every game in src/games, so each one counts toward codes and Full Stack', () => {
+    const games = readdirSync(new URL('../../src/games/', import.meta.url), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    for (const id of games) assert.ok(KNOWN_GAMES.includes(id), id);
+  });
+
+  it('reads a code from before a game was added', () => {
+    const old = { ...DATA, bests: DATA.bests.slice(0, 9) };
+    assert.deepEqual(decodeSave(encodeSave(old)), old);
   });
 
   it('round-trips', () => {

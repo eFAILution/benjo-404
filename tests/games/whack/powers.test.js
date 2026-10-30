@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-
+import { hoverY } from '../../../src/games/whack/draw.js';
 import whack from '../../../src/games/whack/index.js';
 import {
   BUG_SCORE,
@@ -249,5 +249,18 @@ describe('Garbage Collector', () => {
     game.start();
     game.destroy();
     assert.equal(game.collect(), 0);
+  });
+});
+
+describe('track', () => {
+  test('reports where Benjo hovers, once per update', () => {
+    const points = [];
+    const host = fakeHost({ track: (x, y) => points.push([x, y]) });
+    const game = whack.create(host);
+    game.start();
+    play(host, game, 1);
+    assert.equal(points.length, 60);
+    const w = createWorld(SIZE, seeded(1));
+    assert.deepEqual(points[0], [w.holeX[w.lastHole], hoverY(w)]);
   });
 });

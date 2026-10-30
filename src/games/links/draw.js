@@ -99,11 +99,16 @@ function drawArms(ctx, palette, w, alpha) {
   }
 }
 
+/** Screen x of the cursor tile's center. @param {World} w */
+export const cursorX = (w) => w.boardLeft + ((w.cursor % w.board.cols) + 0.5) * w.tile;
+
+/** Screen y of the cursor tile's center. @param {World} w */
+export const cursorY = (w) => w.boardTop + (Math.floor(w.cursor / w.board.cols) + 0.5) * w.tile;
+
 /** @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w */
 function drawCursor(ctx, palette, w) {
-  const { cols } = w.board;
-  const x = w.boardLeft + (w.cursor % cols) * w.tile;
-  const y = w.boardTop + Math.floor(w.cursor / cols) * w.tile;
+  const x = cursorX(w) - w.tile / 2;
+  const y = cursorY(w) - w.tile / 2;
   ctx.strokeStyle = palette.accent;
   ctx.lineWidth = CURSOR_W;
   ctx.strokeRect(x + CURSOR_W / 2, y + CURSOR_W / 2, w.tile - CURSOR_W, w.tile - CURSOR_W);

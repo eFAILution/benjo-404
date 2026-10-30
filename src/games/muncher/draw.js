@@ -4,12 +4,14 @@
 
 import {
   BENJO_H,
+  BLINK_EVERY,
   BOTTOM_PAD,
   BYTE_ALPHA,
   BYTE_SIZE,
   EDGE_ALPHA,
   FLASH_EVERY,
   FRIGHT_WARN_T,
+  GRACE_ALPHA,
   LIFE_R,
   LIFE_SPACING,
   MISS_H,
@@ -32,7 +34,7 @@ const ROTATE = [0, Math.PI / 2, 0, -Math.PI / 2];
 
 // Reused option objects: the host reads them synchronously, so one of each is enough.
 /** @type {SpriteOpts} */
-const benjoOpts = { flipX: false, rotate: 0 };
+const benjoOpts = { flipX: false, rotate: 0, alpha: 1 };
 /** @type {SpriteOpts} */
 const hitOpts = { flipX: false, rotate: 0, tint: '' };
 /** @type {SpriteOpts} */
@@ -128,12 +130,18 @@ function drawMisses(host, w, blend) {
   }
 }
 
-/** Benjo faces his way and flashes in the hazard tint after a lost life. @param {HostContext} host @param {World} w @param {number} blend */
+/**
+ * Benjo faces his way and flashes in the hazard tint after a lost life. He blinks while the
+ * Digital Twin's grace runs (holds faint under reduced motion).
+ * @param {HostContext} host @param {World} w @param {number} blend
+ */
 function drawBenjo(host, w, blend) {
   const b = w.benjo;
   const hurt = w.dead || w.hitT > 0;
   const flashOn = hurt && (w.reducedMotion || Math.floor(w.hitAge / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
+  const faint = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  benjoOpts.alpha = faint ? GRACE_ALPHA : 1;
   opts.flipX = b.facing === 2;
   opts.rotate = ROTATE[b.facing];
   hitOpts.tint = host.theme.palette.hazard;

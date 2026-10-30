@@ -7,7 +7,7 @@
 // nothing drifts toward him, so there is no track and no magnet.
 
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
-import { drawFrame } from './draw.js';
+import { cursorX, cursorY, drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
 import { END_T, EVENT_SOLVED, EVENT_TURN, HINT_T, NEW_BEST_T, SOLVED_T } from './tuning.js';
 import { createWorld, fixTiles, resizeWorld, stepWorld } from './world.js';
@@ -126,6 +126,8 @@ function createLinks(host) {
       stepWorld(world, readIntent(host.input, tracker, world, intent), dt, assist);
       playCue(host, world.events);
       syncHud(world, dt);
+      // The cursor is what the player steers, so the twin and the ghost follow it.
+      host.track?.(cursorX(world), cursorY(world));
       if (world.dead && world.deadT >= END_T) {
         ended = true;
         host.end({ score: world.score, scoreLabel: SCORE_LABEL, reason: REASON_TIMEOUT });

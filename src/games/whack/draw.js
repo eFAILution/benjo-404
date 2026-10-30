@@ -129,6 +129,10 @@ function drawThings(host, w, alpha) {
   }
 }
 
+/** Screen y Benjo hovers at over the last hole he hit, before the bob. @param {World} w */
+export const hoverY = (w) =>
+  Math.max(w.ceiling + (w.cell * BENJO_H) / 2, w.holeY[w.lastHole] - w.cell * BENJO_LIFT);
+
 /** Benjo hovers over the last hole he hit, stomps it on a whack, and blinks in the twin's grace. @param {HostContext} host @param {World} w @param {number} time */
 function drawBenjo(host, w, time) {
   const i = w.lastHole;

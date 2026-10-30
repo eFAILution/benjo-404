@@ -8,8 +8,8 @@
 /** @typedef {{ raw: number, bonus: number }} Ledger the game's last score and Cache Hit's bonus */
 
 /**
- * One context per run. Its end, setScore, and setStatus go quiet once the run's signal aborts,
- * so a stale instance can never end or write over the next run.
+ * One context per run. Its end, setScore, setStatus, audio, and music go quiet once the run's
+ * signal aborts, so a stale instance can never end, sound over, or write over the next run.
  *
  * Cache Hit doubles points without the game knowing: each rise in the game's own score while it
  * runs is added again as a bonus, the HUD shows score plus bonus, and end() reports both. The
@@ -51,7 +51,11 @@ export function createRunContext(options, { signal, input, end, random, powers, 
     setStatus: (text) => signal.aborted || hud.setStatus(String(text)),
     end: (result) =>
       signal.aborted || end({ ...result, score: (Number(result?.score) || 0) + ledger.bonus }),
-    audio: { play: (cue) => signal.aborted || options.audio?.play(cue) },
+    audio: { play: (cue) => signal.aborted || options.audio?.play(cue, options.game.cues) },
+    music: {
+      play: (track) => signal.aborted || options.music?.play(track),
+      stop: () => signal.aborted || options.music?.stop(),
+    },
     power: {
       active: (id) => live() && powers.isActive(id),
       absorb: () => live() && powers.absorb(),

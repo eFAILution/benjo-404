@@ -26,6 +26,7 @@ import { createHost } from './host.js';
 import { cardPowers } from './howto.js';
 import { createHud } from './hud.js';
 import { attachInput } from './input.js';
+import { createMusic } from './music.js';
 import { createProgressWiring } from './progress-wiring.js';
 import { createStorage } from './storage.js';
 import { watchSize } from './viewport.js';
@@ -122,6 +123,7 @@ export function boot(registry, config, holidays = null) {
   let host = null;
   const page = new AbortController();
   const audio = createAudio({ storage: createStorage('audio'), cues: theme.cues });
+  const music = createMusic(audio);
   /** Touch or keys, so the How to play card and the first hint show only the visitor's controls. */
   const device = watchDevice(window, page.signal);
 
@@ -292,6 +294,7 @@ export function boot(registry, config, holidays = null) {
       onEvent: progress.onEvent,
       onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
       audio,
+      music,
     });
 
   /**

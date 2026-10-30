@@ -1,8 +1,8 @@
 {
-  "shell": 28000,
+  "shell": 30000,
   "fonts": 28000,
   "game": 16000,
   "theme": 4000,
-  "total": 90000,
+  "total": 110000,
   "totalRaw": 320000
 }

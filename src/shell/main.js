@@ -7,7 +7,6 @@
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {{ score: number, best: number, scoreLabel: string, reason: string }} OverCard */
 /** @typedef {import('./boot.js').PickTheme} PickTheme */
-/** @typedef {import('./host.js').PowerView} PowerView */
 /** @typedef {import('./host.js').RunOptions} RunOptions */
 /**
  * @typedef {object} Holidays
@@ -198,7 +197,6 @@ export function boot(registry, config, holidays = null) {
       selectGame(id, true);
     },
     onMute: toggleMute,
-    onFire: () => progress.firePower(),
     onHowTo: () => openHowTo(host?.state === 'paused'),
   });
   hud.setMuted(audio.muted);
@@ -240,7 +238,6 @@ export function boot(registry, config, holidays = null) {
     audio,
     signal: page.signal,
     hostState: () => host?.state,
-    firePower: () => host?.firePower(),
     startGame: (id, run) => selectGame(id, true, run),
   });
 
@@ -252,10 +249,6 @@ export function boot(registry, config, holidays = null) {
   // The host only knows its own game, so the paused and game over cards get the games here.
   const hostHud = {
     ...hud,
-    setPower: (/** @type {PowerView | null} */ view) => {
-      progress.setPower(view);
-      hud.setPower(view);
-    },
     showPaused: (/** @type {{ focus?: boolean }} */ how) => hud.showPaused(how, pausePicker()),
     showOver: (/** @type {OverCard} */ card) => hud.showOver(card, others(), progress.xpLine()),
   };
@@ -351,10 +344,6 @@ export function boot(registry, config, holidays = null) {
     (event) => {
       if (event.code === 'KeyM' && isShortcut(event)) {
         toggleMute();
-        return;
-      }
-      if (event.code === 'KeyE' && isShortcut(event) && host?.state === 'playing') {
-        progress.firePower();
         return;
       }
       const onBody = document.activeElement === document.body;

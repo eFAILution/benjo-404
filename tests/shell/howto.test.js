@@ -86,14 +86,16 @@ describe('howToBody (#64)', () => {
     assert.ok(tips.includes('Clears every bug on screen'));
   });
 
-  it('says how to fire a power-up on this device', () => {
-    const fire = (touch) =>
-      byClass(howToBody(HOW_TO, fakeTheme, { touch, powers: ['cache'] }), 'howto-section')
-        .map(textOf)
-        .join(' ');
-    assert.match(fire(false), /Press E to fire it/);
-    assert.doesNotMatch(fire(false), /Tap/);
-    assert.match(fire(true), /Tap the slot to fire it/);
+  it('says power-ups start as they drop, with nothing to press (#74)', () => {
+    for (const touch of [false, true]) {
+      const section = byClass(
+        howToBody(HOW_TO, fakeTheme, { touch, powers: ['cache'] }),
+        'howto-fire',
+      ).map(textOf);
+      assert.equal(section.length, 1);
+      assert.match(section[0], /start at once/);
+      assert.doesNotMatch(section[0], /Press E|Tap the slot/);
+    }
   });
 
   it('leaves the section out when the game drops no power-ups', () => {

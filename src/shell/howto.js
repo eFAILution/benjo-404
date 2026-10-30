@@ -60,7 +60,7 @@ const POWER_TIPS = {
   cache: 'Every point counts double',
   breakpoint: 'The game runs at half speed',
   twin: 'Takes one hit that would end the run',
-  rollback: "Can't be fired. If the run ends while it waits, rewinds 3 seconds",
+  rollback: 'Waits for a crash, then rewinds 3 seconds. Others keep dropping',
   gc: "Clears what's on screen",
   magnet: 'Pulls pickups toward Benjo',
 };
@@ -100,13 +100,11 @@ export function cardPowers(listed) {
 /**
  * @param {HowTo} howTo
  * @param {PowerId[]} ids
- * @param {boolean} touch
  */
-function powerList(howTo, ids, touch) {
-  const fire = touch ? 'Tap the slot to fire it.' : 'Press E to fire it.';
+function powerList(howTo, ids) {
   return section('Power-ups', [
     el('p', { class: 'howto-fire' }, [
-      `As you score, a power-up drops into the slot beside Best. ${fire}`,
+      'As you score, power-ups drop and start at once. The slot beside Best shows the one running.',
     ]),
     el(
       'ul',
@@ -152,6 +150,6 @@ export function howToBody(howTo, theme, { touch, powers }) {
         ]),
       ),
     ),
-    powers.length ? powerList(howTo, powers, useTouch) : null,
+    powers.length ? powerList(howTo, powers) : null,
   ];
 }

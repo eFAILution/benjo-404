@@ -44,25 +44,27 @@ export function powerPool(listed, instance) {
 }
 
 /**
+ * A power takes effect the moment it drops (#74). Rollback is the exception: it is armed and
+ * waits for a crash on its own, so other powers keep dropping while it waits.
  * @param {{ pool: () => PowerId[], random: () => number, emit: (event: RunEvent) => void,
  *   show: (view: PowerView | null) => void, cue: () => void }} options
  */
 export function createPowers({ pool, random, emit, show, cue }) {
   let clock = 0;
   let due = FIRST_DROP;
-  /** @type {PowerId | null} */
-  let held = null;
+  let armed = false;
   /** @type {PowerId | null} */
   let active = null;
   let until = 0;
+  let sweeps = 0;
   let shown = '';
 
   /**
    * @param {PowerId | null} id
-   * @param {'held' | 'active'} [state]
+   * @param {'armed' | 'active'} [state]
    * @param {number} [left]
    */
-  function paint(id, state = 'held', left = 1) {
+  function paint(id, state = 'armed', left = 1) {
     const key = id ? `${id} ${state} ${left}` : '';
     if (key === shown) return;
     shown = key;
@@ -71,16 +73,34 @@ export function createPowers({ pool, random, emit, show, cue }) {
     show({ id, label, name, state, left });
   }
 
-  /** The game scored. A drop that is due lands now, so it feels earned. */
+  /** Nothing running: the slot shows an armed Rollback, or empties. */
+  const idle = () => paint(armed ? 'rollback' : null);
+
+  /** @param {PowerId} id */
+  function start(id) {
+    const seconds = POWERS[id][2];
+    emit({ type: 'power', id });
+    if (id === 'gc') sweeps += 1;
+    if (seconds > 0) {
+      active = id;
+      until = clock + seconds;
+      paint(id, 'active');
+    }
+  }
+
+  /** The game scored. A drop that is due lands now, so it feels earned, and fires at once. */
   function scored() {
-    if (held || active || clock < due) return;
-    const ids = pool();
+    if (active || clock < due) return;
+    const ids = pool().filter((id) => !(armed && id === 'rollback'));
     if (ids.length === 0) return;
-    held = ids[Math.floor(random() * ids.length)] ?? ids[0];
+    const id = ids[Math.floor(random() * ids.length)] ?? ids[0];
     due = clock + DROP_GAP + random() * DROP_SPREAD;
-    paint(held);
-    emit({ type: 'drop', id: held });
+    emit({ type: 'drop', id });
     cue();
+    if (id === 'rollback') {
+      armed = true;
+      idle();
+    } else start(id);
   }
 
   /** @param {number} seconds real playing time since the last frame */
@@ -90,29 +110,14 @@ export function createPowers({ pool, random, emit, show, cue }) {
     const left = (until - clock) / POWERS[active][2];
     if (left > 0) return paint(active, 'active', Math.ceil(left * LEFT_STEPS) / LEFT_STEPS);
     active = null;
-    paint(null);
+    idle();
   }
 
-  /** Held becomes active. Rollback cannot be fired by hand; it waits in the slot for a death. */
-  function fire() {
-    const id = held;
-    if (!id || id === 'rollback') return null;
-    held = null;
-    const seconds = POWERS[id][2];
-    emit({ type: 'power', id });
-    if (seconds > 0) {
-      active = id;
-      until = clock + seconds;
-      paint(id, 'active');
-    } else paint(null);
-    return id;
-  }
-
-  /** Use up the held power when it is `id`. The host takes rollback this way. */
+  /** Use up the armed Rollback. The host takes it this way when the game ends the run. */
   function take(/** @type {PowerId} */ id) {
-    if (held !== id) return false;
-    held = null;
-    paint(null);
+    if (id !== 'rollback' || !armed) return false;
+    armed = false;
+    if (!active) idle();
     return true;
   }
 
@@ -120,15 +125,16 @@ export function createPowers({ pool, random, emit, show, cue }) {
   function absorb() {
     if (active !== 'twin') return false;
     active = null;
-    paint(null);
+    idle();
     emit({ type: 'absorb' });
     return true;
   }
 
   /** Empty the slot at the end of a run. Always tells the HUD, even when it looks empty. */
   function clear() {
-    held = null;
+    armed = false;
     active = null;
+    sweeps = 0;
     shown = '';
     show(null);
   }
@@ -136,14 +142,22 @@ export function createPowers({ pool, random, emit, show, cue }) {
   return {
     scored,
     tick,
-    fire,
     take,
     absorb,
     clear,
+    /**
+     * True once for each Garbage Collector that dropped. The host clears the screen after the
+     * game's update, since the drop lands inside it, from the game's own setScore.
+     */
+    sweep() {
+      if (sweeps === 0) return false;
+      sweeps -= 1;
+      return true;
+    },
     /** @param {PowerId} id */
     isActive: (id) => active === id,
     /** @param {PowerId} id */
-    holds: (id) => held === id,
+    holds: (id) => id === 'rollback' && armed,
     /** Real playing seconds, pauses left out. */
     get clock() {
       return clock;

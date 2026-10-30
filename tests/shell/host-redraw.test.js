@@ -71,7 +71,6 @@ describe('createHost redraw after a resize', () => {
     host.play();
     for (let t = 0; t <= 10.2 * 1000; t += 1000 / 60) env.options.frames.run(t);
     game.host.setScore(1);
-    host.firePower();
     host.pause();
     sprites.length = 0;
     assert.equal(host.redraw(), true);

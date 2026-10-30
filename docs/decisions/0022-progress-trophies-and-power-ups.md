@@ -24,11 +24,11 @@ The page has no server and no accounts, holds no personal data (AGENTS.md), and 
 
 6. **The nightly build is one game per UTC day with a seeded random**, so everyone gets the same run that day. The host's `play({ random, nightly })` swaps the run's random source, and power-up drops use their own random so they never shift the seed. Finishing nightlies on back-to-back days builds the uptime streak.
 
-7. **Power-ups are handed out by the host, and games only add hooks.** The contract (`src/contracts.d.ts`) gains `HostContext.power` (`active(id)`, `absorb()`), `HostContext.track(x, y)`, `GameInstance.collect()`, `snapshot()`, `restore()`, and `GameModule.powers`. All are optional, so older games and test hosts keep working. The host drops a power into one HUD slot after about 10 seconds of play and then every 15 to 25 seconds, landing on the next score increase. The player fires it with the slot button or E.
+7. **Power-ups are handed out by the host, and games only add hooks.** The contract (`src/contracts.d.ts`) gains `HostContext.power` (`active(id)`, `absorb()`), `HostContext.track(x, y)`, `GameInstance.collect()`, `snapshot()`, `restore()`, and `GameModule.powers`. All are optional, so older games and test hosts keep working. The host drops a power after about 10 seconds of play and then every 15 to 25 seconds, landing on the next score increase. It takes effect the moment it drops, and a toast names it (#74). The HUD slot only shows the power that is running, with a draining bar, or an armed Rollback. It is not a button, and there is no key to press. No new power drops while a timed one runs.
    - **Cache Hit** (double points) and **Breakpoint** (half speed game time) are run by the host alone and work in every game.
    - **Digital Twin**: the game calls `absorb()` where a hit would end the run. The twin takes it once, and Benjo gets a short grace period. The host draws the twin as a see-through Benjo trailing the player.
-   - **Rollback** cannot be fired by hand. If it is held when the game ends the run, the host restores a snapshot from about three seconds earlier and the run goes on.
-   - **Garbage Collector** calls the game's `collect()`, which clears what is on screen and returns a count.
+   - **Rollback** is armed when it drops and waits on its own. Other powers keep dropping and taking effect while it waits, but a second Rollback never drops while one is armed (#74). If one is armed when the game ends the run, the host restores a snapshot from about three seconds earlier and the run goes on.
+   - **Garbage Collector** calls the game's `collect()`, which clears what is on screen and returns a count. The drop lands inside the game's own `setScore`, in the middle of its update, so the host calls `collect()` right after that update instead.
    - **Load Balancer** is a magnet the game polls with `active('magnet')`.
    - A game lists the game-assisted powers it can honestly support, and the host only drops those:
 
@@ -51,7 +51,7 @@ The page has no server and no accounts, holds no personal data (AGENTS.md), and 
 
 - **Accounts and a server for progress.** Real cross-device sync, but it needs a backend, a login, and personal data on a 404 page. The save code covers moving devices without any of that.
 - **Power-ups as pickups inside each game's world.** Feels more natural, but every game would draw, spawn, and collide nine new kinds of objects. Drops into a HUD slot reuse one shell system and keep each game's change to a few hooks.
-- **Fire a power the moment it drops.** Simpler, but the slot lets the player pick the moment, which is most of the fun, and Rollback only makes sense held.
+- **The player fires the held power with the slot or E.** The first version did this, so the player could pick the moment. Play-testing found that mid-run nobody stops to fire it, and a held Rollback filled the slot and blocked every other drop (#74).
 - **One progress file per game.** Simpler storage, but the build version, tickets, and trophies span games, and one shared store keeps the save code small.
 - **Keep the shell budget at 24,000.** It fits today with 96 bytes to spare, which would block any follow-up fix.
 

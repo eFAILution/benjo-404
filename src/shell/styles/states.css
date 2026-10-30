@@ -268,35 +268,28 @@
   gap: 0.75rem;
 }
 
-/* The power-up slot (#22): a held power pulses, a running one drains its bar. */
-@keyframes power-pulse {
-  to {
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-}
-
+/* The power-up slot (#22): a running power drains its bar, an armed Rollback waits (#74). */
 .hud-power {
   position: relative;
+  display: grid;
+  place-items: center;
   width: 40px;
   height: 32px;
-  padding: 0;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--ink);
   font-size: 11px;
-  cursor: pointer;
 }
 
 /* An empty slot gives its room back to the game's hint, which needs it most at the start. */
-.hud-power:disabled {
+.hud-power[hidden] {
   display: none;
 }
 
-.hud-power[data-state='held'] {
+.hud-power[data-state='armed'] {
   border-color: var(--accent);
-  animation: power-pulse 0.8s var(--ease) infinite alternate;
 }
 
 .hud-power-bar {
@@ -432,19 +425,12 @@ html:not(.is-playing) #card-slot:not(:empty) {
   font: 0.875rem var(--font-mono);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hud-power[data-state='held'] {
-    animation: none;
-  }
-}
-
 /* The paused card's wheel stays inside the card's padding on every width. */
 .card .wheel {
   width: min(30rem, calc(100vw - 2 * var(--pad) - 4rem));
 }
 
 @media (pointer: coarse) {
-  .hud-power,
   .hud-mute,
   .hud-pause {
     width: 44px;

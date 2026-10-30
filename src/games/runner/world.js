@@ -6,9 +6,11 @@
 // world and returns it, so the game double-buffers two worlds and a step allocates nothing.
 // The previous buffer doubles as the interpolation source for render(alpha).
 // `random` is the host's seeded generator, so a step is deterministic for a given seed.
+// Power-ups come in through `powers`: the magnet flag and the Digital Twin's absorb(), which the
+// step calls at the moment a hit would kill Benjo.
 
-import { collectOrbs, hitsObstacle } from './collide.js';
-import { scrollAll, stepBenjo } from './physics.js';
+import { collectOrbs, freeSlot, hitsObstacle } from './collide.js';
+import { pullOrbs, scrollAll, stepBenjo } from './physics.js';
 import { rollNext, spawnObstacles, spawnPickups } from './spawn.js';
 import {
   ASPECT_MAX,
@@ -19,6 +21,7 @@ import {
   COYOTE,
   EVENT_HIT,
   FIRST_GAP_S,
+  GRACE_T,
   GRAVITY,
   JUMP_CUT_V,
   JUMP_V,
@@ -50,6 +53,8 @@ import {
  * @typedef {{ width: number, height: number }} WorldSize
  * @typedef {{ reducedMotion?: boolean, hazardAspects?: number[], immortal?: boolean }} WorldOptions
  *   immortal turns off hazard collisions; tests use it to simulate long runs.
+ * @typedef {{ magnet?: boolean, absorb?: () => boolean }} Powers
+ *   magnet pulls pickups in this step; absorb() is true when the Digital Twin takes a hit.
  */
 
 /**
@@ -93,6 +98,7 @@ import {
  * @property {number} arcs pickup arcs spawned so far
  * @property {boolean} dead
  * @property {number} deadT
+ * @property {number} graceT seconds left in which hazards pass through Benjo (Digital Twin)
  * @property {number} events EVENT_* bits raised by the last step
  * @property {Obstacle[]} obstacles fixed-size pool
  * @property {Orb[]} orbs fixed-size pool
@@ -175,6 +181,7 @@ export function createWorld(size, random, options = {}) {
     arcs: 0,
     dead: false,
     deadT: 0,
+    graceT: 0,
     events: 0,
     obstacles: Array.from({ length: OBSTACLE_POOL }, () => ({
       active: false,
@@ -242,14 +249,38 @@ export function resizeWorld(world, size) {
 }
 
 /**
+ * Garbage Collector: remove every hazard on screen, each with a pop. Mutates `w`.
+ * @param {World} w
+ * @returns {number} how many were removed
+ */
+export function clearObstacles(w) {
+  let cleared = 0;
+  for (let i = 0; i < w.obstacles.length; i++) {
+    const o = w.obstacles[i];
+    if (!o.active || o.x >= w.width) continue;
+    o.active = false;
+    cleared += 1;
+    const pop = freeSlot(w.pops);
+    if (!pop) continue;
+    pop.active = true;
+    pop.x = o.x + o.w / 2;
+    pop.y = o.y + o.h / 2;
+    pop.size = o.h;
+    pop.t = 0;
+  }
+  return cleared;
+}
+
+/**
  * Advance the world by one fixed step.
  * @param {World} world the current state; never mutated
  * @param {RunnerInput} input
  * @param {number} dt seconds, 1/60 from the host
  * @param {World} [out] spare world to write into; omit to get a fresh copy
+ * @param {Powers} [powers]
  * @returns {World}
  */
-export function stepWorld(world, input, dt, out) {
+export function stepWorld(world, input, dt, out, powers) {
   const next = out ? copyWorld(world, out) : cloneWorld(world);
   next.events = 0;
   if (next.dead) {
@@ -265,10 +296,15 @@ export function stepWorld(world, input, dt, out) {
   scrollAll(next, scroll, dt);
   spawnObstacles(next, scroll);
   spawnPickups(next, dt);
+  if (powers?.magnet) pullOrbs(next, dt);
   collectOrbs(next);
-  if (!next.immortal && hitsObstacle(next)) {
-    next.dead = true;
-    next.events |= EVENT_HIT;
+  next.graceT = Math.max(0, next.graceT - dt);
+  if (!next.immortal && next.graceT === 0 && hitsObstacle(next)) {
+    if (powers?.absorb?.()) next.graceT = GRACE_T;
+    else {
+      next.dead = true;
+      next.events |= EVENT_HIT;
+    }
   }
   next.score = scoreOf(next);
   return next;

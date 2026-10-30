@@ -1,5 +1,6 @@
 // @ts-check
-// Runs one game: HostContext, fixed-step loop, pause, end, and error isolation (ADR-0008 section 3).
+// Runs one game: HostContext, fixed-step loop, pause, end, and error isolation (ADR-0008 section 3),
+// and the run events (#22). Each run's power-ups, Rollback, and ghost live in run-powers.js.
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {import('../contracts').GameInstance} GameInstance */
 /** @typedef {import('../contracts').GameStorage} GameStorage */
@@ -16,7 +17,27 @@
  * @property {(options: { focus: boolean }) => void} showPaused
  * @property {(card: { score: number, best: number, scoreLabel: string, reason: string }) => void} showOver
  * @property {() => void} clearCard
+ * @property {(view: PowerView | null) => void} [setPower] the HUD power slot; null empties it
  */
+/** @typedef {import('../contracts').PowerId} PowerId */
+/**
+ * What the HUD power slot shows (#22). 'held' waits for the player to fire it; 'active' is running
+ * and `left` drains from 1 to 0.
+ * @typedef {{ id: PowerId, label: string, name: string, state: 'held' | 'active', left: number }} PowerView
+ */
+/**
+ * What happened in a run, for trophies, tickets, and XP (#22). The host sends 'end' before it
+ * shows the game over card, so the card can carry the XP the run earned.
+ * @typedef {{ type: 'start', game: string, nightly: boolean }
+ *   | { type: 'end', game: string, score: number, previous: number, seconds: number,
+ *       nightly: boolean, ghost: boolean }
+ *   | { type: 'drop', id: PowerId }
+ *   | { type: 'power', id: PowerId }
+ *   | { type: 'absorb' }
+ *   | { type: 'rollback' }
+ *   | { type: 'collect', count: number }} RunEvent
+ */
+/** @typedef {{ random?: () => number, nightly?: boolean }} RunOptions */
 /**
  * @typedef {object} HostOptions
  * @property {HTMLElement} root
@@ -38,9 +59,14 @@
  * @property {{ play(cue: import('../contracts').AudioCue): void }} [audio]
  * @property {(ctx: CanvasRenderingContext2D, sprite: import('../contracts').Sprite, x: number,
  *   y: number, h: number, opts?: object) => void} [drawSprite]
+ * @property {(event: RunEvent) => void} [onEvent]
+ * @property {() => number} [powerRandom] drops use their own random, so a seeded run's `random`
+ *   gives the same level whatever the power-ups do. Default Math.random.
  */
 
+import { avatarSize } from './ghost.js';
 import { createRunContext } from './run-context.js';
+import { createRunPowers } from './run-powers.js';
 
 export const STEP = 1 / 60;
 export const MAX_STEPS = 5;
@@ -81,6 +107,19 @@ export function createHost(options) {
   let lastAlpha = 0;
   /** @type {number | null} */
   let frameId = null;
+  /** The run's power-ups, Rollback, and ghost (run-powers.js); kept after the run for its ghost. */
+  /** @type {import('./run-powers.js').RunPowers | null} */
+  let run = null;
+  let nightly = false;
+
+  /** A listener that throws must not take the run down with it. @param {RunEvent} event */
+  function emit(event) {
+    try {
+      options.onEvent?.(event);
+    } catch (error) {
+      logError(error);
+    }
+  }
 
   function stopLoop() {
     if (frameId !== null) frames.cancel(frameId);
@@ -106,6 +145,7 @@ export function createHost(options) {
     stopLoop();
     controller?.abort();
     destroyOnce();
+    run?.clear();
   }
 
   function backToIdle() {
@@ -145,11 +185,18 @@ export function createHost(options) {
   /** @param {EndResult} result */
   function end(result) {
     if (state !== 'playing' && state !== 'paused') return;
+    if (instance && run?.rollback(instance)) return;
+    const seconds = Math.floor(run?.powers.clock ?? 0);
     releaseRun();
     const score = Math.max(0, Math.floor(Number(result?.score) || 0));
     const previous = storage.getNumber(game.bestKey, 0);
     const best = Math.max(previous, score);
-    if (score > previous) storage.setNumber(game.bestKey, score);
+    if (score > previous) {
+      storage.setNumber(game.bestKey, score);
+      run?.saveGhost();
+    }
+    const ghost = run?.racing ?? false;
+    emit({ type: 'end', game: game.id, score, previous, seconds, nightly, ghost });
     state = 'over';
     setClass('is-paused', false);
     setClass('is-over', true);
@@ -164,6 +211,19 @@ export function createHost(options) {
     });
   }
 
+  /**
+   * The game's frame, then the ghost and the twin on top of it.
+   * @param {GameInstance} game
+   * @param {number} alpha
+   */
+  function render(game, alpha) {
+    if (!guard(() => game.render(alpha))) return false;
+    const benjo = options.theme.sprites.benjo;
+    const h = avatarSize(options.size);
+    run?.draw((x, y, opacity) => options.drawSprite?.(ctx, benjo, x, y, h, { alpha: opacity }));
+    return true;
+  }
+
   /** @param {number} time */
   function frame(time) {
     frameId = null;
@@ -171,25 +231,29 @@ export function createHost(options) {
     const game = instance;
     const keys = input;
     if (lastTime === null) lastTime = time;
-    accumulator += Math.min(Math.max(time - lastTime, 0) / 1000, MAX_FRAME_SECONDS);
+    const seconds = Math.min(Math.max(time - lastTime, 0) / 1000, MAX_FRAME_SECONDS);
     lastTime = time;
+    // Power timers run on real time; Breakpoint only slows the game.
+    run?.powers.tick(seconds);
+    accumulator += run?.powers.isActive('breakpoint') ? seconds / 2 : seconds;
     let steps = 0;
     while (accumulator + EPSILON >= STEP && steps < MAX_STEPS) {
       keys.tick();
       const ok = guard(() => game.update(STEP));
       keys.endTick();
-      if (!ok || state !== 'playing') return;
+      if (!ok || state !== 'playing' || !run?.afterUpdate(game)) return;
       accumulator -= STEP;
       steps += 1;
     }
     if (steps === MAX_STEPS) accumulator %= STEP;
     const alpha = Math.min(Math.max(accumulator / STEP, 0), 0.999);
     lastAlpha = alpha;
-    if (!guard(() => game.render(alpha)) || state !== 'playing') return;
+    if (!render(game, alpha) || state !== 'playing') return;
     scheduleLoop();
   }
 
-  function play() {
+  /** @param {RunOptions} [how] a run's own random (the nightly seed) and whether it is nightly */
+  function play(how) {
     if (state === 'playing' || state === 'paused') return;
     if (state === 'over') {
       setClass('is-over', false);
@@ -201,7 +265,18 @@ export function createHost(options) {
     clearCanvas(ctx);
     controller = new AbortController();
     input = options.createInput(controller.signal);
-    const context = createRunContext(options, { signal: controller.signal, input, end });
+    nightly = how?.nightly === true;
+    const extras = createRunPowers(options, { emit, guard, instance: () => instance });
+    run = extras;
+    const context = createRunContext(options, {
+      signal: controller.signal,
+      input,
+      end,
+      random: how?.random ?? options.random,
+      powers: extras.powers,
+      track: extras.track,
+      ledger: extras.ledger,
+    });
     hud.setScore(0);
     hud.setBest(storage.getNumber(game.bestKey, 0));
     hud.setStatus(input.touch ? game.controls.touch : game.controls.keyboard);
@@ -216,10 +291,17 @@ export function createHost(options) {
       return;
     }
     instance = created;
+    extras.started(created);
     if (!guard(() => created.start()) || state !== 'playing') return;
+    emit({ type: 'start', game: game.id, nightly });
     accumulator = STEP;
     lastTime = null;
     scheduleLoop();
+  }
+
+  /** The player fires the held power-up. Only while playing. */
+  function firePower() {
+    if (state === 'playing' && instance) run?.fire(instance);
   }
 
   /** @param {{ focus?: boolean }} [how] focus false leaves keyboard focus where it is */
@@ -252,8 +334,7 @@ export function createHost(options) {
   function redraw() {
     if (state === 'playing') return true;
     if (state !== 'paused' || !instance || destroyed) return false;
-    const game = instance;
-    return guard(() => game.render(lastAlpha));
+    return render(instance, lastAlpha);
   }
 
   function quit() {
@@ -275,6 +356,7 @@ export function createHost(options) {
 
   return {
     play,
+    firePower,
     pause,
     resume,
     quit,

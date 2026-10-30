@@ -79,6 +79,12 @@ export const FLASH_EVERY = 0.06;
 export const HINT_T = 3;
 export const NEW_BEST_T = 1.5;
 
+// Power-ups (#22)
+/** Seconds the Digital Twin puts back on the clock when it runs out. */
+export const TWIN_CLOCK = 10;
+/** Most wrong path tiles one Garbage Collector sets right, nearest the start first. */
+export const GC_FIX = 3;
+
 // Events raised by one step
 export const EVENT_TURN = 1;
 export const EVENT_SOLVED = 2;

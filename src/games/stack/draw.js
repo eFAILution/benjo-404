@@ -2,6 +2,7 @@
 // Renders a world onto the host canvas. Reads the world, never changes it.
 // alpha blends the moving block, Benjo, and the camera between the last two steps.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BENJO_H,
   BENJO_LIFT,
@@ -10,6 +11,7 @@ import {
   CUT_T,
   DROP_T,
   FLASH_EVERY,
+  GRACE_ALPHA,
   MAX_BLOCKS,
   SHAKE_PX,
   SHAKE_T,
@@ -47,6 +49,13 @@ function hash(n) {
 
 /** Screen y of the top of a level. @param {World} w @param {number} level @param {number} camY */
 const levelTop = (w, level, camY) => w.bottom - (level + 1) * w.blockH + camY;
+
+/**
+ * Screen y Benjo hovers at this step, without the bob. The host draws the twin and ghost there.
+ * @param {World} w
+ */
+export const benjoY = (w) =>
+  levelTop(w, w.score + 1, w.cam * w.blockH) - (SLIDE_LIFT + BENJO_LIFT) * w.blockH;
 
 /** @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w @param {number} camY */
 function drawBackdrop(ctx, palette, w, camY) {
@@ -157,11 +166,13 @@ function drawMover(ctx, palette, w, x, y) {
   ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.round(w.bw) - 1, w.blockH - 2);
 }
 
-/** Benjo hovers over the block, faces the way it slides, and flashes when it falls. @param {HostContext} host @param {World} w @param {number} x @param {number} moverY */
+/** Benjo hovers over the block, faces the way it slides, flashes when it falls, and blinks in the twin's grace. @param {HostContext} host @param {World} w @param {number} x @param {number} moverY */
 function drawBenjo(host, w, x, moverY) {
   const bob = w.reducedMotion ? 0 : Math.sin(w.time * BOB_RATE) * BOB_PX * w.unit;
   const flashOn = w.dead && (w.reducedMotion || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
+  const blink = graceFaint(w.graceT, FLASH_EVERY, w.reducedMotion);
+  benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   opts.flipX = w.dir < 0;
   hitOpts.tint = host.theme.palette.hazard;
   const y = moverY - w.blockH * BENJO_LIFT + bob;

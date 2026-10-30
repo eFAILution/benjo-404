@@ -3,7 +3,11 @@
 //
 // The world keeps every actor's previous center, so a single world mutated in place is enough
 // for render(alpha) to interpolate, and nothing in the update path allocates.
+//
+// Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, collect()
+// sends the cache misses home, and snapshot()/restore() copy the run for Rollback.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createTracker, readTurn, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -18,7 +22,7 @@ import {
   NEW_BEST_T,
   STATUS_T,
 } from './tuning.js';
-import { createWorld, resizeWorld, screenX, screenY, stepWorld } from './world.js';
+import { clearMisses, createWorld, resizeWorld, screenX, screenY, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
@@ -26,6 +30,11 @@ import { createWorld, resizeWorld, screenX, screenY, stepWorld } from './world.j
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('./world.js').Intent} Intent */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
+/** @typedef {import('./world.js').Powers} Powers */
+/**
+ * @typedef {{ world: Omit<World, 'random'>, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 
 /** World events and their sounds, most important first. One cue plays per step. */
 /** @type {Array<[number, AudioCue]>} */
@@ -72,6 +81,8 @@ function createMuncher(host) {
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
+  /** @type {Required<Powers>} */
+  const powers = { magnet: false, absorb: () => host.power?.absorb() ?? false };
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -142,9 +153,11 @@ function createMuncher(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readIntent(world), dt);
+      powers.magnet = Boolean(host.power?.active('magnet'));
+      stepWorld(world, readIntent(world), dt, powers);
       playCue(host, world.events);
       syncHud(world, dt);
+      host.track?.(screenX(world, world.benjo.x), screenY(world, world.benjo.y));
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;
         host.end({ score: world.score, scoreLabel: SCORE_LABEL, reason: REASON });
@@ -168,6 +181,31 @@ function createMuncher(host) {
       ended = true;
       world = null;
     },
+
+    collect() {
+      return world ? clearMisses(world) : 0;
+    },
+
+    snapshot() {
+      if (!world) return null;
+      /** @type {Snapshot} */
+      const snap = { world: freezeWorld(world), statusT, cheered, seenWidth, seenHeight };
+      return snap;
+    },
+
+    restore(saved) {
+      const snap = /** @type {Snapshot | null} */ (saved);
+      if (!snap) return;
+      world = thawWorld(snap.world, host.random);
+      statusT = snap.statusT;
+      cheered = snap.cheered;
+      seenWidth = snap.seenWidth;
+      seenHeight = snap.seenHeight;
+      ended = false;
+      resetTracker(tracker, host.input);
+      lastScore = world.score;
+      host.setScore(lastScore);
+    },
   };
 }
 
@@ -182,6 +220,7 @@ const muncher = {
   howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createMuncher,
+  powers: ['twin', 'rollback', 'gc', 'magnet'],
 };
 
 export default muncher;

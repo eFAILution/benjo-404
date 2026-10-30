@@ -36,6 +36,7 @@ import {
   START_GRACE,
   STOMP_T,
   TIMER_ROOM,
+  TWIN_GRACE,
   UNIT_MAX,
   UNIT_MIN,
   UP_T_MIN,
@@ -44,6 +45,11 @@ import {
 
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {{ hole: number }} Intent */
+/**
+ * What the host's power-ups ask of a step (#22). The world never calls the host itself.
+ * magnet: bugs pop up next to Benjo and features keep away. absorb: the Digital Twin.
+ * @typedef {{ absorb?: () => boolean, magnet?: boolean }} Assist
+ */
 /**
  * @typedef {object} Hole
  * @property {'bug' | 'decoy' | null} kind
@@ -82,6 +88,7 @@ import {
  * @property {number} lastHole where Benjo hovers
  * @property {number} stompT
  * @property {number} oopsT time left on the decoy shake
+ * @property {number} graceT seconds left of the twin's save, while mistakes cost nothing
  * @property {boolean} reducedMotion
  * @property {() => number} random
  * @property {Hole[]} holes
@@ -137,6 +144,7 @@ export function createWorld(size, random, options = {}) {
     lastHole: 0,
     stompT: 0,
     oopsT: 0,
+    graceT: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
     holes: HOLE_COL.map(() => ({
@@ -186,8 +194,22 @@ function startSink(w, hole) {
   if (w.reducedMotion) hole.kind = null;
 }
 
-/** Age every thing: rise, time out, sink, clear. @param {World} w @param {number} dt */
-function ageHoles(w, dt) {
+/** @type {Assist} */
+const NO_ASSIST = {};
+
+/**
+ * A mistake that would cost points or a combo: true when the twin's grace or the twin takes it.
+ * @param {World} w @param {Assist} assist
+ */
+function forgiven(w, assist) {
+  if (w.graceT > 0) return true;
+  if (!assist.absorb?.()) return false;
+  w.graceT = TWIN_GRACE;
+  return true;
+}
+
+/** Age every thing: rise, time out, sink, clear. @param {World} w @param {number} dt @param {Assist} assist */
+function ageHoles(w, dt, assist) {
   for (const hole of w.holes) {
     if (!hole.kind) continue;
     hole.t += dt;
@@ -196,7 +218,8 @@ function ageHoles(w, dt) {
       if (hole.sinkT >= POP_T) hole.kind = null;
     } else if (hole.t >= hole.upT) {
       if (hole.kind === 'bug') {
-        w.combo = 0;
+        // A missed bug only costs the combo, so with no combo it never spends the twin.
+        if (w.combo > 0 && !forgiven(w, assist)) w.combo = 0;
         w.missed += 1;
         w.events |= EVENT_MISS;
       }
@@ -205,8 +228,8 @@ function ageHoles(w, dt) {
   }
 }
 
-/** @param {World} w @param {number} h hole id */
-function whack(w, h) {
+/** @param {World} w @param {number} h hole id @param {Assist} assist */
+function whack(w, h, assist) {
   const hole = w.holes[h];
   w.lastHole = h;
   w.stompT = STOMP_T;
@@ -219,18 +242,23 @@ function whack(w, h) {
     w.events |= EVENT_SQUASH;
   } else if (hole.kind === 'decoy' && !hole.sinking) {
     startSink(w, hole);
+    if (forgiven(w, assist)) return;
     w.score = Math.max(0, w.score - DECOY_COST);
     w.combo = 0;
     w.oopsT = SHAKE_T;
     w.events |= EVENT_DECOY;
   } else {
-    w.combo = 0;
+    if (w.combo > 0 && !forgiven(w, assist)) w.combo = 0;
     w.events |= EVENT_WHIFF;
   }
 }
 
-/** Every spawn gap, put a bug or a decoy in a random empty hole. @param {World} w @param {number} dt */
-function spawn(w, dt) {
+/**
+ * Every spawn gap, put a bug or a decoy in a random empty hole. Under the magnet the bug goes to
+ * the empty hole nearest Benjo and the decoy to the farthest.
+ * @param {World} w @param {number} dt @param {boolean} magnet
+ */
+function spawn(w, dt, magnet) {
   w.spawnClock += dt;
   if (w.spawnClock < spawnGapFor(w)) return;
   w.spawnClock = 0;
@@ -241,18 +269,44 @@ function spawn(w, dt) {
     if (!hole.kind) empty += 1;
   }
   if (up >= maxUpFor(w) || empty === 0) return;
+  if (magnet) {
+    const decoy = rollDecoy(w);
+    fill(w, w.holes[pulledHole(w, decoy)], decoy);
+    return;
+  }
   let pick = Math.floor(w.random() * empty);
   for (const hole of w.holes) {
     if (hole.kind || pick-- > 0) continue;
-    fill(w, hole);
+    fill(w, hole, rollDecoy(w));
     return;
   }
 }
 
-/** @param {World} w @param {Hole} hole an empty hole */
-function fill(w, hole) {
-  // The first thing is always a bug, so the player learns what to hit before a decoy shows.
-  const decoy = w.random() < DECOY_CHANCE && w.spawned > 0;
+/** The first thing is always a bug, so the player learns what to hit before a decoy shows. @param {World} w */
+const rollDecoy = (w) => w.random() < DECOY_CHANCE && w.spawned > 0;
+
+/**
+ * The empty hole nearest Benjo for a bug, or farthest for a decoy. Ties go to the lower index.
+ * @param {World} w @param {boolean} decoy
+ */
+function pulledHole(w, decoy) {
+  const bx = w.holeX[w.lastHole];
+  const by = w.holeY[w.lastHole];
+  let best = -1;
+  let bestD = 0;
+  for (let i = 0; i < w.holes.length; i++) {
+    if (w.holes[i].kind) continue;
+    const d = (w.holeX[i] - bx) ** 2 + (w.holeY[i] - by) ** 2;
+    if (best < 0 || (decoy ? d > bestD : d < bestD)) {
+      best = i;
+      bestD = d;
+    }
+  }
+  return best;
+}
+
+/** @param {World} w @param {Hole} hole an empty hole @param {boolean} decoy */
+function fill(w, hole, decoy) {
   w.spawned += 1;
   hole.kind = decoy ? 'decoy' : 'bug';
   hole.id = w.spawned;
@@ -279,16 +333,18 @@ function updateLift(w) {
  * @param {World} w
  * @param {Intent} intent the hole the player whacked this step, or -1
  * @param {number} dt
+ * @param {Assist} [assist] power-up hooks from the host; none in plain play
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, assist = NO_ASSIST) {
   w.prevTime = w.time;
   for (const hole of w.holes) hole.prevLift = hole.lift;
   w.events = 0;
   w.time += dt;
   w.stompT = Math.max(0, w.stompT - dt);
   w.oopsT = Math.max(0, w.oopsT - dt);
-  ageHoles(w, dt);
+  w.graceT = Math.max(0, w.graceT - dt);
+  ageHoles(w, dt, assist);
 
   if (w.dead) {
     w.deadT += dt;
@@ -298,11 +354,31 @@ export function stepWorld(w, intent, dt) {
     w.deadT = 0;
     for (const hole of w.holes) if (hole.kind && !hole.sinking) startSink(w, hole);
   } else {
-    if (w.time > START_GRACE && intent.hole >= 0) whack(w, intent.hole);
-    spawn(w, dt);
+    if (w.time > START_GRACE && intent.hole >= 0) whack(w, intent.hole, assist);
+    spawn(w, dt, Boolean(assist.magnet));
   }
   updateLift(w);
   return w;
+}
+
+/**
+ * Garbage Collector: squash every bug that is up, for its base points. Features stay. Returns
+ * how many it squashed; none once the clock has run out.
+ * @param {World} w
+ * @returns {number}
+ */
+export function zapBugs(w) {
+  if (w.dead) return 0;
+  let zapped = 0;
+  for (const hole of w.holes) {
+    if (hole.kind !== 'bug' || hole.sinking) continue;
+    hole.squashed = true;
+    startSink(w, hole);
+    w.hits += 1;
+    w.score += BUG_SCORE;
+    zapped += 1;
+  }
+  return zapped;
 }
 
 /**

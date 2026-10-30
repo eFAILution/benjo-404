@@ -15,6 +15,8 @@ import {
   COLS_MIN,
   FIT_COLS,
   FIT_ROWS,
+  GRACE_T,
+  MAGNET_STEPS,
   MIN_HEIGHT,
   MIN_WIDTH,
   MOVE_T_MIN,
@@ -33,6 +35,10 @@ import {
 } from './tuning.js';
 
 /** @typedef {{ width: number, height: number }} Area */
+/**
+ * Power-up help from the host (#22), read during a step.
+ * @typedef {{ magnet: boolean, absorb: () => boolean }} Aid
+ */
 /**
  * @typedef {object} World
  * @property {number} width
@@ -65,10 +71,14 @@ import {
  * @property {boolean} dead true once the run is over, won or lost
  * @property {'wall' | 'tail' | 'full' | null} hit what ended the run
  * @property {number} deadT
+ * @property {number} graceT seconds left of the Digital Twin's grace, 0 when none
  * @property {number} score pages eaten
  * @property {boolean} reducedMotion
  * @property {() => number} random
  */
+
+/** No power-ups: what a step gets from a host without them. @type {Aid} */
+export const NO_AID = { magnet: false, absorb: () => false };
 
 /** Column and row steps for RIGHT, DOWN, LEFT, UP. */
 export const DX = [1, 0, -1, 0];
@@ -124,6 +134,18 @@ export const centerY = (w, row) => w.originY + (row + 0.5) * w.cell;
 
 /** Ring index of segment i, counting from the head. @param {World} w @param {number} i */
 export const segment = (w, i) => (w.head - i + w.xs.length) % w.xs.length;
+
+/** Screen x of Benjo's head, slid `p` of the way from the neck. @param {World} w @param {number} p */
+export function headX(w, p) {
+  const from = w.xs[segment(w, 1)];
+  return centerX(w, from + (w.xs[w.head] - from) * p);
+}
+
+/** Screen y of Benjo's head, slid `p` of the way from the neck. @param {World} w @param {number} p */
+export function headY(w, p) {
+  const from = w.ys[segment(w, 1)];
+  return centerY(w, from + (w.ys[w.head] - from) * p);
+}
 
 /**
  * Index of the k-th free cell in row-major order, or -1 when there are not that many.
@@ -205,6 +227,7 @@ export function createWorld(size, random, options = {}) {
     dead: false,
     hit: null,
     deadT: 0,
+    graceT: 0,
     score: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
@@ -239,8 +262,82 @@ function steer(w, d) {
   w.queued += 1;
 }
 
-/** Move the head one cell, eating, growing, or ending the run. @param {World} w */
-function move(w) {
+/** Free cells straight ahead of the head in direction d. @param {World} w @param {number} d */
+function freeRun(w, d) {
+  let x = w.xs[w.head] + DX[d];
+  let y = w.ys[w.head] + DY[d];
+  let n = 0;
+  while (x >= 0 && y >= 0 && x < w.cols && y < w.rows && !w.occupied[y * w.cols + x]) {
+    n += 1;
+    x += DX[d];
+    y += DY[d];
+  }
+  return n;
+}
+
+/**
+ * A hit the twin, or the grace after it, takes: Benjo stops short and turns toward the longer
+ * free run, so he slides along the wall or his tail. The turn moves on the next step.
+ * @param {World} w
+ */
+function dodge(w) {
+  const cw = (w.dir + 1) % 4;
+  const ccw = (w.dir + 3) % 4;
+  const a = freeRun(w, cw);
+  const b = freeRun(w, ccw);
+  if (a || b) w.dir = a >= b ? cw : ccw;
+  w.queued = 0;
+  w.timer = w.moveT;
+  w.prevProgress = 1;
+}
+
+/**
+ * Run into a wall or the tail. The grace or a fresh twin saves Benjo; otherwise the run ends.
+ * @param {World} w @param {'wall' | 'tail'} what @param {Aid} aid
+ */
+function crash(w, what, aid) {
+  if (w.graceT <= 0) {
+    if (!aid.absorb()) return die(w, what);
+    w.graceT = GRACE_T;
+  }
+  dodge(w);
+}
+
+/**
+ * Magnet: slide the page up to MAGNET_STEPS cells, through free cells only, toward the cell
+ * Benjo moves into next, so he runs into it.
+ * @param {World} w
+ */
+export function pullFood(w) {
+  if (w.foodX < 0) return;
+  const d = w.queued ? w.queue[0] : w.dir;
+  const tx = clamp(w.xs[w.head] + DX[d], 0, w.cols - 1);
+  const ty = clamp(w.ys[w.head] + DY[d], 0, w.rows - 1);
+  for (let k = 0; k < MAGNET_STEPS; k++) {
+    const dx = Math.sign(tx - w.foodX);
+    const dy = Math.sign(ty - w.foodY);
+    const across = Math.abs(tx - w.foodX) >= Math.abs(ty - w.foodY);
+    if (
+      !slideFood(w, across ? dx : 0, across ? 0 : dy) &&
+      !slideFood(w, across ? 0 : dx, across ? dy : 0)
+    )
+      return;
+  }
+}
+
+/** Move the page one cell if that cell is free. @param {World} w @param {number} dx @param {number} dy */
+function slideFood(w, dx, dy) {
+  if (dx === 0 && dy === 0) return false;
+  const x = w.foodX + dx;
+  const y = w.foodY + dy;
+  if (w.occupied[y * w.cols + x]) return false;
+  w.foodX = x;
+  w.foodY = y;
+  return true;
+}
+
+/** Move the head one cell, eating, growing, or ending the run. @param {World} w @param {Aid} aid */
+function move(w, aid) {
   if (w.queued) {
     w.dir = w.queue[0];
     w.queue[0] = w.queue[1];
@@ -249,14 +346,14 @@ function move(w) {
   const nx = w.xs[w.head] + DX[w.dir];
   const ny = w.ys[w.head] + DY[w.dir];
   if (nx < 0 || ny < 0 || nx >= w.cols || ny >= w.rows) {
-    die(w, 'wall');
+    crash(w, 'wall', aid);
     return;
   }
   const eating = nx === w.foodX && ny === w.foodY;
   const tip = segment(w, w.length - 1);
   const intoTip = !eating && nx === w.xs[tip] && ny === w.ys[tip];
   if (w.occupied[ny * w.cols + nx] && !intoTip) {
-    die(w, 'tail');
+    crash(w, 'tail', aid);
     return;
   }
   // When eating, the tip stays put, so it slides from where it is.
@@ -279,22 +376,25 @@ function move(w) {
  * @param {World} w
  * @param {number} turn RIGHT, DOWN, LEFT, UP, or NONE
  * @param {number} dt
+ * @param {Aid} [aid] power-up help; none by default
  * @returns {World}
  */
-export function stepWorld(w, turn, dt) {
+export function stepWorld(w, turn, dt, aid = NO_AID) {
   w.prevProgress = w.progress;
   w.time += dt;
   if (w.dead) {
     w.deadT += dt;
     return w;
   }
+  w.graceT = Math.max(0, w.graceT - dt);
   if (turn !== NONE && w.time > START_GRACE) steer(w, turn);
   if (w.ready) return w;
   w.timer += dt;
   if (w.timer >= w.moveT) {
     w.timer -= w.moveT;
     w.prevProgress = 0;
-    move(w);
+    move(w, aid);
+    if (aid.magnet && !w.dead) pullFood(w);
   }
   if (!w.dead) w.progress = Math.min(1, w.timer / w.moveT);
   return w;

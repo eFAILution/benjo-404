@@ -2,7 +2,8 @@
 // The Break the 404 world and its fixed step. No DOM, no host: tests drive it directly.
 //
 // Benjo's paddle and fireball keep their previous positions so render can interpolate.
-// Brick rects follow the layout; only the 38 alive flags are game state.
+// Brick rects follow the layout; only the 38 alive flags are game state. The paddle and the
+// ball's motion are in paddle.js.
 
 import {
   BRICK_COUNT,
@@ -10,15 +11,23 @@ import {
   createRects,
   hitBrick,
   layoutBricks,
+  lowestRow,
   refillBricks,
+  rowOf,
 } from './bricks.js';
+import {
+  bouncePaddle,
+  bounceWalls,
+  clamp,
+  holdBall,
+  movePaddle,
+  paddleWFor,
+  pullBall,
+  serve,
+} from './paddle.js';
 import {
   BALL_R,
   BALL_R_MIN,
-  BALL_SPEED_CAP,
-  BALL_SPEED_CAP_REDUCED,
-  BALL_SPEED_START,
-  BALL_SPEED_STEP,
   BOTTOM_PAD,
   BRICK_GAP,
   BRICK_H_FRAC,
@@ -27,35 +36,25 @@ import {
   CEILING,
   CEILING_NARROW,
   CELL_MAX,
-  EVENT_BOUNCE,
   EVENT_BRICK,
   EVENT_HIT,
   EVENT_LOST,
   EVENT_ROUND,
-  EVENT_SERVE,
+  GRACE_T,
   GRID_COLS,
   GRID_TOP,
   LIVES,
   LOSE_T,
-  MAX_BOUNCE,
   MIN_HEIGHT,
   MIN_WIDTH,
   NARROW_WIDTH,
   PADDLE_H,
-  PADDLE_SPEED,
-  PADDLE_W_MIN,
-  PADDLE_W_MIN_PX,
-  PADDLE_W_START,
-  PADDLE_W_START_PX,
-  PADDLE_W_STEP,
   PADDLE_Y,
   PLAY_W_MAX,
-  POINTER_SPEED,
   POP_POOL,
   POP_T,
   REF_HEIGHT,
   REF_PLAY_H,
-  SERVE_SPREAD,
   SIDE_PAD,
   START_GRACE,
   TRAIL,
@@ -64,8 +63,14 @@ import {
   WALL_BONUS,
 } from './tuning.js';
 
+export { paddleWFor, speedFor } from './paddle.js';
+
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {{ move: number, targetX: number | null, serve: boolean }} Intent */
+/**
+ * Power-up help from the host (#22), read during a step.
+ * @typedef {{ magnet: boolean, absorb: () => boolean }} Aid
+ */
 /** @typedef {{ active: boolean, brick: number, t: number }} Pop */
 /** @typedef {ReturnType<typeof layout>} Layout */
 /**
@@ -75,7 +80,7 @@ import {
  *   trailX: number[], trailY: number[],
  *   serving: boolean, served: boolean, losing: boolean, lostT: number,
  *   lives: number, round: number, score: number, bricksHit: number,
- *   time: number, dead: boolean, hit: 'lost' | null, deadT: number, events: number,
+ *   time: number, dead: boolean, hit: 'lost' | null, deadT: number, graceT: number, events: number,
  *   reducedMotion: boolean, random: () => number,
  *   alive: Uint8Array, rects: import('./bricks.js').Rect[], pops: Pop[],
  * }} World
@@ -84,8 +89,8 @@ import {
 /** @type {Intent} */
 const IDLE = { move: 0, targetX: null, serve: false };
 
-/** @param {number} v @param {number} lo @param {number} hi */
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+/** No power-ups: what a step gets from a host without them. @type {Aid} */
+export const NO_AID = { magnet: false, absorb: () => false };
 
 /** @param {Area} size */
 function layout(size) {
@@ -161,6 +166,7 @@ export function createWorld(size, random, options = {}) {
     dead: false,
     hit: null,
     deadT: 0,
+    graceT: 0,
     events: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
@@ -172,87 +178,6 @@ export function createWorld(size, random, options = {}) {
   layoutBricks(w);
   holdBall(w);
   return w;
-}
-
-/** Ball speed for the current round, capped. @param {World} w */
-export function speedFor(w) {
-  const cap = w.reducedMotion ? BALL_SPEED_CAP_REDUCED : BALL_SPEED_CAP;
-  return Math.min(cap, BALL_SPEED_START + BALL_SPEED_STEP * (w.round - 1)) * w.pace;
-}
-
-/** Paddle width for the current round: narrower each round, down to a floor. @param {World} w */
-export function paddleWFor(w) {
-  const start = Math.max(PADDLE_W_START_PX, PADDLE_W_START * w.unit);
-  const least = Math.max(PADDLE_W_MIN_PX, PADDLE_W_MIN * w.unit);
-  return Math.max(least, start - PADDLE_W_STEP * w.unit * (w.round - 1));
-}
-
-/** Sit the ball on the paddle's center and clear its trail. @param {World} w */
-function holdBall(w) {
-  w.bx = w.px;
-  w.by = w.paddleY - w.ballR;
-  w.vx = 0;
-  w.vy = 0;
-  w.trailX.fill(w.bx);
-  w.trailY.fill(w.by);
-}
-
-/** @param {World} w @param {Intent} intent @param {number} dt */
-function movePaddle(w, intent, dt) {
-  if (intent.move !== 0) {
-    w.px += intent.move * PADDLE_SPEED * w.pace * dt;
-    w.facing = intent.move;
-  } else if (intent.targetX !== null) {
-    const reach = POINTER_SPEED * w.pace * dt;
-    const d = clamp(intent.targetX - w.px, -reach, reach);
-    w.px += d;
-    if (Math.abs(d) > 0.5) w.facing = d < 0 ? -1 : 1;
-  }
-  const half = paddleWFor(w) / 2;
-  w.px = clamp(w.px, w.left + half, w.right - half);
-}
-
-/** @param {World} w */
-function serve(w) {
-  const speed = speedFor(w);
-  const angle = (w.random() * 2 - 1) * SERVE_SPREAD;
-  w.vx = speed * Math.sin(angle);
-  w.vy = -speed * Math.cos(angle);
-  w.serving = false;
-  w.served = true;
-  w.events |= EVENT_SERVE;
-}
-
-/** Bounce off the side walls and the ceiling. @param {World} w */
-function bounceWalls(w) {
-  const r = w.ballR;
-  if (w.bx - r < w.left) {
-    w.bx = w.left + r;
-    w.vx = Math.abs(w.vx);
-  } else if (w.bx + r > w.right) {
-    w.bx = w.right - r;
-    w.vx = -Math.abs(w.vx);
-  }
-  if (w.by - r < w.ceiling) {
-    w.by = w.ceiling + r;
-    w.vy = Math.abs(w.vy);
-  }
-}
-
-/**
- * Bounce off the paddle top when falling onto it. The further from center, the wider the angle.
- * @param {World} w @param {number} speed
- */
-function bouncePaddle(w, speed) {
-  const half = paddleWFor(w) / 2;
-  const r = w.ballR;
-  if (w.vy <= 0 || w.by + r < w.paddleY || w.by > w.paddleY + w.paddleH) return;
-  if (Math.abs(w.bx - w.px) > half + r) return;
-  const angle = clamp((w.bx - w.px) / half, -1, 1) * MAX_BOUNCE;
-  w.vx = speed * Math.sin(angle);
-  w.vy = -speed * Math.cos(angle);
-  w.by = w.paddleY - r;
-  w.events |= EVENT_BOUNCE;
 }
 
 /**
@@ -281,6 +206,30 @@ function scoreBrick(w, brick) {
   w.events |= EVENT_BRICK;
   popBrick(w, brick);
   if (bricksLeft(w) > 0) return;
+  nextRound(w);
+}
+
+/**
+ * Garbage Collector: the lowest row of live bricks pops at once and scores as if hit. A wall that
+ * empties starts the next round as usual.
+ * @param {World} w
+ * @returns {number} bricks cleared
+ */
+export function clearRow(w) {
+  const row = lowestRow(w);
+  const { round } = w;
+  let n = 0;
+  for (let i = 0; i < BRICK_COUNT && w.round === round; i++) {
+    if (!w.alive[i] || rowOf(i) !== row) continue;
+    w.alive[i] = 0;
+    n += 1;
+    scoreBrick(w, i);
+  }
+  return n;
+}
+
+/** The wall is gone: bonus, a fresh wall, and the ball back on the paddle. @param {World} w */
+function nextRound(w) {
   w.score += WALL_BONUS * w.round;
   w.round += 1;
   w.events |= EVENT_ROUND;
@@ -306,10 +255,26 @@ function loseBall(w) {
 }
 
 /**
- * Move the ball in sub-steps no longer than its radius, so it never tunnels through a brick.
- * @param {World} w @param {number} dt
+ * The ball fell past the bottom. The grace or a fresh twin bounces it back up off the floor;
+ * otherwise it is lost.
+ * @param {World} w @param {Aid} aid
+ * @returns {boolean} true when the ball was saved
  */
-function moveBall(w, dt) {
+function rescue(w, aid) {
+  if (w.graceT <= 0) {
+    if (!aid.absorb()) return false;
+    w.graceT = GRACE_T;
+  }
+  w.by = w.bottom - w.ballR;
+  w.vy = -Math.abs(w.vy);
+  return true;
+}
+
+/**
+ * Move the ball in sub-steps no longer than its radius, so it never tunnels through a brick.
+ * @param {World} w @param {number} dt @param {Aid} aid
+ */
+function moveBall(w, dt, aid) {
   const speed = Math.hypot(w.vx, w.vy);
   const steps = Math.max(1, Math.ceil((speed * dt) / w.ballR));
   const h = dt / steps;
@@ -323,7 +288,7 @@ function moveBall(w, dt) {
       scoreBrick(w, brick);
       if (w.serving) return;
     }
-    if (w.by > w.bottom + w.ballR) {
+    if (w.by > w.bottom + w.ballR && !rescue(w, aid)) {
       loseBall(w);
       return;
     }
@@ -357,9 +322,10 @@ function keepPrevious(w) {
  * @param {World} w
  * @param {Intent} intent
  * @param {number} dt
+ * @param {Aid} [aid] power-up help; none by default
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, aid = NO_AID) {
   keepPrevious(w);
   w.events = 0;
   w.time += dt;
@@ -368,6 +334,7 @@ export function stepWorld(w, intent, dt) {
     w.deadT += dt;
     return w;
   }
+  w.graceT = Math.max(0, w.graceT - dt);
   if (w.losing) {
     w.lostT += dt;
     if (w.lostT < LOSE_T) return w;
@@ -381,7 +348,8 @@ export function stepWorld(w, intent, dt) {
     if (live && intent.serve) serve(w);
     return w;
   }
-  moveBall(w, dt);
+  if (aid.magnet) pullBall(w, dt);
+  moveBall(w, dt, aid);
   return w;
 }
 

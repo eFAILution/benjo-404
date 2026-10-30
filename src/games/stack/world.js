@@ -39,6 +39,7 @@ import {
   SLIDE_START,
   SLIDE_STEP,
   START_GRACE,
+  TWIN_GRACE,
   UNIT_MAX,
   UNIT_MIN,
   WIDEN,
@@ -47,6 +48,10 @@ import {
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {{ level: number, x: number, w: number }} Block */
 /** @typedef {{ active: boolean, level: number, x: number, w: number, fall: number, vy: number, t: number }} Cut */
+/**
+ * What the host's power-ups ask of a step (#22). The world never calls the host itself.
+ * @typedef {{ absorb?: () => boolean }} Assist
+ */
 /**
  * @typedef {object} World
  * @property {number} width
@@ -71,6 +76,7 @@ import {
  * @property {number} benjoX screen x of Benjo's center
  * @property {number} prevBenjoX
  * @property {number} hold seconds Benjo still waits over the landed block
+ * @property {number} graceT seconds left of the twin's save: the mover waits and drops are ignored
  * @property {number} cam levels the stack is shifted down
  * @property {number} prevCam
  * @property {number} camTarget
@@ -160,6 +166,7 @@ export function createWorld(size, random, options = {}) {
     benjoX: 0,
     prevBenjoX: 0,
     hold: 0,
+    graceT: 0,
     cam: 0,
     prevCam: 0,
     camTarget: 0,
@@ -226,13 +233,27 @@ function widen(w, b) {
   w.events |= EVENT_WIDEN;
 }
 
-/** Drop the moving block onto the stack. @param {World} w */
-function land(w) {
+/** @type {Assist} */
+const NO_ASSIST = {};
+
+/** Drop the moving block onto the stack. @param {World} w @param {Assist} assist */
+function land(w, assist) {
   const top = topBlock(w);
   const level = w.score + 1;
   const lo = Math.max(w.x, top.x);
   const hi = Math.min(w.x + w.bw, top.x + top.w);
+  const next = w.blocks[level % MAX_BLOCKS];
   if (hi - lo <= 0) {
+    if (assist.absorb?.()) {
+      // The Digital Twin catches the block: it lands square on the stack, no perfect, no cut.
+      next.level = level;
+      next.x = top.x;
+      next.w = top.w;
+      w.streak = 0;
+      w.graceT = TWIN_GRACE;
+      settle(w, level);
+      return;
+    }
     spawnCut(w, level, w.x, w.bw);
     w.dead = true;
     w.hit = 'miss';
@@ -240,7 +261,6 @@ function land(w) {
     w.events |= EVENT_MISS;
     return;
   }
-  const next = w.blocks[level % MAX_BLOCKS];
   next.level = level;
   if (Math.abs(w.x - top.x) <= w.perfectTol) {
     next.x = top.x;
@@ -256,6 +276,11 @@ function land(w) {
     spawnCut(w, level, w.x, lo - w.x);
     spawnCut(w, level, hi, w.x + w.bw - hi);
   }
+  settle(w, level);
+}
+
+/** The landed block is the new top: score it, move the camera, send the next one. @param {World} w @param {number} level */
+function settle(w, level) {
   w.score = level;
   w.events |= EVENT_LAND;
   w.dropT = 0;
@@ -290,9 +315,10 @@ function followBenjo(w, dt) {
  * @param {World} w
  * @param {boolean} drop the player dropped the block this step
  * @param {number} dt
+ * @param {Assist} [assist] power-up hooks from the host; none in plain play
  * @returns {World}
  */
-export function stepWorld(w, drop, dt) {
+export function stepWorld(w, drop, dt, assist = NO_ASSIST) {
   w.prevX = w.x;
   w.prevCam = w.cam;
   w.prevBenjoX = w.benjoX;
@@ -300,13 +326,20 @@ export function stepWorld(w, drop, dt) {
   w.time += dt;
   w.dropT += dt;
   w.hold = Math.max(0, w.hold - dt);
+  const resting = w.graceT > 0;
+  w.graceT = Math.max(0, w.graceT - dt);
   ageCuts(w, dt);
   w.cam = w.reducedMotion ? w.camTarget : Math.min(w.camTarget, w.cam + dt / CAM_T);
   if (w.dead) {
     w.deadT += dt;
     return w;
   }
-  if (drop && w.time > START_GRACE) land(w);
+  // During the twin's grace the next block waits at its edge, so a panicked tap is not a miss.
+  if (resting) {
+    followBenjo(w, dt);
+    return w;
+  }
+  if (drop && w.time > START_GRACE) land(w, assist);
   else slide(w, dt);
   followBenjo(w, dt);
   return w;

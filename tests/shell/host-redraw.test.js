@@ -58,4 +58,23 @@ describe('createHost redraw after a resize', () => {
     assert.equal(host.state, 'idle');
     assert.equal(errors.length, 1);
   });
+
+  it('paints the Digital Twin over the paused game', () => {
+    const sprites = [];
+    const game = fakeGame({ update: () => game.host.track(40, 60) });
+    game.powers = ['twin'];
+    const env = fakeHostOptions(game, {
+      powerRandom: () => 0.99,
+      drawSprite: (_ctx, _sprite, x, y, _h, opts) => sprites.push([x, y, opts.alpha]),
+    });
+    const host = createHost(env.options);
+    host.play();
+    for (let t = 0; t <= 10.2 * 1000; t += 1000 / 60) env.options.frames.run(t);
+    game.host.setScore(1);
+    host.firePower();
+    host.pause();
+    sprites.length = 0;
+    assert.equal(host.redraw(), true);
+    assert.deepEqual(sprites, [[40, 60, 0.45]]);
+  });
 });

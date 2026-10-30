@@ -3,7 +3,11 @@
 //
 // The world keeps its own previous Benjo height and scroll, so a single world mutated in place
 // is enough for render(alpha) to interpolate, and nothing in the update path allocates.
+//
+// Power-ups (#22): the magnet and the Digital Twin reach the world through `powers`, collect()
+// clears the towers on screen, and snapshot()/restore() copy the run for Rollback.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createTracker, readFlap, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -16,13 +20,18 @@ import {
   HINT_T,
   NEW_BEST_T,
 } from './tuning.js';
-import { createWorld, resizeWorld, stepWorld } from './world.js';
+import { clearTowers, createWorld, resizeWorld, stepWorld } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
+/** @typedef {import('./world.js').Powers} Powers */
+/**
+ * @typedef {{ world: Omit<World, 'random'>, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 
 /** World events and their sounds, most important first. One cue plays per step. */
 /** @type {Array<[number, AudioCue]>} */
@@ -65,6 +74,8 @@ function createFlight(host) {
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
+  /** @type {Required<Powers>} */
+  const powers = { magnet: false, absorb: () => host.power?.absorb() ?? false };
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -115,9 +126,11 @@ function createFlight(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readFlap(host.input, tracker, world.time), dt);
+      powers.magnet = Boolean(host.power?.active('magnet'));
+      stepWorld(world, readFlap(host.input, tracker, world.time), dt, powers);
       playCue(host, world.events);
       syncHud(world, dt);
+      host.track?.(world.benjoX, world.by);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;
         const reason = world.hit === 'ground' ? REASON_GROUND : REASON_TOWER;
@@ -142,6 +155,31 @@ function createFlight(host) {
       ended = true;
       world = null;
     },
+
+    collect() {
+      return world ? clearTowers(world) : 0;
+    },
+
+    snapshot() {
+      if (!world) return null;
+      /** @type {Snapshot} */
+      const snap = { world: freezeWorld(world), statusT, cheered, seenWidth, seenHeight };
+      return snap;
+    },
+
+    restore(saved) {
+      const snap = /** @type {Snapshot | null} */ (saved);
+      if (!snap) return;
+      world = thawWorld(snap.world, host.random);
+      statusT = snap.statusT;
+      cheered = snap.cheered;
+      seenWidth = snap.seenWidth;
+      seenHeight = snap.seenHeight;
+      ended = false;
+      resetTracker(tracker, host.input);
+      lastScore = world.score;
+      host.setScore(lastScore);
+    },
   };
 }
 
@@ -156,6 +194,7 @@ const flight = {
   howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createFlight,
+  powers: ['twin', 'rollback', 'gc', 'magnet'],
 };
 
 export default flight;

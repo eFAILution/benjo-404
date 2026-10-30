@@ -4,6 +4,8 @@
 // Towers, pickups, and pops live at world x (the scroll distance at which they sit at the
 // left edge), so the screen x is `x - scroll` and render interpolates with the scroll alone.
 // Every pool is allocated once in createWorld, and stepWorld only mutates.
+// Power-ups come in through `powers`: the magnet flag and the Digital Twin's absorb(), which the
+// step calls at the moment a hit would end the run.
 
 import {
   BENJO_H,
@@ -21,11 +23,14 @@ import {
   GAP_SHIFT,
   GAP_START,
   GAP_STEP,
+  GRACE_T,
   GRAVITY,
   GROUND_FRAC,
   HIT_R,
   HOVER_AMP,
   HOVER_RATE,
+  MAGNET_R,
+  MAGNET_V,
   MAX_FALL,
   MIN_HEIGHT,
   MIN_WIDTH,
@@ -56,6 +61,10 @@ import {
 /** @typedef {{ active: boolean, x: number, y: number, sprite: number }} Orb */
 /** @typedef {{ active: boolean, x: number, y: number, t: number }} Pop */
 /**
+ * @typedef {{ magnet?: boolean, absorb?: () => boolean }} Powers
+ *   magnet pulls pickups in this step; absorb() is true when the Digital Twin takes a hit.
+ */
+/**
  * @typedef {object} World
  * @property {number} width
  * @property {number} height
@@ -76,6 +85,7 @@ import {
  * @property {boolean} dead
  * @property {'tower' | 'ground' | null} hit what ended the run
  * @property {number} deadT
+ * @property {number} graceT seconds left in which towers pass through Benjo (Digital Twin)
  * @property {number} score
  * @property {number} collected
  * @property {number} events EVENT_* bits raised by the last step
@@ -145,6 +155,7 @@ export function createWorld(size, random, options = {}) {
     dead: false,
     hit: null,
     deadT: 0,
+    graceT: 0,
     score: 0,
     collected: 0,
     events: 0,
@@ -322,13 +333,62 @@ function die(w, what) {
 }
 
 /**
+ * A lethal hit: the Digital Twin takes it if it can, and a ground hit bounces Benjo back up.
+ * @param {World} w @param {'tower' | 'ground'} what @param {Powers} [powers]
+ */
+function hit(w, what, powers) {
+  if (!powers?.absorb?.()) {
+    die(w, what);
+    return;
+  }
+  w.graceT = GRACE_T;
+  if (what === 'ground') w.vy = -FLAP_V * w.unit;
+}
+
+/** Magnet: fly every pickup within reach toward Benjo. @param {World} w @param {number} dt */
+function pullOrbs(w, dt) {
+  const reach = MAGNET_R * w.unit;
+  const step = MAGNET_V * w.unit * dt;
+  for (let i = 0; i < w.orbs.length; i++) {
+    const orb = w.orbs[i];
+    if (!orb.active) continue;
+    const dx = w.benjoX + w.scroll - orb.x;
+    const dy = w.by - orb.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist >= reach || dist === 0) continue;
+    const k = Math.min(1, step / dist);
+    orb.x += dx * k;
+    orb.y += dy * k;
+  }
+}
+
+/**
+ * Garbage Collector: remove every tower on screen, each with a pop at its gap. Mutates `w`.
+ * @param {World} w
+ * @returns {number} how many were removed
+ */
+export function clearTowers(w) {
+  const towerW = TOWER_W * w.unit;
+  let cleared = 0;
+  for (let i = 0; i < w.towers.length; i++) {
+    const t = w.towers[i];
+    if (!t.active || t.x - w.scroll >= w.width) continue;
+    t.active = false;
+    cleared += 1;
+    pop(w, t.x + towerW / 2, t.gapY);
+  }
+  return cleared;
+}
+
+/**
  * Advance the world one fixed step. Mutates and returns `w`.
  * @param {World} w
  * @param {boolean} flap the player flapped this step
  * @param {number} dt
+ * @param {Powers} [powers]
  * @returns {World}
  */
-export function stepWorld(w, flap, dt) {
+export function stepWorld(w, flap, dt, powers) {
   w.prevBy = w.by;
   w.prevScroll = w.scroll;
   w.events = 0;
@@ -367,13 +427,18 @@ export function stepWorld(w, flap, dt) {
 
   w.scroll += speedFor(w) * dt;
   while (w.nextTowerX - w.scroll < w.width + TOWER_W * w.unit && spawnTower(w));
+  if (powers?.magnet) pullOrbs(w, dt);
   scoreAndRetire(w);
 
+  // During the twin's grace towers pass through, and the ground is a floor.
+  w.graceT = Math.max(0, w.graceT - dt);
+  const grace = w.graceT > 0;
   if (w.by + w.hitR >= w.groundY) {
     w.by = w.groundY - w.hitR;
-    die(w, 'ground');
-  } else if (hitsTower(w)) {
-    die(w, 'tower');
+    if (grace) w.vy = Math.min(0, w.vy);
+    else hit(w, 'ground', powers);
+  } else if (!grace && hitsTower(w)) {
+    hit(w, 'tower', powers);
   }
   return w;
 }

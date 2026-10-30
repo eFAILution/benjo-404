@@ -2,7 +2,9 @@
 // Renders a Code Crossing world onto the host canvas. Reads the world, never changes it.
 // alpha blends lane offsets and Benjo's hop between the last two steps.
 
-import { mod, orbIn } from './lanes.js';
+import { graceFaint } from '../../shell/blink.js';
+import { wrap } from '../../shell/wrap.js';
+import { isCut, orbX } from './lanes.js';
 import {
   BENJO_H,
   BLOCK_ALPHA,
@@ -22,6 +24,8 @@ import {
   DASH_GAP,
   FLASH_EVERY,
   GOAL_ROW,
+  GRACE_ALPHA,
+  GRACE_BLINK,
   LIFE_R,
   LIFE_SPACING,
   LINE_ALPHA,
@@ -43,9 +47,9 @@ const ROTATE = { up: -Math.PI / 2, down: Math.PI / 2, left: 0, right: 0 };
 
 // Reused option objects: the host reads them synchronously, so one of each is enough.
 /** @type {SpriteOpts} */
-const benjoOpts = { flipX: false, rotate: 0 };
+const benjoOpts = { flipX: false, rotate: 0, alpha: 1 };
 /** @type {SpriteOpts} */
-const hitOpts = { flipX: false, rotate: 0, tint: '' };
+const hitOpts = { flipX: false, rotate: 0, alpha: 1, tint: '' };
 
 /**
  * A dashed 1 px line across the band at screen y.
@@ -120,25 +124,33 @@ function drawBlock(host, w, lane, x0, cy) {
   host.drawSprite(sprite, w.bandX + lead * c, cy, c * BLOCK_SPRITE_H);
 }
 
-/** Every block and orb on one lane, from just left of the band to its right edge. @param {HostContext} host @param {World} w @param {Lane} lane @param {number} blend */
+/**
+ * Every block still there and every orb on one lane, from just left of the band to its right edge.
+ * @param {HostContext} host @param {World} w @param {Lane} lane @param {number} blend
+ */
 function drawLane(host, w, lane, blend) {
   const offset = lane.prevOffset + (lane.offset - lane.prevOffset) * blend;
   const cy = w.bandBottom - (lane.index + 0.5) * w.cell;
-  const first = mod(offset, lane.period) - lane.period;
-  for (let x0 = first; x0 < w.cols; x0 += lane.period) drawBlock(host, w, lane, x0, cy);
+  const first = wrap(offset, lane.period) - lane.period;
+  for (let x0 = first; x0 < w.cols; x0 += lane.period) {
+    if (!isCut(lane, Math.round((x0 - offset) / lane.period))) drawBlock(host, w, lane, x0, cy);
+  }
   const pickups = host.theme.sprites.pickups;
   if (!pickups.length) return;
   const sprite = pickups[lane.index % pickups.length];
   for (let x0 = first; x0 < w.cols; x0 += lane.period) {
-    const at = orbIn(lane, Math.round((x0 - offset) / lane.period));
-    const x = x0 + at + 0.5;
-    if (at >= 0 && x > 0 && x < w.cols) {
+    const x = orbX(lane, Math.round((x0 - offset) / lane.period), offset);
+    if (x > 0 && x < w.cols) {
       host.drawSprite(sprite, w.bandX + x * w.cell, cy, w.cell * ORB_H);
     }
   }
 }
 
-/** Benjo faces his last hop and flashes in the hazard tint while hit. @param {HostContext} host @param {World} w @param {number} blend */
+/**
+ * Benjo faces his last hop and flashes in the hazard tint while hit. He blinks while the Digital
+ * Twin's grace runs (holds faint under reduced motion).
+ * @param {HostContext} host @param {World} w @param {number} blend
+ */
 function drawBenjo(host, w, blend) {
   const snap = w.reducedMotion ? 1 : blend;
   const bx = w.reducedMotion ? w.col + 0.5 : w.prevBx + (w.bx - w.prevBx) * snap;
@@ -146,6 +158,8 @@ function drawBenjo(host, w, blend) {
   const hurt = w.dead || w.hitT > 0;
   const flashOn = hurt && (w.reducedMotion || Math.floor(w.hitAge / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
+  const faint = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
+  opts.alpha = faint ? GRACE_ALPHA : 1;
   opts.flipX = w.facing === 'left';
   opts.rotate = ROTATE[w.facing];
   hitOpts.tint = host.theme.palette.hazard;

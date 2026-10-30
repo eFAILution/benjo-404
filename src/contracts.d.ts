@@ -161,6 +161,62 @@ export interface HostContext {
   end(result: EndResult): void;
   /** Optional sound. Silent while muted or before the player's first input. */
   audio?: { play(cue: AudioCue): void };
+  /** Optional power-ups (#22). Absent in tests and older hosts, so always call with `?.`. */
+  power?: PowerPort;
+  /**
+   * Optional. Report where Benjo (or the thing the player steers) is, in canvas CSS px, once per
+   * update. The host draws the Digital Twin and the ghost of the best run there. Games without an
+   * avatar never call it.
+   */
+  track?(x: number, y: number): void;
+}
+
+// ---------- Power-ups (#22) ----------
+
+/**
+ * Power-ups the host hands out during a run. The host runs 'cache' and 'breakpoint' on its own.
+ * 'twin', 'rollback', 'gc', and 'magnet' need the game's help, so a game lists the ones it
+ * supports in GameModule.powers and the host only drops those.
+ */
+export type PowerId = 'twin' | 'rollback' | 'cache' | 'gc' | 'breakpoint' | 'magnet';
+
+export interface PowerPort {
+  /** True while a timed power runs. Games poll 'magnet' each update and pull pickups toward Benjo. */
+  active(id: PowerId): boolean;
+  /**
+   * Digital Twin. Call at the moment a hit would end the run (or cost a life). True means the twin
+   * took the hit: skip the death, give Benjo about one second of grace, and play on. False means
+   * no twin is up; handle the hit as usual. Each true uses the twin up.
+   */
+  absorb(): boolean;
+}
+
+export interface GameInstance {
+  /** Called once, right before the first update. Reset state here. */
+  start(): void;
+  /** Fixed step. dt is always 1/60 s. Called 0 to 5 times per frame. */
+  update(dt: number): void;
+  /** Called once per animation frame. alpha in [0,1) is interpolation between steps. */
+  render(alpha: number): void;
+  pause(): void;
+  resume(): void;
+  /** Release everything. Host clears the canvas afterward. Must not throw. */
+  destroy(): void;
+  /**
+   * Optional, needed for 'gc'. Garbage Collector: remove every hazard on screen now, with a small
+   * effect. Return how many were cleared (0 is fine).
+   */
+  collect?(): number;
+  /**
+   * Optional, needed for 'rollback'. A deep copy of everything update() and render() read, taken
+   * between updates. It must survive later updates untouched (no shared arrays or objects).
+   */
+  snapshot?(): unknown;
+  /**
+   * Optional, needed for 'rollback'. Put the run back to a value snapshot() returned. Called
+   * instead of letting a death end the run. The game must also re-sync the HUD score.
+   */
+  restore?(snapshot: unknown): void;
 }
 
 // ---------- Game ----------
@@ -202,19 +258,8 @@ export interface GameModule {
   bestKey: string;
   /** Build a fresh instance. Must not start the loop or touch the DOM beyond host.root. */
   create(host: HostContext): GameInstance;
-}
-
-export interface GameInstance {
-  /** Called once, right before the first update. Reset state here. */
-  start(): void;
-  /** Fixed step. dt is always 1/60 s. Called 0 to 5 times per frame. */
-  update(dt: number): void;
-  /** Called once per animation frame. alpha in [0,1) is interpolation between steps. */
-  render(alpha: number): void;
-  pause(): void;
-  resume(): void;
-  /** Release everything. Host clears the canvas afterward. Must not throw. */
-  destroy(): void;
+  /** Game-assisted power-ups this game supports (#22). 'cache' and 'breakpoint' need no entry. */
+  powers?: Array<'twin' | 'rollback' | 'gc' | 'magnet'>;
 }
 
 // ---------- Registry and config ----------

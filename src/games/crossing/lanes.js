@@ -3,7 +3,10 @@
 // `gap` empty cells, repeated forever and sliding by `offset` cells. No per-block objects.
 // Car k is block k and the gap after it. Whether car k carries an orb, and where, is a hash of
 // the lane's seed and k, so orbs scatter along the train and only taken cars are stored.
+// The Garbage Collector removes blocks k in cutLo..cutHi, the ones that were on screen, and
+// the train refills from the edge. The magnet nudges an orb along its lane toward Benjo.
 
+import { wrap } from '../../shell/wrap.js';
 import {
   CELL_MAX,
   GAP_MAX,
@@ -35,10 +38,10 @@ import {
  * @property {number} seed 32-bit seed for this level's orbs
  * @property {number} orbChance chance that a car carries an orb
  * @property {Set<number>} taken cars whose orb Benjo has picked up this level
+ * @property {Map<number, number>} nudge cells the magnet has moved car k's orb, by car
+ * @property {number} cutLo first removed block index
+ * @property {number} cutHi last removed block index; below cutLo means none
  */
-
-/** Positive remainder. @param {number} a @param {number} n */
-export const mod = (a, n) => ((a % n) + n) % n;
 
 /** @param {number} index */
 export const createLane = (index) =>
@@ -54,6 +57,9 @@ export const createLane = (index) =>
     seed: 0,
     orbChance: 0,
     taken: new Set(),
+    nudge: new Map(),
+    cutLo: 0,
+    cutHi: -1,
   });
 
 /** px/s for a speed rank at a level, before jitter. @param {number} rank @param {number} level */
@@ -88,10 +94,13 @@ export function rerollLane(lane, level, random, reducedMotion, rank = lane.index
   lane.seed = Math.floor(random() * 2 ** 32);
   lane.orbChance = ORB_CHANCE;
   lane.taken.clear();
+  lane.nudge.clear();
   lane.offset = random() * lane.period;
   lane.prevOffset = lane.offset;
   const jitter = 1 + SPEED_JITTER * (2 * random() - 1);
   lane.speed = laneSpeed(rank, level, reducedMotion, jitter);
+  lane.cutLo = 0;
+  lane.cutHi = -1;
 }
 
 /**
@@ -107,19 +116,41 @@ export function shuffledRanks(count, random) {
   return ranks;
 }
 
+/** Was block k removed by the Garbage Collector? @param {Lane} lane @param {number} k */
+export const isCut = (lane, k) => k >= lane.cutLo && k <= lane.cutHi;
+
+/** Index of the block whose period holds `x`. @param {Lane} lane @param {number} x @param {number} offset */
+const blockIndex = (lane, x, offset) => Math.floor((x - offset) / lane.period);
+
 /**
- * Is cell position `x` covered by a block? Periodic in `period`.
+ * Is cell position `x` covered by a block? Periodic in `period`, less any removed blocks.
  * @param {Lane} lane @param {number} x cells from the band's left edge @param {number} [offset]
  */
-export const blockAt = (lane, x, offset = lane.offset) => mod(x - offset, lane.period) < lane.len;
+export const blockAt = (lane, x, offset = lane.offset) =>
+  wrap(x - offset, lane.period) < lane.len && !isCut(lane, blockIndex(lane, x, offset));
 
 /**
  * Does a Benjo centered at `x` get hit? Like blockAt with the block shrunk by HIT_MARGIN.
  * @param {Lane} lane @param {number} x @param {number} [offset]
  */
 export function hitAt(lane, x, offset = lane.offset) {
-  const r = mod(x - offset, lane.period);
-  return r > HIT_MARGIN && r < lane.len - HIT_MARGIN;
+  const r = wrap(x - offset, lane.period);
+  return r > HIT_MARGIN && r < lane.len - HIT_MARGIN && !isCut(lane, blockIndex(lane, x, offset));
+}
+
+/**
+ * Remove every block that overlaps the band (0 to `cols` cells). Mutates `lane`.
+ * @param {Lane} lane @param {number} cols
+ * @returns {number} how many were removed that were not already gone
+ */
+export function cutLane(lane, cols) {
+  const lo = Math.floor((-lane.len - lane.offset) / lane.period) + 1;
+  const hi = Math.ceil((cols - lane.offset) / lane.period) - 1;
+  let removed = 0;
+  for (let k = lo; k <= hi; k++) if (!isCut(lane, k)) removed += 1;
+  lane.cutLo = lo;
+  lane.cutHi = hi;
+  return removed;
 }
 
 /** Salt for the second hash, which places an orb inside its gap. */
@@ -147,13 +178,50 @@ export function orbIn(lane, k) {
 }
 
 /**
+ * Where car k's orb is drawn, in cells from the band's left edge, magnet nudge included, or NaN
+ * when the car has no orb in play.
+ * @param {Lane} lane @param {number} k @param {number} [offset]
+ */
+export function orbX(lane, k, offset = lane.offset) {
+  const at = orbIn(lane, k);
+  return at < 0 ? Number.NaN : offset + k * lane.period + at + 0.5 + (lane.nudge.get(k) ?? 0);
+}
+
+/**
+ * The car with an orb in play closest to `x`. A nudged orb may have slid into the next car's
+ * period, so the cars either side are checked too.
+ * @param {Lane} lane @param {number} x
+ * @returns {{ car: number, d: number } | null} d is `x` less the orb's position
+ */
+function nearestOrb(lane, x) {
+  const k = Math.floor((x - lane.offset) / lane.period);
+  /** @type {{ car: number, d: number } | null} */
+  let best = null;
+  for (let car = k - 1; car <= k + 1; car++) {
+    const d = x - orbX(lane, car);
+    if (Math.abs(d) < Math.abs(best?.d ?? Number.POSITIVE_INFINITY)) best = { car, d };
+  }
+  return best;
+}
+
+/**
  * The car whose orb, still in play, is within reach of `x`, or null.
  * @param {Lane} lane @param {number} x
  */
 export function orbNear(lane, x) {
-  const k = Math.floor((x - lane.offset) / lane.period);
-  const at = orbIn(lane, k);
-  if (at < 0) return null;
-  const d = x - lane.offset - k * lane.period - at - 0.5;
-  return Math.abs(d) < ORB_REACH ? k : null;
+  const near = nearestOrb(lane, x);
+  return near && Math.abs(near.d) < ORB_REACH ? near.car : null;
+}
+
+/**
+ * Magnet: slide the orb nearest `x` up to `step` cells toward it. Mutates `lane`.
+ * @param {Lane} lane @param {number} x @param {number} step
+ * @returns {number | null} the car whose orb arrived this step, or null
+ */
+export function pullOrb(lane, x, step) {
+  const near = nearestOrb(lane, x);
+  if (!near) return null;
+  const move = Math.max(-step, Math.min(step, near.d));
+  lane.nudge.set(near.car, (lane.nudge.get(near.car) ?? 0) + move);
+  return Math.abs(near.d) <= step ? near.car : null;
 }

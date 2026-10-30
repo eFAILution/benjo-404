@@ -10,6 +10,8 @@ import {
   FAST_FALL,
   JUMP_BUFFER,
   LAND_SQUASH_T,
+  MAGNET_R,
+  MAGNET_V,
   POP_T,
   START_GRACE,
 } from './tuning.js';
@@ -81,5 +83,27 @@ export function scrollAll(w, scroll, dt) {
     p.x -= scroll;
     p.t += dt;
     if (p.t >= POP_T) p.active = false;
+  }
+}
+
+/**
+ * Magnet: fly every pickup within reach toward Benjo's middle. Mutates `w`.
+ * @param {World} w
+ * @param {number} dt
+ */
+export function pullOrbs(w, dt) {
+  const reach = MAGNET_R * w.unit;
+  const step = MAGNET_V * w.unit * w.pace * dt;
+  const midY = w.by + w.benjoH / 2;
+  for (let i = 0; i < w.orbs.length; i++) {
+    const orb = w.orbs[i];
+    if (!orb.active) continue;
+    const dx = w.benjoX - orb.x;
+    const dy = midY - orb.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist >= reach || dist === 0) continue;
+    const k = Math.min(1, step / dist);
+    orb.x += dx * k;
+    orb.y += dy * k;
   }
 }

@@ -1,9 +1,13 @@
 // @ts-check
 // Whack-a-Bug: the GameModule. Wires host input, the world, drawing, and the HUD.
 // A 45 second round: squash bugs as they pop out of the code, leave the features alone.
+//
+// Power-ups (#22): the Digital Twin forgives one costly mistake, the Garbage Collector squashes
+// every bug that is up, and the magnet pops bugs up next to Benjo. Rollback is left out: the
+// round always ends on the clock, so rewinding it would only replay the last seconds.
 
 import { createTracker, readWhack, resetTracker } from './controls.js';
-import { drawFrame } from './draw.js';
+import { drawFrame, hoverY } from './draw.js';
 import { HOW_TO } from './howto.js';
 import {
   COMBO_SHOW,
@@ -16,12 +20,13 @@ import {
   HINT_T,
   NEW_BEST_T,
 } from './tuning.js';
-import { createWorld, resizeWorld, stepWorld } from './world.js';
+import { createWorld, resizeWorld, stepWorld, zapBugs } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
+/** @typedef {import('./world.js').Assist} Assist */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
 
 /** World events and their sounds, most important first. One cue plays per step. */
@@ -65,6 +70,8 @@ function createWhack(host) {
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
+  /** @type {Assist} */
+  const assist = { absorb: () => host.power?.absorb() === true, magnet: false };
 
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
@@ -81,12 +88,16 @@ function createWhack(host) {
     resizeWorld(world, host.size);
   }
 
+  /** @param {World} w */
+  function syncScore(w) {
+    if (w.score === lastScore) return;
+    lastScore = w.score;
+    host.setScore(lastScore);
+  }
+
   /** @param {World} w @param {number} dt */
   function syncHud(w, dt) {
-    if (w.score !== lastScore) {
-      lastScore = w.score;
-      host.setScore(lastScore);
-    }
+    syncScore(w);
     if (!cheered && best > 0 && w.score > best) {
       cheered = true;
       showStatus(NEW_BEST, NEW_BEST_T);
@@ -123,9 +134,11 @@ function createWhack(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readWhack(host.input, tracker, world.time, world), dt);
+      assist.magnet = host.power?.active('magnet') === true;
+      stepWorld(world, readWhack(host.input, tracker, world.time, world), dt, assist);
       playCue(host, world.events);
       syncHud(world, dt);
+      host.track?.(world.holeX[world.lastHole], hoverY(world));
       if (world.dead && world.deadT >= END_T) {
         ended = true;
         host.end({ score: world.score, scoreLabel: SCORE_LABEL, reason: REASON_TIME });
@@ -149,6 +162,14 @@ function createWhack(host) {
       ended = true;
       world = null;
     },
+
+    collect() {
+      if (!world || ended) return 0;
+      const zapped = zapBugs(world);
+      if (zapped > 0) host.audio?.play('clear');
+      syncScore(world);
+      return zapped;
+    },
   };
 }
 
@@ -163,6 +184,7 @@ const whack = {
   howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createWhack,
+  powers: ['twin', 'gc', 'magnet'],
 };
 
 export default whack;

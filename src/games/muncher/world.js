@@ -1,5 +1,7 @@
 // @ts-check
 // The Cache Muncher world and its fixed step. No DOM, no host: tests drive it directly.
+// Power-ups (#22) come in through `powers`: the magnet flag and the Digital Twin's absorb(),
+// which the step calls at the moment a cache miss would cost Benjo a life.
 //
 // Everything moves on the maze grid. An actor sits on cell (col, row) heading `dir`, `t` of the
 // way to the next cell, so its center is the cell center plus t cells along dir. At each cell
@@ -26,10 +28,12 @@ import {
   FRIGHT_T,
   FRIGHT_T_MIN,
   FRIGHT_T_STEP,
+  GRACE_T,
   HIT_R,
   HIT_T,
   LEVEL_SPEED,
   LIVES,
+  MAGNET_CELLS,
   MAZE,
   MIN_HEIGHT,
   MIN_WIDTH,
@@ -70,6 +74,10 @@ export const reverse = (d) => (d + 2) % 4;
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {{ dir: number }} Intent dir 0..3, or -1 for no new input */
 /**
+ * @typedef {{ magnet?: boolean, absorb?: () => boolean }} Powers
+ *   magnet pulls in nearby bytes this step; absorb() is true when the Digital Twin takes a touch.
+ */
+/**
  * @typedef {object} Actor
  * @property {number} col
  * @property {number} row
@@ -109,6 +117,7 @@ export const reverse = (d) => (d + 2) % 4;
  * @property {number} hitT hit stop left after a lost life
  * @property {number} clearT pause left before the next level
  * @property {number} hitAge seconds since the last lost life, for the flash
+ * @property {number} graceT seconds left in which cache misses pass through Benjo (Digital Twin)
  * @property {boolean} dead
  * @property {number} deadT
  * @property {number} events EVENT_* bits raised by the last step
@@ -251,6 +260,7 @@ export function createWorld(size, random, options = {}) {
     hitT: 0,
     clearT: 0,
     hitAge: Number.POSITIVE_INFINITY,
+    graceT: 0,
     dead: false,
     deadT: 0,
     events: 0,
@@ -289,8 +299,10 @@ export function scattering(w) {
 }
 
 /** Munch whatever is on Benjo's cell. @param {World} w */
-function munchCell(w) {
-  const i = w.benjo.row * COLS + w.benjo.col;
+const munchCell = (w) => munchAt(w, w.benjo.row * COLS + w.benjo.col);
+
+/** Munch whatever is on cell i. @param {World} w @param {number} i */
+function munchAt(w, i) {
   const kind = w.bytes[i];
   if (!kind) return;
   w.bytes[i] = 0;
@@ -464,13 +476,22 @@ function loseLife(w) {
   w.deadT = 0;
 }
 
-/** Touches between Benjo and the cache misses that are out. @param {World} w */
-function checkTouches(w) {
+/**
+ * Touches between Benjo and the cache misses that are out. The Digital Twin may take a touch, and
+ * during the grace after it the cache misses that would catch him pass through.
+ * @param {World} w @param {Powers} [powers]
+ */
+function checkTouches(w, powers) {
   const b = w.benjo;
   for (const miss of w.misses) {
     if (miss.state === 'pen') continue;
     if ((miss.x - b.x) ** 2 + (miss.y - b.y) ** 2 > HIT_R ** 2) continue;
     if (!miss.frightened) {
+      if (w.graceT > 0) continue;
+      if (powers?.absorb?.()) {
+        w.graceT = GRACE_T;
+        continue;
+      }
       loseLife(w);
       return;
     }
@@ -480,6 +501,49 @@ function checkTouches(w) {
     w.events |= EVENT_MUNCH;
     sendHome(miss);
   }
+}
+
+/**
+ * Magnet: munch the bytes within MAGNET_CELLS of Benjo along the open paths, so the magnet never
+ * reaches through a wall. Pellets stay put: when to clear the cache is the player's call.
+ * @param {World} w
+ */
+function pullBytes(w) {
+  const b = w.benjo;
+  let ring = [[b.col, b.row]];
+  const seen = new Set([b.row * COLS + b.col]);
+  for (let step = 0; step < MAGNET_CELLS; step++) {
+    /** @type {number[][]} */
+    const next = [];
+    for (const [col, row] of ring) {
+      for (let d = 0; d < 4; d++) {
+        const c = col + DX[d];
+        const r = row + DY[d];
+        const i = r * COLS + c;
+        if (seen.has(i) || !benjoCanEnter(c, r)) continue;
+        seen.add(i);
+        next.push([c, r]);
+        if (w.bytes[i] === 1) munchAt(w, i);
+      }
+    }
+    ring = next;
+  }
+}
+
+/**
+ * Garbage Collector: every cache miss out on the board goes back to the pen, as if munched but
+ * for no points. Mutates `w`.
+ * @param {World} w
+ * @returns {number} how many were sent home
+ */
+export function clearMisses(w) {
+  let cleared = 0;
+  for (const miss of w.misses) {
+    if (miss.state === 'pen') continue;
+    sendHome(miss);
+    cleared += 1;
+  }
+  return cleared;
 }
 
 /** Every byte munched: refill and speed up. @param {World} w */
@@ -495,9 +559,10 @@ function nextLevel(w) {
  * @param {World} w
  * @param {Intent} intent
  * @param {number} dt
+ * @param {Powers} [powers]
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, powers) {
   const actors = [w.benjo, ...w.misses];
   for (const a of actors) {
     a.prevX = a.x;
@@ -537,10 +602,12 @@ export function stepWorld(w, intent, dt) {
     }
   }
 
+  w.graceT = Math.max(0, w.graceT - dt);
   moveBenjo(w, dt);
+  if (powers?.magnet) pullBytes(w);
   for (const miss of w.misses) moveMiss(w, miss, dt);
   for (const a of actors) place(a);
-  checkTouches(w);
+  checkTouches(w, powers);
   if (w.hitT === 0 && !w.dead && w.left === 0) w.clearT = CLEAR_T;
   return w;
 }

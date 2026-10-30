@@ -4,6 +4,7 @@
 // The world keeps its own previous positions, so a single world mutated in place is enough
 // for render(alpha) to interpolate, and nothing in the update path allocates.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -17,13 +18,20 @@ import {
   NEW_BEST_T,
   STATUS_T,
 } from './tuning.js';
-import { createWorld, resizeWorld, stepWorld } from './world.js';
+import { createWorld, resizeWorld, stepWorld, sweep } from './world.js';
 
 /** @typedef {import('../../contracts').GameModule} GameModule */
 /** @typedef {import('../../contracts').GameInstance} GameInstance */
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('./world.js').World} World */
 /** @typedef {import('../../contracts').AudioCue} AudioCue */
+/** @typedef {import('./world.js').Aid} Aid */
+/**
+ * Everything update and render read, for Rollback. The world goes without its random source,
+ * which stays the host's.
+ * @typedef {{ world: Omit<World, 'random'>, status: string, statusT: number, cheered: boolean,
+ *   seenWidth: number, seenHeight: number }} Snapshot
+ */
 
 /** World events and their sounds, most important first. One cue plays per step. */
 /** @type {Array<[number, AudioCue]>} */
@@ -63,15 +71,20 @@ function createZapper(host) {
   let paused = false;
   let ended = false;
   let lastScore = 0;
+  let status = '';
   let statusT = 0;
   let best = 0;
   let cheered = false;
   let seenWidth = 0;
   let seenHeight = 0;
 
+  /** @type {Aid} */
+  const aid = { absorb: () => host.power?.absorb() ?? false };
+
   /** @param {string} text @param {number} seconds */
   function showStatus(text, seconds) {
     host.setStatus(text);
+    status = text;
     statusT = seconds;
   }
 
@@ -99,7 +112,7 @@ function createZapper(host) {
     if (w.events & EVENT_HIT && !w.dead) return showStatus(`LIVES LEFT: ${w.lives}`, STATUS_T);
     if (statusT <= 0) return;
     statusT -= dt;
-    if (statusT <= 0) host.setStatus('');
+    if (statusT <= 0) showStatus('', 0);
   }
 
   return {
@@ -120,9 +133,10 @@ function createZapper(host) {
     update(dt) {
       if (!world || paused || ended) return;
       syncLayout();
-      stepWorld(world, readIntent(host.input, tracker, world.time, intent), dt);
+      stepWorld(world, readIntent(host.input, tracker, world.time, intent), dt, aid);
       playCue(host, world.events);
       syncHud(world, dt);
+      host.track?.(world.bx, world.benjoY);
       if (world.dead && world.deadT >= DEATH_PAUSE) {
         ended = true;
         const reason = world.hit === 'reached' ? REASON_REACHED : REASON_BITE;
@@ -147,6 +161,36 @@ function createZapper(host) {
       ended = true;
       world = null;
     },
+
+    collect() {
+      if (!world || ended || world.dead) return 0;
+      const { wave } = world;
+      const n = sweep(world);
+      if (world.wave !== wave) {
+        host.audio?.play('clear');
+        showStatus(`WAVE ${world.wave}`, STATUS_T);
+      } else if (n) host.audio?.play('score');
+      return n;
+    },
+
+    snapshot() {
+      if (!world) return null;
+      /** @type {Snapshot} */
+      const snap = { world: freezeWorld(world), status, statusT, cheered, seenWidth, seenHeight };
+      return snap;
+    },
+
+    restore(saved) {
+      if (!saved) return;
+      const snap = /** @type {Snapshot} */ (saved);
+      world = thawWorld(snap.world, host.random);
+      ({ cheered, seenWidth, seenHeight } = snap);
+      showStatus(snap.status, snap.statusT);
+      ended = false;
+      lastScore = world.score;
+      host.setScore(lastScore);
+      resetTracker(tracker, host.input);
+    },
   };
 }
 
@@ -158,6 +202,8 @@ const zapper = {
   howTo: HOW_TO,
   bestKey: BEST_KEY,
   create: createZapper,
+  // No 'magnet': nothing here is a pickup, only bugs and their bites.
+  powers: ['twin', 'rollback', 'gc'],
 };
 
 export default zapper;

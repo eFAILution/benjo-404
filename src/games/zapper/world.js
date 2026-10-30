@@ -10,6 +10,7 @@ import {
   bugX,
   bugY,
   layout,
+  liftFormation,
   moveFormation,
   nextBiter,
   resetFormation,
@@ -31,6 +32,7 @@ import {
   EVENT_KILL,
   EVENT_WAVE,
   FIRE_COOLDOWN,
+  GRACE_T,
   HIT_T,
   LIVES,
   POINTER_SPEED,
@@ -47,6 +49,10 @@ import {
 /** @typedef {{ alive: boolean, col: number, row: number }} Bug */
 /** @typedef {{ active: boolean, x: number, y: number, prevY: number }} Shot */
 /** @typedef {{ active: boolean, x: number, y: number, prevY: number, t: number }} Pop */
+/**
+ * Power-up help from the host (#22), read during a step.
+ * @typedef {{ absorb: () => boolean }} Aid
+ */
 /**
  * @typedef {object} World
  * @property {number} width
@@ -81,6 +87,7 @@ import {
  * @property {boolean} dead
  * @property {'bite' | 'reached' | null} hit what ended the run
  * @property {number} deadT
+ * @property {number} graceT seconds left of the Digital Twin's grace, 0 when none
  * @property {number} events EVENT_* bits raised by the last step
  * @property {boolean} reducedMotion
  * @property {() => number} random
@@ -89,6 +96,9 @@ import {
  * @property {Shot[]} bites
  * @property {Pop[]} pops
  */
+
+/** No power-ups: what a step gets from a host without them. @type {Aid} */
+export const NO_AID = { absorb: () => false };
 
 /** @param {number} v @param {number} lo @param {number} hi */
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -151,6 +161,7 @@ export function createWorld(size, random, options = {}) {
     dead: false,
     hit: null,
     deadT: 0,
+    graceT: 0,
     events: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
@@ -185,8 +196,13 @@ function tryFire(w, intent) {
 
 /** @param {World} w @param {Bug} b @param {Shot} bolt */
 function kill(w, b, bolt) {
-  b.alive = false;
   bolt.active = false;
+  squash(w, b);
+}
+
+/** A bug dies for points; the last one clears the wave. @param {World} w @param {Bug} b */
+function squash(w, b) {
+  b.alive = false;
   w.alive -= 1;
   w.score += BUG_SCORE * w.wave;
   w.events |= EVENT_KILL;
@@ -200,6 +216,38 @@ function kill(w, b, bolt) {
   w.wave += 1;
   w.waveT = WAVE_PAUSE;
   w.events |= EVENT_WAVE;
+}
+
+/**
+ * Garbage Collector: every bug and bite on screen goes at once. Bugs score as kills, so the
+ * wave clears as usual.
+ * @param {World} w
+ * @returns {number} hazards cleared
+ */
+export function sweep(w) {
+  let n = 0;
+  for (const s of w.bites) {
+    if (!s.active) continue;
+    s.active = false;
+    n += 1;
+  }
+  for (const b of w.bugs) {
+    if (!b.alive) continue;
+    squash(w, b);
+    n += 1;
+  }
+  return n;
+}
+
+/**
+ * True when the grace, or a fresh twin, takes a hit. A fresh twin starts the grace.
+ * @param {World} w @param {Aid} aid
+ */
+function shielded(w, aid) {
+  if (w.graceT > 0) return true;
+  if (!aid.absorb()) return false;
+  w.graceT = GRACE_T;
+  return true;
 }
 
 /** The lowest living bug a bolt swept through this step, or null. @param {World} w @param {Shot} s */
@@ -228,8 +276,8 @@ function moveBolts(w, dt) {
   }
 }
 
-/** @param {World} w @param {number} dt */
-function moveBites(w, dt) {
+/** A bite the twin takes vanishes; any other costs a life. @param {World} w @param {number} dt @param {Aid} aid */
+function moveBites(w, dt, aid) {
   const halfW = (BITE_W * w.unit) / 2;
   const halfH = (BITE_H * w.unit) / 2;
   for (const s of w.bites) {
@@ -237,7 +285,11 @@ function moveBites(w, dt) {
     s.y += biteSpeedFor(w) * dt;
     const dx = w.bx - clamp(w.bx, s.x - halfW, s.x + halfW);
     const dy = w.benjoY - clamp(w.benjoY, s.prevY - halfH, s.y + halfH);
-    if (dx * dx + dy * dy < w.hitR * w.hitR) return bitten(w);
+    if (dx * dx + dy * dy < w.hitR * w.hitR) {
+      if (!shielded(w, aid)) return bitten(w);
+      s.active = false;
+      continue;
+    }
     if (s.y - halfH > w.height) s.active = false;
   }
 }
@@ -260,8 +312,12 @@ function die(w, what) {
   w.events |= EVENT_HIT;
 }
 
-/** Move the formation, or wait out the pause between waves. @param {World} w @param {number} dt */
-function stepFormation(w, dt) {
+/**
+ * Move the formation, or wait out the pause between waves. Bugs that reach Benjo's row end the
+ * run, unless the twin pushes them back up.
+ * @param {World} w @param {number} dt @param {Aid} aid
+ */
+function stepFormation(w, dt, aid) {
   if (w.waveT > 0) {
     w.waveT -= dt;
     if (w.waveT <= 0) {
@@ -270,7 +326,11 @@ function stepFormation(w, dt) {
     }
     return;
   }
-  if (moveFormation(w, dt)) return die(w, 'reached');
+  if (moveFormation(w, dt)) {
+    if (!shielded(w, aid)) return die(w, 'reached');
+    liftFormation(w);
+    return;
+  }
   const biter = nextBiter(w, dt);
   const bite = biter ? free(w.bites) : null;
   if (biter && bite) launch(bite, bugX(w, biter), bugY(w, biter) + w.bugH / 2);
@@ -281,9 +341,10 @@ function stepFormation(w, dt) {
  * @param {World} w
  * @param {Intent} intent
  * @param {number} dt
+ * @param {Aid} [aid] power-up help; none by default
  * @returns {World}
  */
-export function stepWorld(w, intent, dt) {
+export function stepWorld(w, intent, dt, aid = NO_AID) {
   w.prevBx = w.bx;
   w.prevOriginX = w.originX;
   w.prevOriginY = w.originY;
@@ -299,6 +360,7 @@ export function stepWorld(w, intent, dt) {
     w.deadT += dt;
     return w;
   }
+  w.graceT = Math.max(0, w.graceT - dt);
   if (w.hitT > 0) {
     w.hitT = Math.max(0, w.hitT - dt);
     return w;
@@ -310,8 +372,8 @@ export function stepWorld(w, intent, dt) {
     tryFire(w, intent);
   }
   moveBolts(w, dt);
-  stepFormation(w, dt);
-  if (!w.dead) moveBites(w, dt);
+  stepFormation(w, dt, aid);
+  if (!w.dead) moveBites(w, dt, aid);
   return w;
 }
 

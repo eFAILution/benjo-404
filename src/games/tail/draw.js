@@ -3,6 +3,7 @@
 // Every segment slides from the cell the one behind it held toward its own cell, so the whole
 // tail glides between moves; alpha blends that slide between the last two steps.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BORDER_ALPHA,
   DOT_ALPHA,
@@ -11,6 +12,8 @@ import {
   FOOD_H,
   FOOD_PULSE,
   FOOD_PULSE_RATE,
+  GRACE_ALPHA,
+  GRACE_BLINK,
   HEAD_H,
   LEFT,
   SEG_ROUND,
@@ -21,7 +24,7 @@ import {
   TIP_ALPHA,
   UP,
 } from './tuning.js';
-import { centerX, centerY, segment } from './world.js';
+import { centerX, centerY, headX, headY, segment } from './world.js';
 
 /** @typedef {import('../../contracts').HostContext} HostContext */
 /** @typedef {import('../../contracts').Palette} Palette */
@@ -30,7 +33,7 @@ import { centerX, centerY, segment } from './world.js';
 
 // Reused option objects: the host reads them synchronously, so one of each is enough.
 /** @type {SpriteOpts} */
-const benjoOpts = { flipX: false, rotate: 0 };
+const benjoOpts = { flipX: false, rotate: 0, alpha: 1 };
 /** @type {SpriteOpts} */
 const hitOpts = { flipX: false, rotate: 0, tint: '' };
 /** @type {SpriteOpts} */
@@ -106,11 +109,16 @@ function drawFood(host, w) {
   host.drawSprite(sprite, centerX(w, w.foodX), centerY(w, w.foodY), w.cell * FOOD_H, foodOpts);
 }
 
-/** Benjo faces his heading and flashes the hazard color when the run is lost. @param {HostContext} host @param {World} w @param {number} p */
+/**
+ * Benjo faces his heading, flashes the hazard color when the run is lost, and blinks while the
+ * Digital Twin's grace lasts.
+ * @param {HostContext} host @param {World} w @param {number} p
+ */
 function drawHead(host, w, p) {
-  const from = segment(w, 1);
-  const x = centerX(w, w.xs[from] + (w.xs[w.head] - w.xs[from]) * p);
-  const y = centerY(w, w.ys[from] + (w.ys[w.head] - w.ys[from]) * p);
+  const x = headX(w, p);
+  const y = headY(w, p);
+  const blink = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
+  benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   const lost = w.dead && w.hit !== 'full';
   const flashOn = lost && (w.reducedMotion || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;

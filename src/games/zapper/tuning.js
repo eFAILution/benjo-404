@@ -24,9 +24,20 @@ export const BENJO_SPEED = 360;
 /** Drag speed toward the pointer: fast, but never a teleport. */
 export const POINTER_SPEED = 1400;
 
-// Formation
+// Formation. Wave 1 is COLS x ROWS; later waves grow toward COLS_MAX x ROWS_MAX (#83).
 export const COLS = 6;
 export const ROWS = 3;
+export const COLS_MAX = 8;
+export const ROWS_MAX = 5;
+/** A wave adds a column every 2 waves and a row every 2 waves, offset by one. */
+export const GROW_EVERY = 2;
+/** A new formation's lowest row stays at least this many drops above the front line. */
+export const DROPS_CLEAR = 6;
+/**
+ * Columns past COLS are only added while the block spans at most this share of the play width,
+ * so it still has room to slide before each drop. A narrow screen keeps COLS.
+ */
+export const BLOCK_SHARE = 0.65;
 export const COL_STEP = 56;
 export const ROW_STEP = 40;
 /** The first column starts this far in from the left edge (px, not scaled). */
@@ -39,28 +50,40 @@ export const BUG_BOX = 0.8;
 export const DROP = 14;
 export const FORM_SPEED = 30;
 export const FORM_SPEED_WAVE = 8;
-/** How much faster the last bug moves than a full formation (0.6 = 60% faster). */
-export const FORM_SPEED_RAMP = 0.6;
-export const FORM_SPEED_CAP = 160;
-export const FORM_SPEED_CAP_REDUCED = 120;
+/** How much faster the last bug moves than a full formation (1.5 = 150% faster, #83). */
+export const FORM_SPEED_RAMP = 1.5;
+export const FORM_SPEED_CAP = 220;
+export const FORM_SPEED_CAP_REDUCED = 150;
 export const BOB_AMP = 2;
 export const BOB_RATE = 3;
 
 // Fire
-export const BOLT_POOL = 3;
+export const BOLT_POOL = 8;
 export const BOLT_SPEED = 520;
 export const BOLT_W = 6;
 export const BOLT_H = 14;
-export const FIRE_COOLDOWN = 0.25;
+export const FIRE_COOLDOWN = 0.18;
 
-// Bites
-export const BITE_POOL = 4;
+// Bites. Each gap and each bite's speed is drawn around the wave's base value (#83).
+export const BITE_POOL = 6;
 export const BITE_T = 1.4;
 export const BITE_T_STEP = 0.1;
 export const BITE_T_MIN = 0.7;
+/** The gap to the next bite is the base interval times 1 plus or minus this. */
+export const BITE_T_JITTER = 0.5;
 export const BITE_SPEED = 180;
 export const BITE_SPEED_WAVE = 15;
 export const BITE_SPEED_CAP = 240;
+/** A bite falls at the base speed times a pace drawn from this range. */
+export const BITE_PACE_MIN = 0.75;
+export const BITE_PACE_MAX = 1.3;
+/** From wave 2, this share of bites per wave past the first comes from the column nearest Benjo. */
+export const AIM_STEP = 0.12;
+export const AIM_MAX = 0.45;
+/** From wave 3, a bite can start a burst: the next one follows after BURST_GAP. */
+export const BURST_STEP = 0.1;
+export const BURST_MAX = 0.3;
+export const BURST_GAP = 0.3;
 export const BITE_W = 5;
 export const BITE_H = 10;
 

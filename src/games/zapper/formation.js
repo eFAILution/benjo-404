@@ -1,24 +1,34 @@
 // @ts-check
-// Layout and the bug formation: the play rect for a canvas size, where each bug sits, how the
-// block slides and drops, who bites, and how a running world fits a new size.
+// Layout and the bug formation: the play rect for a canvas size, how big each wave's block is,
+// where each bug sits, how the block slides and drops, who bites, and how a running world fits a
+// new size.
 // Pure helpers over the World from world.js; nothing here reads the host.
 
 import {
+  AIM_MAX,
+  AIM_STEP,
   BENJO_H,
   BENJO_RISE,
   BITE_SPEED,
   BITE_SPEED_CAP,
   BITE_SPEED_WAVE,
   BITE_T,
+  BITE_T_JITTER,
   BITE_T_MIN,
   BITE_T_STEP,
+  BLOCK_SHARE,
   BOTTOM_PAD,
   BUG_H,
+  BURST_GAP,
+  BURST_MAX,
+  BURST_STEP,
   CEILING,
   CEILING_NARROW,
   COL_STEP,
   COLS,
+  COLS_MAX,
   DROP,
+  DROPS_CLEAR,
   FORM_INSET,
   FORM_SPEED,
   FORM_SPEED_CAP,
@@ -26,6 +36,7 @@ import {
   FORM_SPEED_RAMP,
   FORM_SPEED_WAVE,
   FORM_TOP,
+  GROW_EVERY,
   HIT_R,
   MIN_HEIGHT,
   MIN_WIDTH,
@@ -33,6 +44,7 @@ import {
   REF_HEIGHT,
   ROW_STEP,
   ROWS,
+  ROWS_MAX,
   SIDE_PAD,
   UNIT_MAX,
   UNIT_MIN,
@@ -45,8 +57,16 @@ import {
 /** @param {number} v @param {number} lo @param {number} hi */
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-/** @param {Area} size */
-export function layout(size) {
+/**
+ * Column spacing for a block `cols` wide: the full step when it fits, else squeezed so the block
+ * keeps the same share of the width at any column count.
+ * @param {{ right: number, unit: number }} l @param {number} cols
+ */
+const colStepFor = (l, cols) =>
+  Math.min(COL_STEP * l.unit, (l.right - SIDE_PAD - 2 * FORM_INSET) / cols);
+
+/** @param {Area} size @param {number} [cols] columns in the current wave */
+export function layout(size, cols = COLS) {
   const width = Math.max(MIN_WIDTH, size.width || 0);
   const height = Math.max(MIN_HEIGHT, size.height || 0);
   const unit = clamp(height / REF_HEIGHT, UNIT_MIN, UNIT_MAX);
@@ -64,7 +84,7 @@ export function layout(size) {
     benjoY: bottom - BENJO_RISE * unit,
     hitR: BENJO_H * unit * HIT_R,
     bugH: BUG_H * unit,
-    colStep: Math.min(COL_STEP * unit, (right - SIDE_PAD - 2 * FORM_INSET) / COLS),
+    colStep: colStepFor({ right, unit }, cols),
     rowStep: ROW_STEP * unit,
   };
 }
@@ -74,7 +94,7 @@ const span = { minCol: 0, maxCol: 0, maxRow: 0 };
 
 /** @param {World} w */
 function extent(w) {
-  span.minCol = COLS;
+  span.minCol = COLS_MAX;
   span.maxCol = -1;
   span.maxRow = -1;
   for (const b of w.bugs) {
@@ -95,7 +115,26 @@ export const bugY = (w, b) => w.originY + b.row * w.rowStep;
 export function speedFor(w) {
   const cap = w.reducedMotion ? FORM_SPEED_CAP_REDUCED : FORM_SPEED_CAP;
   const base = FORM_SPEED + FORM_SPEED_WAVE * (w.wave - 1);
-  return Math.min(cap, base * (1 + FORM_SPEED_RAMP * (1 - w.alive / w.bugs.length))) * w.unit;
+  return Math.min(cap, base * (1 + FORM_SPEED_RAMP * (1 - w.alive / w.total))) * w.unit;
+}
+
+/**
+ * The block for a wave (#83): COLS x ROWS at first, then a column and a row every GROW_EVERY
+ * waves, up to COLS_MAX x ROWS_MAX. Extra columns are only added while the block spans at most
+ * BLOCK_SHARE of the play width, and extra rows while its lowest row starts at least
+ * DROPS_CLEAR drops above the front line, so a small screen keeps room to play.
+ * @param {World} w
+ */
+export function blockFor(w) {
+  /** @param {number} n */
+  const span = (n) => (n - 1) * colStepFor(w, n) + w.bugH;
+  const roomX = Math.max(span(COLS), BLOCK_SHARE * (w.right - w.left));
+  let cols = Math.min(COLS_MAX, COLS + Math.floor(w.wave / GROW_EVERY));
+  while (cols > COLS && span(cols) > roomX) cols -= 1;
+  const want = Math.min(ROWS_MAX, ROWS + Math.floor((w.wave - 1) / GROW_EVERY));
+  const room = w.benjoY - w.bugH - DROPS_CLEAR * DROP * w.unit - (w.ceiling + FORM_TOP * w.unit);
+  const fit = Math.floor(room / w.rowStep) + 1;
+  return { cols, rows: Math.max(Math.min(ROWS, want), Math.min(want, fit)) };
 }
 
 /** @param {World} w */
@@ -105,10 +144,15 @@ export const biteSpeedFor = (w) =>
 /** Seconds between bites. @param {World} w */
 export const biteIntervalFor = (w) => Math.max(BITE_T_MIN, BITE_T - BITE_T_STEP * (w.wave - 1));
 
-/** Put a full formation at the start spot. @param {World} w */
+/** Put the wave's full formation at the start spot. @param {World} w */
 export function resetFormation(w) {
-  for (const b of w.bugs) b.alive = true;
-  w.alive = w.bugs.length;
+  const { cols, rows } = blockFor(w);
+  w.cols = cols;
+  w.rows = rows;
+  w.colStep = colStepFor(w, cols);
+  for (const b of w.bugs) b.alive = b.col < cols && b.row < rows;
+  w.total = cols * rows;
+  w.alive = w.total;
   w.originX = w.left + Math.max(FORM_INSET, w.bugH / 2);
   w.originY = w.ceiling + FORM_TOP * w.unit;
   w.prevOriginX = w.originX;
@@ -144,15 +188,45 @@ export function moveFormation(w, dt) {
 
 /** @param {World} w @param {number} col @returns {Bug | null} */
 export function lowest(w, col) {
-  for (let row = ROWS - 1; row >= 0; row--) {
-    const b = w.bugs[row * COLS + col];
+  for (let row = w.rows - 1; row >= 0; row--) {
+    const b = w.bugs[row * COLS_MAX + col];
     if (b.alive) return b;
   }
   return null;
 }
 
+/** Share of bites aimed at Benjo: none in wave 1, then more each wave. @param {World} w */
+export const aimChanceFor = (w) => Math.min(AIM_MAX, AIM_STEP * (w.wave - 1));
+/** Chance that a bite starts a burst: none before wave 3. @param {World} w */
+export const burstChanceFor = (w) => Math.min(BURST_MAX, BURST_STEP * Math.max(0, w.wave - 2));
+
+/** The lowest bug of a random column that has living bugs. @param {World} w */
+function randomBiter(w) {
+  let columns = 0;
+  for (let c = 0; c < w.cols; c++) if (lowest(w, c)) columns += 1;
+  let pick = Math.floor(w.random() * columns);
+  for (let c = 0; c < w.cols; c++) {
+    const b = lowest(w, c);
+    if (b && pick-- === 0) return b;
+  }
+  return null;
+}
+
+/** The lowest bug of the living column nearest Benjo. @param {World} w */
+function aimedBiter(w) {
+  /** @type {Bug | null} */
+  let best = null;
+  for (let c = 0; c < w.cols; c++) {
+    const b = lowest(w, c);
+    if (b && (!best || Math.abs(bugX(w, b) - w.bx) < Math.abs(bugX(w, best) - w.bx))) best = b;
+  }
+  return best;
+}
+
 /**
- * Count down to the next bite. When it is due, pick a random column that has living bugs.
+ * Count down to the next bite. When it is due, pick who bites: the column nearest Benjo for an
+ * aimed bite, else a random column. The next gap is jittered around the wave's interval, or
+ * short when this bite starts a burst (#83).
  * @param {World} w
  * @param {number} dt
  * @returns {Bug | null} the lowest bug of that column, which drops the bite
@@ -160,15 +234,10 @@ export function lowest(w, col) {
 export function nextBiter(w, dt) {
   w.biteT -= dt;
   if (w.biteT > 0) return null;
-  w.biteT += biteIntervalFor(w);
-  let columns = 0;
-  for (let c = 0; c < COLS; c++) if (lowest(w, c)) columns += 1;
-  let pick = Math.floor(w.random() * columns);
-  for (let c = 0; c < COLS; c++) {
-    const b = lowest(w, c);
-    if (b && pick-- === 0) return b;
-  }
-  return null;
+  const burst = w.random() < burstChanceFor(w);
+  const jitter = 1 + BITE_T_JITTER * (2 * w.random() - 1);
+  w.biteT += burst ? BURST_GAP : biteIntervalFor(w) * jitter;
+  return w.random() < aimChanceFor(w) ? aimedBiter(w) : randomBiter(w);
 }
 
 /** Shift the formation so its living bugs sit inside the play rect, above Benjo's row. @param {World} w */
@@ -189,7 +258,7 @@ function fitFormation(w) {
  * @returns {World}
  */
 export function resizeWorld(w, size) {
-  const l = layout(size);
+  const l = layout(size, w.cols);
   const kx = (l.right - l.left) / (w.right - w.left);
   const ky = (l.benjoY - l.ceiling) / (w.benjoY - w.ceiling);
   /** @param {number} x */

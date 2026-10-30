@@ -7,7 +7,7 @@
 // round always ends on the clock, so rewinding it would only replay the last seconds.
 
 import { createTracker, readWhack, resetTracker } from './controls.js';
-import { drawFrame } from './draw.js';
+import { drawFrame, hoverY } from './draw.js';
 import { HOW_TO } from './howto.js';
 import {
   COMBO_SHOW,
@@ -138,6 +138,7 @@ function createWhack(host) {
       stepWorld(world, readWhack(host.input, tracker, world.time, world), dt, assist);
       playCue(host, world.events);
       syncHud(world, dt);
+      host.track?.(world.holeX[world.lastHole], hoverY(world));
       if (world.dead && world.deadT >= END_T) {
         ended = true;
         host.end({ score: world.score, scoreLabel: SCORE_LABEL, reason: REASON_TIME });

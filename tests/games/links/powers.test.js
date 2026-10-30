@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-
+import { cursorX, cursorY } from '../../../src/games/links/draw.js';
 import links from '../../../src/games/links/index.js';
 import {
   CLOCK_START,
@@ -227,5 +227,18 @@ describe('Rollback', () => {
     play(host, game, 60);
     assert.equal(host.log.ends.length, 1, 'and can time out again');
     assert.deepEqual(snap, copy, 'restore and play left the snapshot alone');
+  });
+});
+
+describe('track', () => {
+  test('reports the cursor tile, once per update', () => {
+    const points = [];
+    const host = fakeHost({ track: (x, y) => points.push([x, y]) });
+    const game = links.create(host);
+    game.start();
+    const w = game.snapshot().world;
+    play(host, game, 1);
+    assert.equal(points.length, 60);
+    assert.deepEqual(points[0], [cursorX(w), cursorY(w)]);
   });
 });

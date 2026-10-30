@@ -17,7 +17,8 @@
     "tower",
     "bugbelt",
     "benjotower",
-    "memleak"
+    "memleak",
+    "crackhash"
   ],
   "startGame": "random",
   "gamePicker": true,

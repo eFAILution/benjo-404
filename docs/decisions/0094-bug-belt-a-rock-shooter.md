@@ -6,11 +6,11 @@
 
 ## Context
 
-The owner asked for an asteroids game and picked the name Bug Belt (#94). Twelve games already share the `GameModule` contract (ADR-0008, ADR-0020, ADR-0076). Every game gets a How to play card (ADR-0028) and power-ups (ADR-0022). Never Sleeps Run (ADR-0088) already has Benjo flying the USS Never Sleeps, so this game reuses that ship.
+The owner asked for an asteroids game and picked the name Bug Belt (#94). Thirteen games already share the `GameModule` contract (ADR-0008, ADR-0020, ADR-0076). Every game gets a How to play card (ADR-0028) and power-ups (ADR-0022). Never Sleeps Run (ADR-0088) already has Benjo flying the USS Never Sleeps, so this game reuses that ship.
 
 ## Decision
 
-Bug Belt lives in `src/games/bugbelt/` with the usual split, plus `belt.js` for the bugs and the field's wrap-around, and `ship.js` for the ship's art. It needs no shell or contract change. It is the thirteenth entry in `games` and in the save code's `KNOWN_GAMES`, after Never Sleeps Run.
+Bug Belt lives in `src/games/bugbelt/` with the usual split, plus `belt.js` for the bugs and the field's wrap-around, and `ship.js` for the ship's art. It needs no shell or contract change. It is the fourteenth entry in `games` and in the save code's `KNOWN_GAMES`, after Save the File (ADR-0092).
 
 - **A wrap-around field.** The field is the canvas below the HUD strip. The ship, the bugs, the shots and the orbs all leave one edge and come back at the other, and every distance is measured the short way around. A bug near an edge is drawn on both sides.
 - **The ship turns, thrusts and coasts.** It has drag and a top speed, so it slows down on its own. Shots leave from the nose on the ship's own speed, five at most, and last 0.7 s.
@@ -32,6 +32,6 @@ Bug Belt lives in `src/games/bugbelt/` with the usual split, plus `belt.js` for 
 
 ## Consequences
 
-- The page ships thirteen games. The page grew 4.2 KB gzipped, to 102.4 KB of the 110 KB that ADR-0076 set, so about 7.6 KB is left. The game alone bundles to about 5.8 KB of its 16 KB budget.
+- The page ships fourteen games. With Save the File it is 106.1 KB gzipped of the 110 KB that ADR-0076 set, so about 3.9 KB is left: not enough for another game this size without a budget decision. This game is about 5.7 KB of its own 16 KB budget.
 - A save code from before this game still decodes. The Full Stack trophy now asks for one run of this game too.
 - When the real ship art arrives, `ship.js` here changes along with Never Sleeps Run's.

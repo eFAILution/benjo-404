@@ -92,5 +92,5 @@ export function howToBody(howTo, theme) {
         ]),
       ),
     ),
-  ].filter((node) => node !== null);
+  ];
 }

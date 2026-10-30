@@ -136,8 +136,9 @@ export function boot(registry, config, holidays = null) {
    */
   function openHowTo(paused) {
     const current = game;
-    if (!current?.howTo) return;
-    hud.showHowTo(current.name, current.howTo, theme, {
+    const howTo = current?.howTo;
+    if (!current || !howTo) return;
+    hud.showHowTo({ name: current.name, howTo }, theme, {
       goLabel: paused ? 'Resume' : 'Got it, play',
       onGo: () => {
         howToSeen.setNumber(current.id, 1);

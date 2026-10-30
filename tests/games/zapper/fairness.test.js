@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { biteSpeedFor, bugX, lowest, speedFor } from '../../../src/games/zapper/formation.js';
-import { BITE_H, BITE_W, BOLT_SPEED, COLS, LIVES } from '../../../src/games/zapper/tuning.js';
+import { BITE_H, BITE_W, BOLT_SPEED, LIVES } from '../../../src/games/zapper/tuning.js';
 import { createWorld, stepWorld } from '../../../src/games/zapper/world.js';
 import { DT, seeded } from '../runner/fake-host.js';
 
@@ -25,14 +25,24 @@ function threatened(w, x0, x1 = x0) {
   );
 }
 
-/** Lead the nearest living column by how far the formation moves while a bolt climbs to it. */
+/**
+ * Lead the nearest living column by how far the formation moves while a bolt climbs to it,
+ * bouncing the lead off the wall the formation turns at, as a player would. Without the bounce,
+ * a lone fast bug on a very wide screen is never led right near a wall (#83).
+ */
 function columnTarget(w) {
+  const cols = [];
+  for (let c = 0; c < w.cols; c++) if (lowest(w, c)) cols.push(c);
+  const half = w.bugH / 2;
   let best = null;
-  for (let c = 0; c < COLS; c++) {
+  for (const c of cols) {
     const b = lowest(w, c);
-    if (!b) continue;
     const rise = (w.benjoY - w.originY - b.row * w.rowStep) / (BOLT_SPEED * w.unit);
-    const x = bugX(w, b) + w.dir * speedFor(w) * rise;
+    const lo = w.left + half + (c - cols[0]) * w.colStep;
+    const hi = w.right - half - (cols.at(-1) - c) * w.colStep;
+    let x = bugX(w, b) + w.dir * speedFor(w) * rise;
+    if (x > hi) x = 2 * hi - x;
+    if (x < lo) x = 2 * lo - x;
     if (best === null || Math.abs(x - w.bx) < Math.abs(best - w.bx)) best = x;
   }
   return best ?? w.bx;
@@ -90,4 +100,20 @@ for (const size of SIZES) {
       }
     });
   }
+}
+
+// #83: later waves grow, speed up harder, aim and burst their bites. The same autopilot, which
+// never shoots ahead of a burst or reads an aimed bite, still clears five waves at every size.
+for (const size of SIZES) {
+  test(`an autopilot clears five waves in 120 s at ${size.width}x${size.height}`, () => {
+    for (let seed = 1; seed <= 4; seed++) {
+      const w = createWorld(size, seeded(seed));
+      const state = { dodgeX: null };
+      for (let i = 0; i < 60 * 120 && !w.dead && w.wave < 6; i++) {
+        stepWorld(w, autopilot(w, state), DT);
+      }
+      assert.equal(w.dead, false, `seed ${seed}: ${w.hit} at ${w.time.toFixed(1)} s`);
+      assert.ok(w.wave >= 6, `seed ${seed} reached only wave ${w.wave}`);
+    }
+  });
 }

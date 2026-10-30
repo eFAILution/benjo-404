@@ -18,6 +18,8 @@ import {
 import {
   BENJO_SPEED,
   BITE_H,
+  BITE_PACE_MAX,
+  BITE_PACE_MIN,
   BITE_POOL,
   BITE_W,
   BOLT_H,
@@ -26,7 +28,7 @@ import {
   BOLT_W,
   BUG_BOX,
   BUG_SCORE,
-  COLS,
+  COLS_MAX,
   EVENT_FIRE,
   EVENT_HIT,
   EVENT_KILL,
@@ -38,7 +40,7 @@ import {
   POINTER_SPEED,
   POP_POOL,
   POP_T,
-  ROWS,
+  ROWS_MAX,
   START_GRACE,
   WAVE_BONUS,
   WAVE_PAUSE,
@@ -47,7 +49,10 @@ import {
 /** @typedef {{ width: number, height: number }} Area */
 /** @typedef {{ move: number, targetX: number | null, fire: boolean, firing: boolean }} Intent */
 /** @typedef {{ alive: boolean, col: number, row: number }} Bug */
-/** @typedef {{ active: boolean, x: number, y: number, prevY: number }} Shot */
+/**
+ * `pace` scales a bite's fall around the wave's speed (#83); bolts keep 1.
+ * @typedef {{ active: boolean, x: number, y: number, prevY: number, pace: number }} Shot
+ */
 /** @typedef {{ active: boolean, x: number, y: number, prevY: number, t: number }} Pop */
 /**
  * Power-up help from the host (#22), read during a step.
@@ -67,6 +72,9 @@ import {
  * @property {number} hitR
  * @property {number} bugH
  * @property {number} colStep
+ * @property {number} cols columns in this wave's block (#83)
+ * @property {number} rows rows in this wave's block
+ * @property {number} total bugs this wave started with
  * @property {number} rowStep
  * @property {number} bx screen x of Benjo's center
  * @property {number} prevBx
@@ -91,7 +99,7 @@ import {
  * @property {number} events EVENT_* bits raised by the last step
  * @property {boolean} reducedMotion
  * @property {() => number} random
- * @property {Bug[]} bugs row * COLS + col
+ * @property {Bug[]} bugs row * COLS_MAX + col; bugs outside this wave's block stay dead
  * @property {Shot[]} bolts
  * @property {Shot[]} bites
  * @property {Pop[]} pops
@@ -138,7 +146,7 @@ function launch(s, x, y) {
 export function createWorld(size, random, options = {}) {
   const l = layout(size);
   const bx = (l.left + l.right) / 2;
-  const shot = () => ({ active: false, x: 0, y: 0, prevY: 0 });
+  const shot = () => ({ active: false, x: 0, y: 0, prevY: 0, pace: 1 });
   /** @type {World} */
   const w = {
     ...l,
@@ -149,6 +157,9 @@ export function createWorld(size, random, options = {}) {
     prevOriginX: 0,
     prevOriginY: 0,
     dir: 1,
+    cols: 0,
+    rows: 0,
+    total: 0,
     alive: 0,
     wave: 1,
     lives: LIVES,
@@ -165,7 +176,11 @@ export function createWorld(size, random, options = {}) {
     events: 0,
     reducedMotion: Boolean(options.reducedMotion),
     random,
-    bugs: pool(ROWS * COLS, (i) => ({ alive: true, col: i % COLS, row: Math.floor(i / COLS) })),
+    bugs: pool(ROWS_MAX * COLS_MAX, (i) => ({
+      alive: false,
+      col: i % COLS_MAX,
+      row: Math.floor(i / COLS_MAX),
+    })),
     bolts: pool(BOLT_POOL, shot),
     bites: pool(BITE_POOL, shot),
     pops: pool(POP_POOL, () => ({ ...shot(), t: 0 })),
@@ -282,7 +297,7 @@ function moveBites(w, dt, aid) {
   const halfH = (BITE_H * w.unit) / 2;
   for (const s of w.bites) {
     if (!s.active) continue;
-    s.y += biteSpeedFor(w) * dt;
+    s.y += biteSpeedFor(w) * s.pace * dt;
     const dx = w.bx - clamp(w.bx, s.x - halfW, s.x + halfW);
     const dy = w.benjoY - clamp(w.benjoY, s.prevY - halfH, s.y + halfH);
     if (dx * dx + dy * dy < w.hitR * w.hitR) {
@@ -333,7 +348,9 @@ function stepFormation(w, dt, aid) {
   }
   const biter = nextBiter(w, dt);
   const bite = biter ? free(w.bites) : null;
-  if (biter && bite) launch(bite, bugX(w, biter), bugY(w, biter) + w.bugH / 2);
+  if (!biter || !bite) return;
+  launch(bite, bugX(w, biter), bugY(w, biter) + w.bugH / 2);
+  bite.pace = BITE_PACE_MIN + (BITE_PACE_MAX - BITE_PACE_MIN) * w.random();
 }
 
 /**

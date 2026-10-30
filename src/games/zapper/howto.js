@@ -23,12 +23,12 @@ export const HOW_TO = {
     {
       swatch: 'hazard',
       name: 'Bite',
-      tip: 'Bugs spit these down at you. Dodge them: each hit costs a life',
+      tip: 'Some fall fast, some in bursts or straight at you. Each costs a life',
     },
     {
       swatch: 'ink',
       name: 'Front line',
-      tip: 'Bugs drop lower at each wall. If they reach your row, the run ends',
+      tip: 'Bugs drop at each wall and speed up as they thin out. Your row ends it',
     },
   ],
   powers: {

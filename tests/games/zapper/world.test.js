@@ -91,7 +91,7 @@ describe('fire', () => {
     assert.equal(active(w.bolts).length, 0);
   });
 
-  test('the cooldown limits fire to one bolt per 0.25 s, even when held or mashed', () => {
+  test('the cooldown limits fire to one bolt per FIRE_COOLDOWN, even when held or mashed', () => {
     for (const intent of [hold, () => ({ ...idle(), fire: true })]) {
       const w = live();
       const fired = [];
@@ -106,7 +106,7 @@ describe('fire', () => {
     }
   });
 
-  test('no more than 3 bolts fly at once', () => {
+  test('up to BOLT_POOL bolts fly at once, more than the old 3 (#83)', () => {
     const w = live({ width: 960, height: 1080 });
     let shots = 0;
     for (let i = 0; i < 20; i++) {
@@ -114,9 +114,19 @@ describe('fire', () => {
       stepWorld(w, hold(), DT);
       if (w.events & EVENT_FIRE) shots += 1;
     }
-    assert.equal(BOLT_POOL, 3);
-    assert.equal(shots, 3);
-    assert.equal(active(w.bolts).length, 3);
+    assert.ok(BOLT_POOL > 3);
+    assert.equal(shots, BOLT_POOL);
+    assert.equal(active(w.bolts).length, BOLT_POOL);
+  });
+
+  test('held fire keeps more than 3 bolts in the air on a tall screen (#83)', () => {
+    const w = live({ width: 960, height: 1080 });
+    let most = 0;
+    for (let i = 0; i < 120; i++) {
+      stepWorld(w, hold(), DT);
+      most = Math.max(most, active(w.bolts).length);
+    }
+    assert.ok(most > 3, `${most} at most`);
   });
 
   test('input inside the start grace is the press that started the run', () => {
@@ -202,7 +212,7 @@ describe('formation', () => {
     run(w, WAVE_PAUSE - 2 * DT);
     assert.equal(w.alive, 0, 'the next formation waits out the pause');
     run(w, 3 * DT);
-    assert.equal(w.alive, 18);
+    assert.equal(w.alive, 21, 'wave 2 is 7 x 3 at this size (#83)');
     assert.equal(w.originY, w.ceiling + 24 * w.unit);
     assert.ok(speedFor(w) > speed1);
   });

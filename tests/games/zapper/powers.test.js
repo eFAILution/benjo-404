@@ -206,7 +206,9 @@ describe('garbage collector', () => {
     assert.equal(host.log.scores.at(-1), ROWS * COLS * BUG_SCORE + WAVE_BONUS);
     play(host, game, WAVE_PAUSE + 0.1);
     const w = game.snapshot().world;
-    assert.equal(w.alive, ROWS * COLS, 'the next wave arrives');
+    assert.equal(w.wave, 2);
+    assert.equal(w.alive, w.total, 'the next wave arrives');
+    assert.ok(w.total > ROWS * COLS, 'and it is bigger (#83)');
     assert.ok(bugY(w, w.bugs[0]) > w.ceiling);
   });
 });

@@ -20,6 +20,7 @@ export const KNOWN_GAMES = /** @type {const} */ ([
   'pinball',
   'neversleeps',
   'savefile',
+  'tower',
 ]);
 
 /** The progress fields a code carries, in order, after the format number. */

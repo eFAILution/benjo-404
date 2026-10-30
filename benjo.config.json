@@ -13,7 +13,8 @@
     "muncher",
     "pinball",
     "neversleeps",
-    "savefile"
+    "savefile",
+    "tower"
   ],
   "startGame": "random",
   "gamePicker": true,

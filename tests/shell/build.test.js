@@ -12,6 +12,8 @@ import { faviconDataUrl } from '../../build/favicon.js';
 import { extractInline, singleFileCsp } from '../../build/inline.js';
 import { benjo } from '../../src/assets/benjo.js';
 
+/** Where Return Home goes (#98): the one outside link the page may carry. */
+const HOME = 'https://beast-code.com/';
 const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
 const SRC = fileURLToPath(new URL('../../src/', import.meta.url));
 const CONFIG = { message: 'default', games: ['fake'], theme: 'auto', themes: ['default'] };
@@ -42,7 +44,11 @@ describe('build with fixtures', () => {
   it('writes 404.html with the static message and no template tokens', async () => {
     const html = await readFile(join(dir, 'dist', '404.html'), 'utf8');
     assert.ok(html.includes('<h1 class="code" id="m-code">404</h1>'));
-    assert.ok(html.includes('<a class="btn btn-primary" id="m-cta" href="/">Return Home</a>'));
+    assert.ok(
+      html.includes(
+        '<a class="btn btn-primary" id="m-cta" href="https://beast-code.com/">Return Home</a>',
+      ),
+    );
     assert.ok(html.includes('We&#39;re sorry'));
     assert.ok(!html.includes('{{'));
   });
@@ -57,10 +63,10 @@ describe('build with fixtures', () => {
     assert.ok(html.includes(`<link rel="icon" href="${faviconDataUrl(benjo)}">`));
   });
 
-  it('has no external URLs', async () => {
+  it('has no external URLs but Return Home', async () => {
     const html = await readFile(join(dir, 'dist', '404.html'), 'utf8');
     const urls = (html.match(/(https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}[^\s"'<>)]*/gi) ?? []).filter(
-      (url) => url !== SVG_NAMESPACE,
+      (url) => url !== SVG_NAMESPACE && url !== HOME,
     );
     assert.deepEqual(urls, []);
     const icon = /<link rel="icon" href="data:image\/svg\+xml,[^"]*">/;

@@ -118,7 +118,12 @@ export function createHost(options) {
   let nightly = false;
   let snapping = false;
   let ticks = 0;
-  /** @type {Array<{ tick: number, data: unknown }>} */
+  /** The run's score and Cache Hit bonus, which a Rollback puts back (run-context.js). */
+  const ledger = { raw: 0, bonus: 0 };
+  /**
+   * @type {Array<{ tick: number, data: unknown, ledger: typeof ledger,
+   *   trail: ReturnType<import('./ghost.js').Trail['mark']> | null }>}
+   */
   let snaps = [];
 
   /** A listener that throws must not take the run down with it. @param {RunEvent} event */
@@ -203,6 +208,10 @@ export function createHost(options) {
     const back = snaps.filter((snap) => ticks - snap.tick >= ROLLBACK_TICKS).pop();
     if (!back || !powers.take('rollback')) return false;
     snaps = [];
+    // Score, bonus, clock, and ghost go back with the run, so the ghost stays in step with it.
+    Object.assign(ledger, back.ledger);
+    ticks = back.tick;
+    if (back.trail) trail?.rewind(back.trail);
     if (guard(() => game.restore?.(back.data))) emit({ type: 'rollback' });
     return true;
   }
@@ -247,7 +256,8 @@ export function createHost(options) {
     /** @type {unknown} */
     let data;
     if (!guard(() => (data = game.snapshot?.()))) return false;
-    snaps = [...snaps.slice(1 - SNAPS), { tick: ticks, data }];
+    const mark = trail?.mark() ?? null;
+    snaps = [...snaps.slice(1 - SNAPS), { tick: ticks, data, ledger: { ...ledger }, trail: mark }];
     return true;
   }
 
@@ -309,6 +319,7 @@ export function createHost(options) {
     input = options.createInput(controller.signal);
     nightly = run?.nightly === true;
     ticks = 0;
+    Object.assign(ledger, { raw: 0, bonus: 0 });
     trail = createTrail(storage, options.size);
     const runTrail = trail;
     powers = createPowers({
@@ -325,6 +336,7 @@ export function createHost(options) {
       random: run?.random ?? options.random,
       powers,
       track: (x, y) => runTrail.track(x, y),
+      ledger,
     });
     hud.setScore(0);
     hud.setBest(storage.getNumber(game.bestKey, 0));

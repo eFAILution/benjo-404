@@ -120,6 +120,22 @@ describe('mergeSave', () => {
     assert.equal(merged.nightlyDay, LIMITS.today);
   });
 
+  it('keeps the streak of the later nightly day, so an old code cannot inflate today', () => {
+    const today = { ...DATA, streak: 1, nightlyDay: LIMITS.today };
+    const stale = { ...DATA, streak: 10, nightlyDay: LIMITS.today - 7 };
+    for (const [mine, theirs] of [
+      [today, stale],
+      [stale, today],
+    ]) {
+      const merged = mergeSave(mine, theirs, LIMITS);
+      assert.deepEqual([merged.streak, merged.nightlyDay], [1, LIMITS.today]);
+    }
+    const sameDay = mergeSave(today, { ...today, streak: 4 }, LIMITS);
+    assert.equal(sameDay.streak, 4, 'the same day keeps the longer streak');
+    const future = mergeSave(today, { ...stale, nightlyDay: 99999 }, LIMITS);
+    assert.equal(future.streak, 10, 'a day from the future counts as today');
+  });
+
   it('keeps the look already picked', () => {
     assert.equal(mergeSave({ ...DATA, look: 1 }, { ...DATA, look: 3 }, LIMITS).look, 1);
   });

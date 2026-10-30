@@ -121,6 +121,17 @@ export function createTrail(storage, size) {
     },
     /** Keep this run as the ghost to beat. False when it is too short or storage failed. */
     save: () => saveGhost(storage, trace),
+    /** Where the trail is now, for Rollback to come back to. */
+    mark: () => ({ samples: trace.length, recent: [...recent] }),
+    /**
+     * Back to a mark: samples recorded since are dropped and the twin's lag starts from there.
+     * @param {{ samples: number, recent: Array<[number, number]> }} at
+     */
+    rewind(at) {
+      trace = trace.slice(0, at.samples);
+      recent = [...at.recent];
+      pos = recent[recent.length - 1] ?? null;
+    },
   };
 }
 

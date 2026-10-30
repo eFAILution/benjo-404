@@ -146,7 +146,20 @@ export function decodeSave(code) {
 }
 
 /**
- * Restore never takes progress away: numbers keep the larger value and masks keep every bit.
+ * The streak goes with its day, so a stale code cannot pass off an old streak as today's: the
+ * later nightly day keeps its streak, and on the same day the longer streak stands.
+ * @param {SaveData} mine @param {SaveData} theirs @param {number} today
+ */
+function mergeStreak(mine, theirs, today) {
+  const a = Math.min(mine.nightlyDay, today);
+  const b = Math.min(theirs.nightlyDay, today);
+  if (a === b) return { streak: Math.max(mine.streak, theirs.streak), nightlyDay: a };
+  return a > b ? { streak: mine.streak, nightlyDay: a } : { streak: theirs.streak, nightlyDay: b };
+}
+
+/**
+ * Restore never takes progress away: numbers keep the larger value and masks keep every bit. The
+ * streak is the one exception, since it belongs to a day (mergeStreak).
  * @param {SaveData} mine
  * @param {SaveData} theirs already decoded and range checked
  * @param {{ today: number, trophies: number, powers: number, games: number, looks: number }} limits
@@ -160,8 +173,7 @@ export function mergeSave(mine, theirs, limits) {
     xp: max('xp'),
     trophies: or(mine.trophies, theirs.trophies, limits.trophies),
     look: Math.min(mine.look || theirs.look, limits.looks),
-    streak: max('streak'),
-    nightlyDay: Math.min(max('nightlyDay'), limits.today),
+    ...mergeStreak(mine, theirs, limits.today),
     runs: max('runs'),
     seq: max('seq'),
     closed: max('closed'),

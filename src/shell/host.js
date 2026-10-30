@@ -154,7 +154,8 @@ export function createHost(options) {
     setClass('is-paused', false);
     setClass('is-over', true);
     hud.setBest(best);
-    options.audio?.play(score > previous && previous > 0 ? 'best' : 'over');
+    // Any run that raises the best cheers, a visitor's first score included (#36).
+    options.audio?.play(score > previous ? 'best' : 'over');
     hud.showOver({
       score,
       best,

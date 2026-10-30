@@ -10,7 +10,8 @@
     "zapper",
     "whack",
     "links",
-    "muncher"
+    "muncher",
+    "neversleeps"
   ],
   "startGame": "random",
   "gamePicker": true,

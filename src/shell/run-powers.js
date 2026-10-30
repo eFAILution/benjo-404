@@ -39,6 +39,19 @@ export function createRunPowers(options, { emit, guard, instance }) {
     cue: () => options.audio?.play('pickup'),
   });
 
+  /**
+   * Garbage Collector: the game clears what it can and reports the count. False when collect()
+   * threw and failed the run.
+   * @param {GameInstance} live
+   */
+  function collect(live) {
+    let count = 0;
+    if (!guard(() => (count = Math.max(0, Math.floor(Number(live.collect?.()) || 0)))))
+      return false;
+    emit({ type: 'collect', count });
+    return true;
+  }
+
   return {
     powers,
     ledger,
@@ -51,13 +64,14 @@ export function createRunPowers(options, { emit, guard, instance }) {
     },
 
     /**
-     * After each update: feed the trail, and keep a Rollback snapshot every 0.5 s of game time.
-     * False when the snapshot threw and failed the run.
+     * After each update: feed the trail, run a Garbage Collector that dropped during it, and keep
+     * a Rollback snapshot every 0.5 s of game time. False when a game hook threw and failed the run.
      * @param {GameInstance} live
      */
     afterUpdate(live) {
       trail.step(ticks);
       ticks += 1;
+      if (powers.sweep() && !collect(live)) return false;
       if (!snapping || ticks % SNAP_TICKS !== 0) return true;
       /** @type {unknown} */
       let data;
@@ -83,14 +97,6 @@ export function createRunPowers(options, { emit, guard, instance }) {
       trail.rewind(back.trail);
       if (guard(() => live.restore?.(back.data))) emit({ type: 'rollback' });
       return true;
-    },
-
-    /** The player fires the held power; the Garbage Collector asks the game to clear. @param {GameInstance} live */
-    fire(live) {
-      if (powers.fire() !== 'gc') return;
-      let count = 0;
-      if (!guard(() => (count = Math.max(0, Math.floor(Number(live.collect?.()) || 0))))) return;
-      emit({ type: 'collect', count });
     },
 
     /** The ghost of the best run, then the twin, over the game's frame. @param {(x: number, y: number, alpha: number) => void} paint */

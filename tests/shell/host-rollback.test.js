@@ -82,10 +82,8 @@ describe('Rollback', () => {
     options.frames.run(0);
     advance(10.1);
     assert.equal(events.at(-1).id, 'cache', 'Cache Hit dropped');
-    advance(5);
-    host.firePower();
-    // Cache Hit runs to about 25 s; Rollback drops on the first score after that.
-    advance(10.5);
+    // Cache Hit starts as it drops and runs to about 20 s; Rollback drops at about 25 s.
+    advance(15.5);
     assert.equal(events.at(-1).id, 'rollback', 'Rollback dropped');
     advance(1);
     const before = hud.events.length;
@@ -119,9 +117,7 @@ describe('Rollback', () => {
     });
     host.play();
     options.frames.run(0);
-    advance(15.1);
-    host.firePower();
-    advance(11.5);
+    advance(26.6);
     const ghostX = () => drawn.filter(([, alpha]) => alpha === 0.25).at(-1)?.[0];
     const late = ghostX();
     game.host.end({ score: game.score });

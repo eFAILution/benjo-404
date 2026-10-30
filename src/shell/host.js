@@ -21,9 +21,9 @@
  */
 /** @typedef {import('../contracts').PowerId} PowerId */
 /**
- * What the HUD power slot shows (#22). 'held' waits for the player to fire it; 'active' is running
- * and `left` drains from 1 to 0.
- * @typedef {{ id: PowerId, label: string, name: string, state: 'held' | 'active', left: number }} PowerView
+ * What the HUD power slot shows (#22). 'armed' is a Rollback waiting for a crash (#74); 'active' is
+ * running and `left` drains from 1 to 0.
+ * @typedef {{ id: PowerId, label: string, name: string, state: 'armed' | 'active', left: number }} PowerView
  */
 /**
  * What happened in a run, for trophies, tickets, and XP (#22). The host sends 'end' before it
@@ -299,11 +299,6 @@ export function createHost(options) {
     scheduleLoop();
   }
 
-  /** The player fires the held power-up. Only while playing. */
-  function firePower() {
-    if (state === 'playing' && instance) run?.fire(instance);
-  }
-
   /** @param {{ focus?: boolean }} [how] focus false leaves keyboard focus where it is */
   function pause({ focus = true } = {}) {
     if (state !== 'playing' || !instance) return;
@@ -356,7 +351,6 @@ export function createHost(options) {
 
   return {
     play,
-    firePower,
     pause,
     resume,
     quit,

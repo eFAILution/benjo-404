@@ -61,28 +61,21 @@ const benjoMarkSvg = (size) =>
 /** @typedef {import('./host.js').PowerView} PowerView */
 
 /**
- * The power-up slot (#22). Like the mute button, a click never takes focus. The draining bar
- * reads --left through CSSOM, so no style attribute is written.
- * @param {() => void} onFire
+ * The power-up slot (#22). It only shows what is running, or an armed Rollback: power-ups fire
+ * as they drop (#74), so there is nothing to press. Screen readers hear the drop toast instead.
+ * The draining bar reads --left through CSSOM, so no style attribute is written.
  */
-function powerSlot(onFire) {
+function powerSlot() {
   const label = el('span', {});
-  const node = el('button', { type: 'button', class: 'hud-power', 'aria-label': 'No power-up' }, [
+  const node = el('span', { class: 'hud-power', 'aria-hidden': 'true', hidden: true }, [
     label,
-    el('span', { class: 'hud-power-bar', 'aria-hidden': 'true' }),
+    el('span', { class: 'hud-power-bar' }),
   ]);
-  node.disabled = true;
-  node.addEventListener('pointerdown', (event) => event.preventDefault());
-  node.addEventListener('click', onFire);
   /** @param {PowerView | null} view */
   const set = (view) => {
-    node.disabled = !view;
+    node.hidden = !view;
     text(label, view?.label ?? '');
     node.setAttribute('data-state', view?.state ?? '');
-    node.setAttribute(
-      'aria-label',
-      !view ? 'No power-up' : view.state === 'held' ? `Fire ${view.name}` : `${view.name} running`,
-    );
     node.style.setProperty('--left', String(view?.left ?? 0));
   };
   return { node, set };
@@ -92,8 +85,7 @@ function powerSlot(onFire) {
  * @param {{ hudRoot: HTMLElement, cardSlot: HTMLElement, promptSlot: HTMLElement,
  *   cta: HTMLAnchorElement, onPause: () => void, onResume: () => void, onQuit: () => void,
  *   onPlay: () => void, onRestart?: () => void, onSelect?: (id: string) => void,
- *   onSwitch?: (id: string) => void, onMute?: () => void, onHowTo?: () => void,
- *   onFire?: () => void }} options
+ *   onSwitch?: (id: string) => void, onMute?: () => void, onHowTo?: () => void }} options
  */
 export function createHud(options) {
   const { hudRoot, cardSlot, promptSlot, cta } = options;
@@ -119,7 +111,7 @@ export function createHud(options) {
   // A click never takes focus, so Space and the arrows keep going to the game.
   muteButton.addEventListener('pointerdown', (event) => event.preventDefault());
   muteButton.addEventListener('click', () => options.onMute?.());
-  const power = options.onFire ? powerSlot(options.onFire) : null;
+  const power = powerSlot();
   hudRoot.append(
     status,
     debugLine,
@@ -128,7 +120,7 @@ export function createHud(options) {
       scoreValue,
       el('span', { class: 'hud-label' }, ['Best']),
       bestValue,
-      power?.node,
+      power.node,
       options.onMute ? muteButton : null,
       pauseButton,
     ]),
@@ -180,7 +172,7 @@ export function createHud(options) {
     },
     /** @param {PowerView | null} view */
     setPower(view) {
-      power?.set(view);
+      power.set(view);
     },
     /** @param {number} value */
     setScore(value) {

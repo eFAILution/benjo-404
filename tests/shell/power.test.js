@@ -114,27 +114,29 @@ describe('createPowers slot', () => {
     assert.deepEqual(events, []);
     powers.tick(0.2);
     powers.scored();
-    assert.deepEqual(events, [{ type: 'drop', id: 'cache' }]);
+    assert.deepEqual(events, [
+      { type: 'drop', id: 'cache' },
+      { type: 'power', id: 'cache' },
+    ]);
     assert.equal(cues(), 1);
-    powers.fire();
     powers.tick(10.1);
     powers.scored();
     assert.equal(events.length, 2, 'cache ran out but the next drop is not due yet');
     powers.tick(5);
     powers.scored();
-    assert.deepEqual(events.at(-1), { type: 'drop', id: 'cache' });
+    assert.deepEqual(events.at(-2), { type: 'drop', id: 'cache' });
   });
 
-  it('holds one power at a time and drops nothing while full', () => {
-    const { powers, events } = slot();
-    powers.tick(60);
+  it('starts a power the moment it drops, with nothing to fire (#74)', () => {
+    const { powers, events } = slot({ pool: ['magnet'] });
+    powers.tick(10);
     powers.scored();
-    powers.tick(60);
-    powers.scored();
-    assert.equal(events.filter((event) => event.type === 'drop').length, 1);
+    assert.equal(powers.isActive('magnet'), true);
+    assert.deepEqual(events.at(-1), { type: 'power', id: 'magnet' });
+    assert.equal('fire' in powers, false);
   });
 
-  it('shows held, then active with left draining in steps, then empty', () => {
+  it('shows the running power with left draining in steps, then empty', () => {
     const { powers, views } = slot({ pool: ['breakpoint'] });
     powers.tick(10);
     powers.scored();
@@ -142,11 +144,9 @@ describe('createPowers slot', () => {
       id: 'breakpoint',
       label: 'BRK',
       name: 'Breakpoint',
-      state: 'held',
+      state: 'active',
       left: 1,
     });
-    powers.fire();
-    assert.equal(views.at(-1).state, 'active');
     for (let i = 0; i < 605; i++) powers.tick(1 / 120);
     assert.equal(views.at(-1), null);
     const lefts = views.filter(Boolean).map((view) => view.left);
@@ -160,7 +160,6 @@ describe('createPowers slot', () => {
     assert.equal(powers.absorb(), false);
     powers.tick(10);
     powers.scored();
-    powers.fire();
     assert.equal(powers.absorb(), true);
     assert.equal(powers.absorb(), false);
     assert.deepEqual(events.at(-1), { type: 'absorb' });
@@ -170,38 +169,78 @@ describe('createPowers slot', () => {
     const { powers } = slot({ pool: ['twin'] });
     powers.tick(10);
     powers.scored();
-    powers.fire();
     powers.tick(11.9);
     assert.equal(powers.isActive('twin'), true);
     powers.tick(0.2);
     assert.equal(powers.absorb(), false);
   });
 
-  it('will not fire rollback by hand, and take() uses it up', () => {
-    const { powers, views } = slot({ pool: ['rollback'] });
+  it('asks the host to sweep once for each Garbage Collector', () => {
+    const { powers, events } = slot({ pool: ['gc'] });
+    assert.equal(powers.sweep(), false);
     powers.tick(10);
     powers.scored();
-    assert.equal(powers.fire(), null);
+    assert.deepEqual(events.at(-1), { type: 'power', id: 'gc' });
+    assert.equal(powers.sweep(), true);
+    assert.equal(powers.sweep(), false);
+  });
+
+  it('arms rollback, shows it, and take() uses it up', () => {
+    const { powers, views, events } = slot({ pool: ['rollback'] });
+    powers.tick(10);
+    powers.scored();
+    assert.deepEqual(events, [{ type: 'drop', id: 'rollback' }], 'rollback does not fire');
     assert.equal(powers.holds('rollback'), true);
+    assert.equal(views.at(-1).state, 'armed');
     assert.equal(powers.take('rollback'), true);
+    assert.equal(powers.take('rollback'), false);
     assert.equal(powers.holds('rollback'), false);
     assert.equal(views.at(-1), null);
   });
 
-  it('clear always tells the HUD the slot is empty', () => {
-    const { powers, views } = slot();
+  it('keeps dropping other powers while rollback is armed, and never a second rollback (#74)', () => {
+    const picks = [0, 0, 0, 0, 0, 0];
+    const { powers, events, views } = slot({
+      pool: ['rollback', 'cache'],
+      random: () => picks.shift() ?? 0,
+    });
+    powers.tick(10);
+    powers.scored();
+    assert.equal(powers.holds('rollback'), true);
+    powers.tick(15);
+    powers.scored();
+    assert.deepEqual(events.slice(-2), [
+      { type: 'drop', id: 'cache' },
+      { type: 'power', id: 'cache' },
+    ]);
+    assert.equal(views.at(-1).id, 'cache', 'the running power shows over the armed rollback');
+    powers.tick(10.1);
+    assert.equal(views.at(-1).id, 'rollback', 'then the slot shows rollback again');
+    powers.tick(5);
+    powers.scored();
+    assert.equal(events.filter((event) => event.id === 'rollback').length, 1);
+  });
+
+  it('clear always tells the HUD the slot is empty, and disarms rollback', () => {
+    const { powers, views } = slot({ pool: ['rollback'] });
+    powers.tick(10);
+    powers.scored();
     powers.clear();
-    assert.deepEqual(views, [null]);
+    assert.equal(views.at(-1), null);
+    assert.equal(powers.holds('rollback'), false);
   });
 });
 
 describe('host power-ups', () => {
-  it('drops on a score after 10 s of play, plays the pickup cue, and shows it held', () => {
+  it('drops on a score after 10 s of play, plays the pickup cue, and starts it', () => {
     const cues = [];
     const { events, views } = withDrop({ overrides: { audio: { play: (cue) => cues.push(cue) } } });
-    assert.deepEqual(events.at(-1), { type: 'drop', id: 'cache' });
+    assert.deepEqual(events.slice(-2), [
+      { type: 'drop', id: 'cache' },
+      { type: 'power', id: 'cache' },
+    ]);
     assert.ok(cues.includes('pickup'));
-    assert.equal(views.at(-1).state, 'held');
+    assert.equal(views.at(-1).state, 'active');
   });
 
   it('does not use the run random for drops', () => {
@@ -214,7 +253,7 @@ describe('host power-ups', () => {
         },
       },
     });
-    assert.equal(env.events.at(-1).type, 'drop');
+    assert.equal(env.events.at(-2).type, 'drop');
     assert.equal(calls, 0);
   });
 
@@ -231,8 +270,7 @@ describe('host power-ups', () => {
   });
 
   it('cache doubles the points scored while it runs, on the HUD and the final score', () => {
-    const { host, game, hud, advance } = withDrop();
-    host.firePower();
+    const { game, hud, advance } = withDrop();
     game.host.setScore(5);
     advance(10.1);
     game.host.setScore(8);
@@ -244,9 +282,7 @@ describe('host power-ups', () => {
   });
 
   it('breakpoint runs half the updates over the same wall time', () => {
-    const { host, game, advance, events } = withDrop({ overrides: { powerRandom: () => 0.5 } });
-    assert.deepEqual(events.at(-1), { type: 'drop', id: 'breakpoint' });
-    host.firePower();
+    const { game, advance, events } = withDrop({ overrides: { powerRandom: () => 0.5 } });
     assert.deepEqual(events.at(-1), { type: 'power', id: 'breakpoint' });
     game.log.length = 0;
     advance(4);
@@ -260,32 +296,29 @@ describe('host power-ups', () => {
   });
 
   it('magnet is active for its 10 s through the game port', () => {
-    const { host, game, advance } = withDrop({
+    const { game, advance } = withDrop({
       powers: ['magnet'],
       overrides: { powerRandom: () => 0.99 },
     });
-    assert.equal(game.host.power.active('magnet'), false);
-    host.firePower();
     assert.equal(game.host.power.active('magnet'), true);
     advance(10.1);
     assert.equal(game.host.power.active('magnet'), false);
   });
 
   it('twin absorbs once through the game port', () => {
-    const { host, game, events } = withDrop({
+    const { game, events } = withDrop({
       powers: ['twin'],
       overrides: { powerRandom: () => 0.99 },
     });
-    host.firePower();
     assert.equal(game.host.power.active('twin'), true);
     assert.equal(game.host.power.absorb(), true);
     assert.equal(game.host.power.absorb(), false);
     assert.equal(events.filter((event) => event.type === 'absorb').length, 1);
   });
 
-  it('gc calls collect and reports the count', () => {
+  it("gc calls collect after the game's update, not inside it, and reports the count", () => {
     let collected = 0;
-    const { host, events } = withDrop({
+    const { host, events, advance } = withDrop({
       powers: ['gc'],
       extra: {
         collect: () => {
@@ -295,25 +328,36 @@ describe('host power-ups', () => {
       },
       overrides: { powerRandom: () => 0.99 },
     });
-    host.firePower();
+    assert.equal(collected, 0, 'the drop landed inside setScore, so collect waits');
+    advance(1 / 60);
     assert.equal(collected, 1);
-    assert.deepEqual(events.slice(-2), [
+    assert.deepEqual(events.slice(-3), [
+      { type: 'drop', id: 'gc' },
       { type: 'power', id: 'gc' },
       { type: 'collect', count: 3 },
     ]);
+    advance(1);
+    assert.equal(collected, 1, 'once per drop');
     assert.equal(host.state, 'playing');
   });
 
-  it('firePower does nothing while paused', () => {
-    const { host, events } = withDrop();
-    host.pause();
-    host.firePower();
-    assert.equal(events.at(-1).type, 'drop');
+  it('a throwing collect fails the run like any game error', () => {
+    const { host, errors, advance } = withDrop({
+      powers: ['gc'],
+      extra: {
+        collect: () => {
+          throw new Error('collect');
+        },
+      },
+      overrides: { powerRandom: () => 0.99 },
+    });
+    advance(1 / 60);
+    assert.equal(host.state, 'idle');
+    assert.equal(errors.length, 1);
   });
 
   it('quit empties the slot and ends the active power', () => {
     const { host, game, views } = withDrop();
-    host.firePower();
     const port = game.host.power;
     host.quit();
     assert.equal(views.at(-1), null);
@@ -348,8 +392,6 @@ describe('host rollback', () => {
   it('restores a snapshot at least 3 s old instead of ending, and only once', () => {
     const { host, game, events, restored, hud } = rollbackGame();
     assert.deepEqual(events.at(-1), { type: 'drop', id: 'rollback' });
-    host.firePower();
-    assert.equal(events.at(-1).type, 'drop', 'rollback cannot be fired by hand');
     game.host.end({ score: 1 });
     assert.equal(host.state, 'playing');
     assert.equal(restored.length, 1);

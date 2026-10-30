@@ -1,11 +1,10 @@
 // @ts-check
 // The progress layer on the page (#22): the pipeline and its toasts, the build bar and profile
-// card, the nightly build, the teapot, Benjo's looks, and the power slot's hints. main.js boots
+// card, the nightly build, the teapot, Benjo's looks, and the power-up toasts. main.js boots
 // the page and hands this what it needs; games know nothing about it.
 /** @typedef {import('../contracts').GameModule} GameModule */
 /** @typedef {import('../contracts').ThemePack} ThemePack */
 /** @typedef {import('../contracts').Sprite} Sprite */
-/** @typedef {import('./host.js').PowerView} PowerView */
 /** @typedef {import('./host.js').RunEvent} RunEvent */
 /** @typedef {import('./host.js').RunOptions} RunOptions */
 
@@ -13,6 +12,7 @@ import { benjo } from '../assets/benjo.js';
 import { byId } from './dom.js';
 import { dayNumber, nightlyGame, nightlyRandom } from './nightly.js';
 import { createPipeline, xpNote } from './pipeline.js';
+import { POWERS } from './power.js';
 import { createBuildBar, openProfile } from './profile.js';
 import { skinFor } from './skins.js';
 import { drawSprite } from './sprite.js';
@@ -23,7 +23,7 @@ import { createToasts } from './toast.js';
 /**
  * @param {{ games: GameModule[], theme: ThemePack, cardSlot: HTMLElement,
  *   audio: { play(cue: import('../contracts').AudioCue): void }, signal: AbortSignal,
- *   hostState: () => string | undefined, firePower: () => void,
+ *   hostState: () => string | undefined,
  *   startGame: (id: string, run: RunOptions) => void }} page
  */
 export function createProgressWiring({ games, theme, cardSlot, audio, signal, ...page }) {
@@ -51,9 +51,6 @@ export function createProgressWiring({ games, theme, cardSlot, audio, signal, ..
     toasts.showAll(notices);
     bar.update(pipeline);
   };
-  /** The slot's current power, for the Rollback hint and the name in the drop toast. */
-  /** @type {PowerView | null} */
-  let power = null;
 
   function playNightly() {
     const day = dayNumber(Date.now());
@@ -96,21 +93,13 @@ export function createProgressWiring({ games, theme, cardSlot, audio, signal, ..
 
     /** @param {RunEvent} event */
     onEvent(event) {
-      if (event.type === 'drop' && power?.id === event.id) toasts.show(`Power-up: ${power.name}`);
-      announce(pipeline.onEvent(event));
-    },
-
-    /** @param {PowerView | null} view */
-    setPower(view) {
-      power = view;
-    },
-
-    firePower() {
-      if (power?.id === 'rollback' && power.state === 'held') {
-        toasts.show('Rollback fires when you crash');
-        return;
+      // Power-ups fire as they drop (#74), so the toast says what just started.
+      if (event.type === 'drop') {
+        const name = POWERS[event.id]?.[1];
+        if (name)
+          toasts.show(event.id === 'rollback' ? 'Rollback armed for your next crash' : name);
       }
-      page.firePower();
+      announce(pipeline.onEvent(event));
     },
 
     /** The game over card's XP line for the run that just ended. */

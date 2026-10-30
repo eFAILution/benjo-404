@@ -30,7 +30,7 @@ export const HOW_TO = {
   ],
   powers: {
     twin: `When time runs out, puts ${TWIN_CLOCK} seconds back on the clock`,
-    rollback: "Can't be fired. If time runs out while it waits, rewinds 3 seconds",
+    rollback: 'Waits for time to run out, then rewinds 3 seconds',
     gc: `Turns up to ${GC_FIX} wrong tiles the right way, nearest Benjo first`,
   },
 };

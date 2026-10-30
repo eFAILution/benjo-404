@@ -8,7 +8,6 @@
 /** @typedef {{ score: number, best: number, scoreLabel: string, reason: string }} OverCard */
 /** @typedef {import('./boot.js').PickTheme} PickTheme */
 /** @typedef {import('./host.js').PowerView} PowerView */
-/** @typedef {import('./host.js').RunEvent} RunEvent */
 /** @typedef {import('./host.js').RunOptions} RunOptions */
 /**
  * @typedef {object} Holidays
@@ -17,7 +16,6 @@
  * @property {unknown[]} calendar
  */
 
-import { benjo } from '../assets/benjo.js';
 import { createAttract } from './attract.js';
 import { createAudio } from './audio.js';
 import { formatDay, nextGames, resolve } from './boot.js';
@@ -26,14 +24,8 @@ import { byId, readQuery, text } from './dom.js';
 import { createHost } from './host.js';
 import { createHud } from './hud.js';
 import { attachInput } from './input.js';
-import { dayNumber, nightlyGame, nightlyRandom } from './nightly.js';
-import { createPipeline, xpNote } from './pipeline.js';
-import { createBuildBar, openProfile } from './profile.js';
-import { skinFor } from './skins.js';
-import { drawSprite } from './sprite.js';
+import { createProgressWiring } from './progress-wiring.js';
 import { createStorage } from './storage.js';
-import { watchTeapot } from './teapot.js';
-import { createToasts } from './toast.js';
 import { watchSize } from './viewport.js';
 
 /** Typing a save code must not reach the M and E shortcuts. @param {KeyboardEvent} event */
@@ -201,7 +193,7 @@ export function boot(registry, config, holidays = null) {
       selectGame(id, true);
     },
     onMute: toggleMute,
-    onFire: firePower,
+    onFire: () => progress.firePower(),
     onHowTo: () => openHowTo(host?.state === 'paused'),
   });
   hud.setMuted(audio.muted);
@@ -236,67 +228,16 @@ export function boot(registry, config, holidays = null) {
   attract.start();
   if (!game) return;
 
-  // One storage per game, shared by the host and the progress, so a browser without
-  // localStorage still sees one memory copy of each best.
-  /** @type {Map<string, ReturnType<typeof createStorage>>} */
-  const stores = new Map();
-  const storeFor = (/** @type {string} */ id) => {
-    const store = stores.get(id) ?? createStorage(id);
-    stores.set(id, store);
-    return store;
-  };
-  const bestKeyOf = (/** @type {string} */ id) =>
-    resolved.games.find((choice) => choice.id === id)?.bestKey ?? 'best';
-  const pipeline = createPipeline({
-    storage: createStorage('meta'),
+  const progress = createProgressWiring({
     games: resolved.games,
-    bestOf: (id) => storeFor(id).getNumber(bestKeyOf(id), 0),
-    setBest: (id, value) => storeFor(id).setNumber(bestKeyOf(id), value),
+    theme,
+    cardSlot,
+    audio,
+    signal: page.signal,
+    hostState: () => host?.state,
+    firePower: () => host?.firePower(),
+    startGame: (id, run) => selectGame(id, true, run),
   });
-  const toasts = createToasts(byId('page') ?? document.body);
-  const bar = createBuildBar(() => openCard());
-  /** @param {string[]} notices */
-  const announce = (notices) => {
-    toasts.showAll(notices);
-    bar.update(pipeline);
-  };
-  /** The slot's current power, for the Rollback hint and the name in the drop toast. */
-  /** @type {PowerView | null} */
-  let power = null;
-
-  /** @param {RunEvent} event */
-  function onEvent(event) {
-    if (event.type === 'drop' && power?.id === event.id) toasts.show(`Power-up: ${power.name}`);
-    announce(pipeline.onEvent(event));
-  }
-
-  function firePower() {
-    if (power?.id === 'rollback' && power.state === 'held') {
-      toasts.show('Rollback fires when you crash');
-      return;
-    }
-    host?.firePower();
-  }
-
-  function playNightly() {
-    const day = dayNumber(Date.now());
-    const pick = nightlyGame(day, resolved.games);
-    if (pick) selectGame(pick.id, true, { random: nightlyRandom(day), nightly: true });
-  }
-
-  const openCard = () => {
-    if (host?.state !== 'idle') return;
-    openProfile(cardSlot, pipeline, {
-      games: resolved.games,
-      now: Date.now,
-      onNightly: () => {
-        cardSlot.replaceChildren();
-        playNightly();
-      },
-      onClose: () => bar.node.focus(),
-      toast: announce,
-    });
-  };
 
   /** Games the player can switch to from the game over card: the next two in config order. */
   const others = () => (resolved.picker ? nextGames(resolved.games, game) : []);
@@ -307,12 +248,11 @@ export function boot(registry, config, holidays = null) {
   const hostHud = {
     ...hud,
     setPower: (/** @type {PowerView | null} */ view) => {
-      power = view;
+      progress.setPower(view);
       hud.setPower(view);
     },
     showPaused: (/** @type {{ focus?: boolean }} */ how) => hud.showPaused(how, pausePicker()),
-    showOver: (/** @type {OverCard} */ card) =>
-      hud.showOver(card, others(), xpNote(pipeline.lastRun)),
+    showOver: (/** @type {OverCard} */ card) => hud.showOver(card, others(), progress.xpLine()),
   };
 
   /** @param {GameModule} next */
@@ -329,7 +269,7 @@ export function boot(registry, config, holidays = null) {
       hud: hostHud,
       attract,
       frames,
-      storage: storeFor(next.id),
+      storage: progress.storeFor(next.id),
       setClass(name, on) {
         html.classList.toggle(name, on);
         if (name === 'is-playing') hudRoot.hidden = !on;
@@ -337,14 +277,8 @@ export function boot(registry, config, holidays = null) {
       },
       createInput: (signal) =>
         attachInput({ canvas, signal, pauseButton: hud.pauseButton, onPause: () => host?.pause() }),
-      // Benjo wears the chosen look everywhere he is drawn: the game, the twin, and the ghost.
-      // A picked look replaces a holiday hat, so the two never stack.
-      drawSprite: (target, sprite, x, y, h, opts) => {
-        const skin = skinFor(sprite, theme.sprites.benjo, pipeline.state.look);
-        drawSprite(target, theme.palette, skin ? benjo : sprite, x, y, h, opts);
-        if (skin) drawSprite(target, theme.palette, skin, x, y, h, opts);
-      },
-      onEvent,
+      drawSprite: progress.drawSprite,
+      onEvent: progress.onEvent,
       onFailure: (failures) => (failures >= 2 ? hud.hidePrompt() : hud.showError()),
       audio,
     });
@@ -376,12 +310,12 @@ export function boot(registry, config, holidays = null) {
       resolved.message.playPrompt,
       resolved.picker && game ? { games: resolved.games, current: game.id } : null,
     );
-    promptSlot.append(bar.node);
+    promptSlot.append(progress.barNode);
   };
 
   host = hostFor(game);
   showPrompt();
-  announce(pipeline.visit());
+  progress.visit();
 
   const pauseIfPlaying = () => host?.pause();
   const options = { signal: page.signal };
@@ -401,17 +335,6 @@ export function boot(registry, config, holidays = null) {
   for (const type of ['pointerup', 'touchend', 'keydown']) {
     window.addEventListener(type, audio.unlock, { ...options, capture: true, passive: true });
   }
-  const mCode = byId('m-code');
-  if (mCode) {
-    watchTeapot(
-      mCode,
-      () => {
-        audio.play('clear');
-        announce(pipeline.unlock('teapot'));
-      },
-      page.signal,
-    );
-  }
   window.addEventListener(
     'keydown',
     (event) => {
@@ -420,7 +343,7 @@ export function boot(registry, config, holidays = null) {
         return;
       }
       if (event.code === 'KeyE' && isShortcut(event) && host?.state === 'playing') {
-        firePower();
+        progress.firePower();
         return;
       }
       const onBody = document.activeElement === document.body;

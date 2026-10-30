@@ -24,6 +24,7 @@ import {
   BOTTOM_PAD,
   CEILING,
   CEILING_NARROW,
+  CEILING_STATUS,
   COLS,
   COMPACT_CHARGE,
   EVENT_COMPACT,
@@ -57,6 +58,7 @@ import {
   SHAKE_T,
   SIDE_PAD,
   START_GRACE,
+  STATUS_WIDTH,
   TWIN_ROWS,
 } from './tuning.js';
 
@@ -114,6 +116,15 @@ import {
 const NO_POWERS = {};
 
 /**
+ * Top of the play area: below the HUD strip, and below the status line where it drops under the
+ * strip. @param {number} width the canvas width as the host reports it
+ */
+export function ceilingFor(width) {
+  if (width < NARROW_WIDTH) return CEILING_NARROW;
+  return width < STATUS_WIDTH ? CEILING_STATUS : CEILING;
+}
+
+/**
  * The heap keeps its COLS x ROWS grid at every size, with LANE rows of air above it; the cell
  * is as big as fits under the HUD with the compact meter beside the heap.
  * @param {Area} size
@@ -121,7 +132,7 @@ const NO_POWERS = {};
 export function layout(size) {
   const width = Math.max(MIN_WIDTH, size.width || 0);
   const height = Math.max(MIN_HEIGHT, size.height || 0);
-  const ceiling = size.width < NARROW_WIDTH ? CEILING_NARROW : CEILING;
+  const ceiling = ceilingFor(size.width);
   const bottom = height - BOTTOM_PAD;
   const across = (width - SIDE_PAD * 2) / (COLS + METER_GAP + METER_W);
   const cell = Math.max(1, Math.floor(Math.min(across, (bottom - ceiling) / (ROWS + LANE))));

@@ -7,17 +7,25 @@
 export const COLS = 10;
 export const ROWS = 12;
 /** Rows of open air above the heap that a new block falls through before it can land. */
-export const LANE = 2;
+export const LANE = 3;
 export const CEILING = 64;
 export const CEILING_NARROW = 96;
 export const NARROW_WIDTH = 600;
+/**
+ * From NARROW_WIDTH up to this width the HUD's status line sits just under the strip (#17), so
+ * the heap starts below it there; on wider screens the status sits inside the strip.
+ */
+export const STATUS_WIDTH = 992;
+export const CEILING_STATUS = 88;
 export const MIN_WIDTH = 320;
 export const MIN_HEIGHT = 240;
 export const SIDE_PAD = 16;
 export const BOTTOM_PAD = 16;
 /** The compact meter stands beside the heap: its width and gap, in cells. */
-export const METER_W = 0.4;
-export const METER_GAP = 0.4;
+export const METER_W = 0.6;
+export const METER_GAP = 0.3;
+/** The meter's label is drawn only when cells are at least this big, px. */
+export const METER_LABEL_MIN = 20;
 
 // Blocks
 export const MIN_W = 1;

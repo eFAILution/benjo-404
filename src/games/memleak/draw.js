@@ -13,6 +13,7 @@ import {
   LANE,
   LIFE_WARN,
   METER_GAP,
+  METER_LABEL_MIN,
   METER_W,
   POP_T,
   ROWS,
@@ -29,9 +30,14 @@ const BLOCK_ALPHA = 0.9;
 const HOLE_ALPHA = 0.14;
 const DOT_ALPHA = 0.25;
 const WALL_ALPHA = 0.6;
-const GUIDE_ALPHA = 0.12;
 const GHOST_ALPHA = 0.5;
 const METER_ALPHA = 0.2;
+const METER_TICKS = 4;
+const LABEL_MAX = 12;
+/** The label's size as a share of the meter's width. */
+const LABEL_SHARE = 0.6;
+const LABEL_ALPHA = 0.85;
+const FONT = "'B404 Mono', monospace";
 /** Gap around a block inside its cells, as a share of the cell. */
 const INSET = 0.08;
 const BAR_H = 0.16;
@@ -134,20 +140,19 @@ function drawBlocks(host, w) {
   }
 }
 
-/** The falling block, a faint column down to where it lands, and its outline there. @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w @param {number} alpha */
+/**
+ * The falling block, and a faint outline where it will land: in the accent color when that is
+ * above the heap, where it would overflow.
+ * @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w @param {number} alpha
+ */
 function drawFall(ctx, palette, w, alpha) {
   const f = w.fall;
   if (!f.active) return;
   const row = w.dead ? f.y : f.prevY + (f.y - f.prevY) * alpha;
   const rest = landing(w, f.x, f.w);
-  const over = rest >= ROWS;
-  ctx.globalAlpha = GUIDE_ALPHA;
-  ctx.fillStyle = over ? palette.accent : palette.muted;
-  const guideTop = rowTop(w, row - 1);
-  ctx.fillRect(w.left + f.x * w.cell, guideTop, f.w * w.cell, rowTop(w, rest - 1) - guideTop);
-  if (!over && rest < row) {
+  if (rest < row - 1) {
     ctx.globalAlpha = GHOST_ALPHA;
-    ctx.strokeStyle = palette.pickup;
+    ctx.strokeStyle = rest >= ROWS ? palette.accent : palette.pickup;
     ctx.lineWidth = 1;
     const pad = Math.max(1, Math.round(w.cell * INSET));
     const x = w.left + f.x * w.cell + pad + 0.5;
@@ -176,19 +181,42 @@ function drawPops(ctx, palette, w) {
   ctx.globalAlpha = 1;
 }
 
-/** The compact meter beside the heap, filling from the floor; full, it turns the accent color. @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w */
+/**
+ * The compact meter beside the heap: an outlined track that fills from the floor in the glow
+ * color, marked in quarters, and turns the accent color when full. On big enough cells it is
+ * labelled COMPACT, or READY when full, written up its length.
+ * @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w
+ */
 function drawMeter(ctx, palette, w) {
   const x = Math.round(w.left + (COLS + METER_GAP) * w.cell);
-  const width = Math.max(2, Math.round(METER_W * w.cell));
+  const width = Math.max(3, Math.round(METER_W * w.cell));
   const height = ROWS * w.cell;
+  const top = w.floor - height;
+  const full = w.charge >= COMPACT_CHARGE;
   ctx.fillStyle = palette.muted;
   ctx.globalAlpha = METER_ALPHA;
-  ctx.fillRect(x, w.floor - height, width, height);
-  const full = w.charge >= COMPACT_CHARGE;
-  const filled = (height * w.charge) / COMPACT_CHARGE;
+  ctx.fillRect(x, top, width, height);
   ctx.globalAlpha = 1;
   ctx.fillStyle = full ? palette.accent : palette.glow;
+  const filled = (height * w.charge) / COMPACT_CHARGE;
   ctx.fillRect(x, w.floor - filled, width, filled);
+  ctx.fillStyle = palette.bg;
+  for (let i = 1; i < METER_TICKS; i++)
+    ctx.fillRect(x, Math.round(top + (height * i) / METER_TICKS), width, 1);
+  ctx.strokeStyle = full ? palette.accent : palette.muted;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 0.5, top - 0.5, width + 1, height + 1);
+  if (w.cell < METER_LABEL_MIN) return;
+  ctx.save();
+  ctx.translate(x + width / 2, top + height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = `bold ${Math.round(Math.min(LABEL_MAX, width * LABEL_SHARE))}px ${FONT}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = full ? palette.bg : palette.ink;
+  ctx.globalAlpha = full ? 1 : LABEL_ALPHA;
+  ctx.fillText(full ? 'READY' : 'COMPACT', 0, 0);
+  ctx.restore();
 }
 
 /**

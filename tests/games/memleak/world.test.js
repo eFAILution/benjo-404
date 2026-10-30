@@ -3,6 +3,9 @@ import { describe, test } from 'node:test';
 
 import { cellAt, colTop, landing } from '../../../src/games/memleak/heap.js';
 import {
+  CEILING,
+  CEILING_NARROW,
+  CEILING_STATUS,
   COLS,
   COMPACT_CHARGE,
   EVENT_COMPACT,
@@ -25,10 +28,13 @@ import {
   MIN_W,
   MOVE_DELAY,
   MOVE_GAP,
+  NARROW_WIDTH,
   ROW_BONUS,
   ROWS,
+  STATUS_WIDTH,
 } from '../../../src/games/memleak/tuning.js';
 import {
+  ceilingFor,
   createWorld,
   fallSpeed,
   gapFor,
@@ -51,10 +57,24 @@ describe('layout', () => {
       assert.ok(w.cell >= 8, `cells are ${w.cell} px`);
       assert.ok(rect.y >= w.ceiling);
       assert.ok(rect.y + rect.height <= w.bottom);
-      assert.ok(rect.x >= 0 && w.left + (COLS + 0.8) * w.cell <= w.width, 'the meter fits too');
+      assert.ok(rect.x >= 0 && w.left + (COLS + 0.9) * w.cell <= w.width, 'the meter fits too');
       assert.ok(Math.abs(rect.x + rect.width / 2 - w.width / 2) <= w.cell, 'roughly centered');
     });
   }
+
+  test('the heap stays below the HUD status line where it drops under the strip', () => {
+    assert.equal(ceilingFor(375), CEILING_NARROW);
+    assert.equal(ceilingFor(NARROW_WIDTH), CEILING_STATUS);
+    assert.equal(ceilingFor(STATUS_WIDTH - 1), CEILING_STATUS);
+    assert.equal(ceilingFor(STATUS_WIDTH), CEILING);
+    for (const size of [
+      { width: 960, height: 600 },
+      { width: 600, height: 400 },
+    ]) {
+      const w = createWorld(size, seeded(1));
+      assert.ok(heapRect(w).y >= CEILING_STATUS, `${size.width}x${size.height}`);
+    }
+  });
 
   test('a resize keeps the heap and only moves the layout', () => {
     const w = quiet();

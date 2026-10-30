@@ -15,7 +15,8 @@
     "neversleeps",
     "savefile",
     "tower",
-    "bugbelt"
+    "bugbelt",
+    "benjotower"
   ],
   "startGame": "random",
   "gamePicker": true,

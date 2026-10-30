@@ -16,8 +16,8 @@ function short(value, max, what) {
 }
 
 describe('every bundled game has a How to play card (#28)', () => {
-  test('all sixteen games are checked', () => {
-    assert.equal(GAMES.length, 16);
+  test('all seventeen games are checked', () => {
+    assert.equal(GAMES.length, 17);
   });
 
   for (const id of GAMES) {

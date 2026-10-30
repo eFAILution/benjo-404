@@ -32,7 +32,7 @@ The owner confirmed the site is built and hosted on Webflow, so the page must li
 
 Source is plain JavaScript (ES2020 modules) with JSDoc type comments, checked by `tsc --noEmit` against one hand-written `src/contracts.d.ts`. There is no transpile step. `esbuild` bundles and minifies into the single file. `@biomejs/biome` lints and formats. Tests run on Node's built-in `node --test`, with no DOM library: game and holiday logic is written as pure functions that take state and return state, so it is tested without a browser.
 
-Dev dependencies, pinned exactly: `esbuild 0.28.2`, `@biomejs/biome 2.6.2`, `typescript 7.0.2`. Runtime dependencies: none. `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440`, because pnpm 11 reads only auth and registry settings from `.npmrc` (A-8.6). `tsconfig.json` uses `module: ESNext` and `moduleResolution: Bundler`, and the tests run with `node --test 'tests/**/*.test.js'` (A-8.8).
+Dev dependencies, pinned exactly: `esbuild 0.28.2`, `@biomejs/biome 2.6.2`, `typescript 7.0.2`. Runtime dependencies: none. `pnpm-workspace.yaml` sets `minimumReleaseAge: 1440`, because pnpm 11 reads only auth and registry settings from `.npmrc` (A-8.6). `tsconfig.json` uses `module: ESNext` and `moduleResolution: Bundler`, and the tests run with `node --test "tests/**/*.test.js"`, double-quoted so Node expands the glob on every OS (A-8.8, A-32.1).
 
 Reasons. TypeScript source would need a compile step and makes the shipped bytes no smaller. JSDoc plus a shared `.d.ts` gives parallel implementers a checked contract without that step. esbuild is one binary and the fastest option for a single bundle. Biome replaces ESLint plus Prettier with one binary. Node's test runner avoids Jest or Vitest and their dependency trees.
 

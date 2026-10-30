@@ -10,7 +10,7 @@ The owner asked for a one-tap game (#104). The first preview, a loop runner wher
 
 ## Decision
 
-Crack the Hash lives in `src/games/crackhash/` with the usual split, plus `ring.js` for spots on the ring, where each target and bug goes, and the pops. It needs no shell or contract change. It is the seventeenth entry in `games` and in the save code's `KNOWN_GAMES`, after Tower of Benjo (ADR-0100). It uses no names or art from any real game.
+Crack the Hash lives in `src/games/crackhash/` with the usual split, plus `ring.js` for spots on the ring, where each target and bug goes, and the pops. It needs no shell or contract change. It is the eighteenth entry in `games` and in the save code's `KNOWN_GAMES`, after Memory Leak (ADR-0106). It uses no names or art from any real game.
 
 - **A ring in track units.** The run is simulated in track px on every screen: a ring of radius 140, about 880 px around. Only drawing scales it, so that the ring and Benjo standing on it fill the field's short side. The ring is about three quarters of the short side across. A resize changes nothing but the drawing.
 - **Benjo stands on the ring.** He is drawn 46 px tall, feet on the ring's outside edge and head pointing out, facing the way he runs. The target (the theme's pickup sprite) and the bug (its hazard sprite) sit just inside the ring, over bands on the ring itself: the hit window in the glow color, a bug's reach in the hazard color. The pieces left are big in the middle, with the hash number under them.
@@ -34,7 +34,7 @@ Crack the Hash lives in `src/games/crackhash/` with the usual split, plus `ring.
 
 ## Consequences
 
-- The page ships seventeen games. This one is about 3.4 KB gzipped on its own (3,450 bytes of its 16 KB budget), and the page goes from 115.7 KB to 117.8 KB (117,792 bytes) of the 150 KB that ADR-0101 set.
+- The page ships eighteen games. This one is about 3.5 KB gzipped on its own (3,459 bytes of its 16 KB budget), and with Memory Leak the page is 121.6 KB (121,642 bytes) of the 150 KB that ADR-0101 set.
 - A save code from before this game still decodes. The Full Stack trophy now asks for one run of this game too.
 - At 320x240 the shell's HUD leaves a short field, so the ring is about 90 px across there. It plays, but small.
 - Changing the speed cap, the hit window, or the bug spacing must keep the fairness tests green (A-104.1).

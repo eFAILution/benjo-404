@@ -61,6 +61,7 @@ The local rename and `-u` matter: they point the branch at the new remote branch
 | Name | Purpose | How it changes |
 |------|---------|----------------|
 | local | Any developer | REPLACE-ME (for example `make up`) |
+| pages | `dist/embed/` on GitHub Pages, loaded by the Webflow 404 page | Every merge to `main`, through `.github/workflows/pages.yml` (ADR-0069) |
 
 ## Commands agents should run before committing
 
@@ -69,7 +70,7 @@ make verify        # lint, tests, and record checks (what the pre-push hook runs
 make secrets-scan  # gitleaks over the full history
 ```
 
-There is no CI (ADR-0006). Install the hooks once with `pre-commit install`; it sets up both the pre-commit and pre-push hooks.
+There is no CI (ADR-0006); the only workflow publishes to GitHub Pages and checks nothing (ADR-0069). Install the hooks once with `pre-commit install`; it sets up both the pre-commit and pre-push hooks.
 
 ## Data handling
 

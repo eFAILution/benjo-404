@@ -55,7 +55,8 @@ function playCue(host, events) {
 }
 
 const BEST_KEY = 'best';
-const HINT = 'SPACE OR TAP TO DROP';
+const HINT_KEYS = 'SPACE TO DROP';
+const HINT_TOUCH = 'TAP TO DROP';
 const NEW_BEST = 'NEW BEST';
 const PERFECT = 'PERFECT';
 const SCORE_LABEL = 'HEIGHT';
@@ -127,7 +128,7 @@ function createStack(host) {
       resetTracker(tracker, host.input);
       lastScore = 0;
       host.setScore(0);
-      showStatus(HINT, HINT_T);
+      showStatus(host.input.touch ? HINT_TOUCH : HINT_KEYS, HINT_T);
     },
 
     update(dt) {
@@ -193,8 +194,8 @@ const stack = {
   id: 'stack',
   name: 'Stack the Server',
   controls: {
-    keyboard: 'SPACE OR TAP TO DROP',
-    touch: 'TAP TO DROP',
+    keyboard: HINT_KEYS,
+    touch: HINT_TOUCH,
   },
   howTo: HOW_TO,
   bestKey: BEST_KEY,

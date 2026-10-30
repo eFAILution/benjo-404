@@ -41,6 +41,15 @@ describe('every bundled game has a How to play card (#28)', () => {
         if (thing.swatch) assert.ok(PALETTE_KEYS.includes(thing.swatch), thing.swatch);
         if (thing.sprite) assert.ok(pickSprite(fakeTheme, thing.sprite), `${id} ${thing.name}`);
       }
+      // #64: what the twin, the collector, and the magnet do differs in every game, so each game
+      // words the ones it drops. Rollback reads the same everywhere and may use the shell's words.
+      for (const power of game.powers ?? []) {
+        if (power !== 'rollback') short(howTo.powers?.[power], 72, `${id} ${power} power tip`);
+      }
+      for (const [power, tip] of Object.entries(howTo.powers ?? {})) {
+        short(tip, 72, `${id} ${power} power tip`);
+        assert.ok(game.powers?.includes(power), `${id} words ${power} but never drops it`);
+      }
     });
   }
 });

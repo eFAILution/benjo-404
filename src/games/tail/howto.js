@@ -1,6 +1,8 @@
 // @ts-check
 // Dragon Tail's How to play card (#28): the goal, the controls, and what each thing on the board does.
 
+import { MAGNET_STEPS } from './tuning.js';
+
 /** @type {import('../../contracts').HowTo} */
 export const HOW_TO = {
   goal: 'Steer Benjo round the board to eat pages. Each page makes his tail longer and him faster. Hitting a wall or his own tail ends the run.',
@@ -26,4 +28,8 @@ export const HOW_TO = {
       tip: "The board's edge. Hitting it ends the run",
     },
   ],
+  powers: {
+    twin: 'Takes one crash. More crashes only turn Benjo aside for a moment',
+    magnet: `The page slides up to ${MAGNET_STEPS} cells toward Benjo's path each move`,
+  },
 };

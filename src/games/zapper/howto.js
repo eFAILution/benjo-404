@@ -31,4 +31,8 @@ export const HOW_TO = {
       tip: 'Bugs drop lower at each wall. If they reach your row, the run ends',
     },
   ],
+  powers: {
+    twin: 'Takes one bite, or the bugs reaching the front line',
+    gc: 'Every bug and bite on screen goes. Bugs score as zapped',
+  },
 };

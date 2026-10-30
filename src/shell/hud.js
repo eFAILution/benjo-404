@@ -248,15 +248,16 @@ export function createHud(options) {
      * The How to play card. `go` starts or resumes the run; `back` returns to where it opened.
      * @param {{ name: string, howTo: import('../contracts').HowTo }} game
      * @param {import('../contracts').ThemePack} theme
+     * @param {{ touch: boolean, powers: import('../contracts').PowerId[] }} device
      * @param {{ goLabel: string, onGo: () => void, onBack: () => void }} actions
      */
-    showHowTo({ name, howTo }, theme, actions) {
+    showHowTo({ name, howTo }, theme, device, actions) {
       const go = button(actions.goLabel, 'btn btn-primary', actions.onGo);
       showCard(
         'card-title',
         [
           el('p', { class: 'card-kicker', id: 'card-title' }, [`How to play ${name}`]),
-          ...howToBody(howTo, theme),
+          ...howToBody(howTo, theme, device),
           el('div', { class: 'card-actions' }, [
             go,
             button('Back', 'btn btn-ghost', actions.onBack),

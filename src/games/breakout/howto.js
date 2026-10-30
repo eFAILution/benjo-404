@@ -31,4 +31,9 @@ export const HOW_TO = {
       tip: "Don't let the fireball fall past it. It narrows each round",
     },
   ],
+  powers: {
+    twin: 'Saves one lost fireball. The floor bounces it back for a moment',
+    gc: 'The lowest row of bricks pops and scores',
+    magnet: 'A falling fireball drifts toward the paddle',
+  },
 };

@@ -36,4 +36,9 @@ export const HOW_TO = {
       tip: `+${PICKUP_SCORE} points. Your score is the distance run plus orbs`,
     },
   ],
+  powers: {
+    twin: 'Takes one hit. Links pass through Benjo while he blinks',
+    gc: 'Clears every broken link on screen',
+    magnet: 'Nearby orbs fly to Benjo',
+  },
 };

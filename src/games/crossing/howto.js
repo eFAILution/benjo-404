@@ -36,4 +36,9 @@ export const HOW_TO = {
       tip: `${CROSS_T} seconds per crossing. It changes color, then costs a life at zero`,
     },
   ],
+  powers: {
+    twin: 'Takes one hit, so no life is lost. Blocks pass through while he blinks',
+    gc: 'Clears every code block from the lanes',
+    magnet: "Orbs on Benjo's lane and the lanes beside it slide to him",
+  },
 };

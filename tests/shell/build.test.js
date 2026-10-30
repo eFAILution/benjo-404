@@ -86,6 +86,12 @@ describe('build with fixtures', () => {
     assert.ok(csp.includes('; img-src data:; '));
   });
 
+  it('styles no class that Webflow puts on its own body tag (#68)', async () => {
+    const css = await readFile(join(dir, 'dist', 'embed', 'benjo-404.css'), 'utf8');
+    // Webflow names the body tag's class "body" once it is styled, so `.is-playing .body` hid the page.
+    assert.doesNotMatch(css, /\.body(?![\w-])/);
+  });
+
   it('writes sizes.json with every part', async () => {
     const sizes = JSON.parse(await readFile(join(dir, 'dist', 'sizes.json'), 'utf8'));
     for (const part of [

@@ -20,6 +20,7 @@ export const KNOWN_GAMES = /** @type {const} */ ([
   'pinball',
   'neversleeps',
   'savefile',
+  'tower',
   'bugbelt',
 ]);
 

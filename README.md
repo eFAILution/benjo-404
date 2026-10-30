@@ -34,7 +34,7 @@ Query overrides, for testing only. Bad values are ignored.
 
 | Query | Effect |
 |-------|--------|
-| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run), `flight` (Benjo Flight), `stack` (Stack the Server), `tail` (Dragon Tail), `breakout` (Break the 404), `crossing` (Code Crossing), `zapper` (Bug Zapper), `whack` (Whack-a-Bug), `links` (Fix the Link), `muncher` (Cache Muncher), `pinball` (Benjo Pinball), `neversleeps` (Never Sleeps Run), `savefile` (Save the File), or `bugbelt` (Bug Belt). `?game=none` shows the page with no game. |
+| `?game=runner` | Pin a bundled game, whatever `startGame` says: `runner` (Benjo Run), `flight` (Benjo Flight), `stack` (Stack the Server), `tail` (Dragon Tail), `breakout` (Break the 404), `crossing` (Code Crossing), `zapper` (Bug Zapper), `whack` (Whack-a-Bug), `links` (Fix the Link), `muncher` (Cache Muncher), `pinball` (Benjo Pinball), `neversleeps` (Never Sleeps Run), `savefile` (Save the File), `tower` (Uptime Tower), or `bugbelt` (Bug Belt). `?game=none` shows the page with no game. |
 | `?theme=halloween` | Pick a bundled theme. `?theme=none` forces the default look. |
 | `?date=2026-10-24` | Pretend today is this date (`YYYY-MM-DD`), to preview a holiday. |
 | `?message=short` | Pick a bundled message. |

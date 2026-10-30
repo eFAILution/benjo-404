@@ -83,7 +83,6 @@ export function boot(registry, config, holidays = null) {
   const hudRoot = byId('hud');
   const cardSlot = byId('card-slot');
   const promptSlot = byId('prompt-slot');
-  const overlay = byId('overlay');
   const cta = /** @type {HTMLAnchorElement | null} */ (byId('m-cta'));
   const ctx = canvas?.getContext('2d');
   if (!gameRoot || !canvas || !ctx || !message || !hudRoot || !cardSlot || !promptSlot || !cta)
@@ -333,7 +332,6 @@ export function boot(registry, config, holidays = null) {
   message.addEventListener('focusin', () => host?.pause({ focus: false }), options);
   const canStart = () =>
     host?.state === 'idle' && promptSlot.firstElementChild !== null && !cardSlot.firstElementChild;
-  overlay?.addEventListener('click', () => canStart() && play(), options);
   // Browsers only allow sound after a gesture, so every input tries to wake the audio. A touch
   // pointerdown is not a gesture, and iOS Safari interrupts a context made there.
   for (const type of ['pointerup', 'touchend', 'keydown']) {

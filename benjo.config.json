@@ -16,7 +16,8 @@
     "savefile",
     "tower",
     "bugbelt",
-    "benjotower"
+    "benjotower",
+    "crackhash"
   ],
   "startGame": "random",
   "gamePicker": true,

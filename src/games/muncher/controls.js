@@ -5,14 +5,18 @@
 // press is held until it ends, because a swipe also starts with a press: a swipe wins, and
 // otherwise Benjo turns toward the spot that was pressed, along the longer axis (as in crossing).
 
+import { createPress, pointerPressed, resetPress } from '../../shell/press.js';
+
 /** @typedef {import('../../contracts').InputState} InputState */
-/** @typedef {{ pointerDown: boolean, pressed: boolean, pressX: number, pressY: number }} PointerTracker */
+/**
+ * @typedef {import('../../shell/press.js').PressTracker & { pressed: boolean, pressX: number, pressY: number }} PointerTracker
+ */
 
 /** Directions in world order: right, down, left, up. */
 const DIRS = /** @type {const} */ (['right', 'down', 'left', 'up']);
 
 /** @returns {PointerTracker} */
-export const createTracker = () => ({ pointerDown: false, pressed: false, pressX: 0, pressY: 0 });
+export const createTracker = () => ({ ...createPress(), pressed: false, pressX: 0, pressY: 0 });
 
 /**
  * Forget pointer history, treating a pointer that is already down as used.
@@ -21,7 +25,7 @@ export const createTracker = () => ({ pointerDown: false, pressed: false, pressX
  * @param {InputState} input
  */
 export function resetTracker(tracker, input) {
-  tracker.pointerDown = Boolean(input.pointer?.down);
+  resetPress(tracker, input);
   tracker.pressed = false;
 }
 
@@ -37,15 +41,14 @@ export function towards(dx, dy) {
 /**
  * @param {InputState} input
  * @param {PointerTracker} tracker mutated
+ * @param {number} now seconds on the run clock
  * @param {number} benjoX Benjo's center in canvas px
  * @param {number} benjoY
  * @returns {number} 0..3, or -1 for no new request
  */
-export function readTurn(input, tracker, benjoX, benjoY) {
-  const pointerDown = Boolean(input.pointer?.down);
-  const pointerEdge = pointerDown && !tracker.pointerDown;
-  const released = !pointerDown && tracker.pointerDown;
-  tracker.pointerDown = pointerDown;
+export function readTurn(input, tracker, now, benjoX, benjoY) {
+  const released = !input.pointer?.down && tracker.pointerDown;
+  const pointerEdge = pointerPressed(tracker, input, now);
   if (pointerEdge && input.pointer) {
     tracker.pressed = true;
     tracker.pressX = input.pointer.x;

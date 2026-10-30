@@ -9,7 +9,8 @@
     "crossing",
     "zapper",
     "whack",
-    "links"
+    "links",
+    "muncher"
   ],
   "startGame": "random",
   "gamePicker": true,

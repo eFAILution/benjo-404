@@ -31,7 +31,7 @@ const tamper = (code, at) => {
 describe('save codes', () => {
   it('lists the known games in their fixed order', () => {
     assert.deepEqual(KNOWN_GAMES.slice(0, 3), ['runner', 'flight', 'stack']);
-    assert.equal(KNOWN_GAMES.length, 13);
+    assert.equal(KNOWN_GAMES.length, 14);
     assert.equal(KNOWN_GAMES.at(-1), 'bugbelt', 'new games append');
   });
 

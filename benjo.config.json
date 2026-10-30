@@ -12,7 +12,8 @@
     "links",
     "muncher",
     "pinball",
-    "neversleeps"
+    "neversleeps",
+    "bugbelt"
   ],
   "startGame": "random",
   "gamePicker": true,

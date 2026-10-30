@@ -31,8 +31,8 @@ const tamper = (code, at) => {
 describe('save codes', () => {
   it('lists the known games in their fixed order', () => {
     assert.deepEqual(KNOWN_GAMES.slice(0, 3), ['runner', 'flight', 'stack']);
-    assert.equal(KNOWN_GAMES.length, 12);
-    assert.equal(KNOWN_GAMES.at(-1), 'neversleeps', 'new games append');
+    assert.equal(KNOWN_GAMES.length, 13);
+    assert.equal(KNOWN_GAMES.at(-1), 'bugbelt', 'new games append');
   });
 
   it('knows every game in src/games, so each one counts toward codes and Full Stack', () => {

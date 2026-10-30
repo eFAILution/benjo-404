@@ -1,7 +1,7 @@
 // @ts-check
 // Fix the Link's How to play card (#28): the goal, the controls, and what each thing on the board does.
 
-import { SOLVE_BONUS_T } from './tuning.js';
+import { CLOCK_CAP, SOLVE_BONUS_T } from './tuning.js';
 
 /** @type {import('../../contracts').HowTo} */
 export const HOW_TO = {
@@ -20,7 +20,7 @@ export const HOW_TO = {
     {
       sprite: { set: 'pickups', index: 0 },
       name: 'Home page',
-      tip: `Link up to it to fix the link: points, plus ${SOLVE_BONUS_T} seconds`,
+      tip: `Link up to it: points, plus ${SOLVE_BONUS_T} seconds, up to ${CLOCK_CAP} on the clock`,
     },
     {
       swatch: 'muted',

@@ -26,9 +26,9 @@ export const HOW_TO = {
       tip: 'Bugs spit these down at you. Dodge them: each hit costs a life',
     },
     {
-      swatch: 'muted',
-      name: 'Server room',
-      tip: 'The bottom of the screen. A bug that reaches it ends the run',
+      swatch: 'ink',
+      name: 'Front line',
+      tip: 'Bugs drop lower at each wall. If they reach your row, the run ends',
     },
   ],
 };

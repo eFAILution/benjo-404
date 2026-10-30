@@ -43,7 +43,7 @@ The page has no server and no accounts, holds no personal data (AGENTS.md), and 
 
 8. **The ghost race needs no game change beyond `track`.** The host samples the tracked position four times a second, saves it in the game's storage when a run beats the best, and draws it see-through on the next run of that game.
 
-9. **The save code moves progress between devices without a server.** It packs the progress and every game's best into varints with a 16-bit checksum, written in Crockford base32 in 7-character groups so it reads like commit hashes. Restoring merges (higher numbers win, trophy and power masks combine), so a code can never lose progress, and a bad code is rejected without throwing.
+9. **The save code moves progress between devices without a server.** It packs the progress and every game's best into varints with a 16-bit checksum, written in Crockford base32 in 7-character groups so it reads like commit hashes. Restoring merges (higher numbers win, trophy and power masks combine), so a code can never lose progress, and a bad code is rejected without throwing. The uptime streak is the exception: it goes with its nightly day, so the later day's streak wins and an old code can't pass off a stale streak as today's (#48).
 
 10. **The shell budget rises from 24,000 to 28,000 bytes gzipped.** The progress system, menus, power-ups, and ghost bring the shell to about 24,000. The page total stays near 71,000 of its 90,000 budget, and every game stays far under 16,000. The 4,000 bytes of headroom leave room for fixes after real-device testing (#19).
 

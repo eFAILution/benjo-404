@@ -60,7 +60,7 @@ const NEW_BEST = 'NEW BEST';
 const SCORE_LABEL = 'POPS';
 /** @type {Record<import('./world.js').Cause, string>} */
 const REASONS = {
-  '': 'The lock held.',
+  '': 'The hash held.',
   early: 'Benjo tapped off the target.',
   past: 'Benjo ran past the target.',
   bug: 'Benjo tapped a bug.',
@@ -112,7 +112,7 @@ function createCrackHash(host) {
       showStatus(NEW_BEST, NEW_BEST_T);
       return;
     }
-    if (w.events & EVENT_OPEN) return showStatus(`LOCK ${w.lock - 1} OPEN`, STATUS_T);
+    if (w.events & EVENT_OPEN) return showStatus(`HASH ${w.lock - 1} CRACKED`, STATUS_T);
     if (statusT <= 0) return;
     statusT -= dt;
     if (statusT <= 0) host.setStatus('');

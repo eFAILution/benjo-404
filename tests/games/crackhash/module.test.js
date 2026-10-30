@@ -78,7 +78,7 @@ describe('instance', () => {
     assert.equal(touch.log.statuses[0], 'TAP ON THE TARGET');
   });
 
-  test('shows LOCK n OPEN, and NEW BEST once the best is passed', () => {
+  test('shows HASH n CRACKED, and NEW BEST once the best is passed', () => {
     const host = fakeHost({ storage: fakeStorage({ best: '1' }) });
     const game = crackHash.create(host);
     game.start();
@@ -97,7 +97,7 @@ describe('instance', () => {
     });
     host.input.pressed.add('primary');
     play(host, game, 0.1);
-    assert.equal(host.log.statuses.at(-1), 'LOCK 2 OPEN');
+    assert.equal(host.log.statuses.at(-1), 'HASH 2 CRACKED');
   });
 
   test('a miss ends the run once with the pops and the reason, and the ghost is tracked', () => {

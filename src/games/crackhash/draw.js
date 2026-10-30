@@ -111,7 +111,7 @@ function drawCenter(ctx, palette, w) {
   ctx.fillText(w.openT > 0 ? 'OPEN' : String(w.pins), w.cx, w.cy);
   ctx.font = `${Math.round(size * LABEL_SIZE)}px ${FONT}`;
   ctx.fillStyle = palette.muted;
-  ctx.fillText(`LOCK ${w.openT > 0 ? w.lock - 1 : w.lock}`, w.cx, w.cy + size * 0.75);
+  ctx.fillText(`HASH ${w.openT > 0 ? w.lock - 1 : w.lock}`, w.cx, w.cy + size * 0.75);
 }
 
 /** Rings that grow and fade where a target popped or a bug went. @param {CanvasRenderingContext2D} ctx @param {Palette} palette @param {World} w */

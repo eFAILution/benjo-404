@@ -2,6 +2,7 @@
 // Renders a world onto the host canvas. Reads the world, never changes it.
 // alpha blends the moving block, Benjo, and the camera between the last two steps.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BENJO_H,
   BENJO_LIFT,
@@ -170,7 +171,7 @@ function drawBenjo(host, w, x, moverY) {
   const bob = w.reducedMotion ? 0 : Math.sin(w.time * BOB_RATE) * BOB_PX * w.unit;
   const flashOn = w.dead && (w.reducedMotion || Math.floor(w.deadT / FLASH_EVERY) % 2 === 0);
   const opts = flashOn ? hitOpts : benjoOpts;
-  const blink = w.grace > 0 && (w.reducedMotion || Math.floor(w.grace / FLASH_EVERY) % 2 === 0);
+  const blink = graceFaint(w.graceT, FLASH_EVERY, w.reducedMotion);
   benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   opts.flipX = w.dir < 0;
   hitOpts.tint = host.theme.palette.hazard;

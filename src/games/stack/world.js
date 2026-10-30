@@ -76,7 +76,7 @@ import {
  * @property {number} benjoX screen x of Benjo's center
  * @property {number} prevBenjoX
  * @property {number} hold seconds Benjo still waits over the landed block
- * @property {number} grace seconds left of the twin's save: the mover waits and drops are ignored
+ * @property {number} graceT seconds left of the twin's save: the mover waits and drops are ignored
  * @property {number} cam levels the stack is shifted down
  * @property {number} prevCam
  * @property {number} camTarget
@@ -166,7 +166,7 @@ export function createWorld(size, random, options = {}) {
     benjoX: 0,
     prevBenjoX: 0,
     hold: 0,
-    grace: 0,
+    graceT: 0,
     cam: 0,
     prevCam: 0,
     camTarget: 0,
@@ -250,7 +250,7 @@ function land(w, assist) {
       next.x = top.x;
       next.w = top.w;
       w.streak = 0;
-      w.grace = TWIN_GRACE;
+      w.graceT = TWIN_GRACE;
       settle(w, level);
       return;
     }
@@ -326,8 +326,8 @@ export function stepWorld(w, drop, dt, assist = NO_ASSIST) {
   w.time += dt;
   w.dropT += dt;
   w.hold = Math.max(0, w.hold - dt);
-  const resting = w.grace > 0;
-  w.grace = Math.max(0, w.grace - dt);
+  const resting = w.graceT > 0;
+  w.graceT = Math.max(0, w.graceT - dt);
   ageCuts(w, dt);
   w.cam = w.reducedMotion ? w.camTarget : Math.min(w.camTarget, w.cam + dt / CAM_T);
   if (w.dead) {

@@ -131,7 +131,7 @@ export const LIFE_SPACING = 14;
 // Power-ups (#22)
 /** After the Digital Twin takes a touch, cache misses pass through Benjo for this long. */
 export const GRACE_T = 1.5;
-export const BLINK_EVERY = 0.1;
+export const GRACE_BLINK = 0.1;
 export const GRACE_ALPHA = 0.35;
 /** Magnet: Benjo munches the bytes this many cells from him, counted along the open paths. */
 export const MAGNET_CELLS = 2;

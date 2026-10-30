@@ -4,6 +4,7 @@
 // The world keeps its own previous positions, so a single world mutated in place is enough
 // for render(alpha) to interpolate, and nothing in the update path allocates.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -174,16 +175,15 @@ function createZapper(host) {
 
     snapshot() {
       if (!world) return null;
-      const { random: _random, ...rest } = world;
       /** @type {Snapshot} */
-      const snap = { world: rest, status, statusT, cheered, seenWidth, seenHeight };
-      return structuredClone(snap);
+      const snap = { world: freezeWorld(world), status, statusT, cheered, seenWidth, seenHeight };
+      return snap;
     },
 
     restore(saved) {
       if (!saved) return;
-      const snap = /** @type {Snapshot} */ (structuredClone(saved));
-      world = { ...snap.world, random: host.random };
+      const snap = /** @type {Snapshot} */ (saved);
+      world = thawWorld(snap.world, host.random);
       ({ cheered, seenWidth, seenHeight } = snap);
       showStatus(snap.status, snap.statusT);
       ended = false;

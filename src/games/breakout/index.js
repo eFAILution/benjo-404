@@ -2,6 +2,7 @@
 // Break the 404: the GameModule. Wires host input, the world, drawing, and the HUD.
 // Benjo holds the paddle, his fireball is the ball, and the bricks spell 404.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createTracker, readIntent, resetTracker } from './controls.js';
 import { drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -180,16 +181,15 @@ function createBreakout(host) {
 
     snapshot() {
       if (!world) return null;
-      const { random: _random, ...rest } = world;
       /** @type {Snapshot} */
-      const snap = { world: rest, status, statusT, cheered, seenWidth, seenHeight };
-      return structuredClone(snap);
+      const snap = { world: freezeWorld(world), status, statusT, cheered, seenWidth, seenHeight };
+      return snap;
     },
 
     restore(saved) {
       if (!saved) return;
-      const snap = /** @type {Snapshot} */ (structuredClone(saved));
-      world = { ...snap.world, random: host.random };
+      const snap = /** @type {Snapshot} */ (saved);
+      world = thawWorld(snap.world, host.random);
       ({ cheered, seenWidth, seenHeight } = snap);
       showStatus(snap.status, snap.statusT);
       ended = false;

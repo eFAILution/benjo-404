@@ -6,6 +6,7 @@
 // timed-out board, and the Garbage Collector sets a few wrong tiles right. Benjo never moves and
 // nothing drifts toward him, so there is no track and no magnet.
 
+import { freezeWorld, thawWorld } from '../../shell/world-copy.js';
 import { createIntent, createTracker, readIntent, resetTracker } from './controls.js';
 import { cursorX, cursorY, drawFrame } from './draw.js';
 import { HOW_TO } from './howto.js';
@@ -165,16 +166,22 @@ function createLinks(host) {
 
     snapshot() {
       if (!world) return null;
-      const { random: _random, ...rest } = world;
       /** @type {Snapshot} */
-      const snap = { world: rest, lastScore, statusT, cheered, seenWidth, seenHeight };
-      return structuredClone(snap);
+      const snap = {
+        world: freezeWorld(world),
+        lastScore,
+        statusT,
+        cheered,
+        seenWidth,
+        seenHeight,
+      };
+      return snap;
     },
 
     restore(value) {
       if (!value) return;
-      const snap = /** @type {Snapshot} */ (structuredClone(value));
-      world = { ...snap.world, random: host.random };
+      const snap = /** @type {Snapshot} */ (value);
+      world = thawWorld(snap.world, host.random);
       ({ lastScore, statusT, cheered, seenWidth, seenHeight } = snap);
       ended = false;
       resetTracker(tracker, host.input);

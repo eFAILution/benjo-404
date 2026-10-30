@@ -64,7 +64,7 @@ export const NEW_BEST_T = 1.5;
 // Power-ups (#22)
 /** After the Digital Twin takes a hit, further hits only turn Benjo aside for this long. */
 export const GRACE_T = 1;
-export const BLINK_EVERY = 0.1;
+export const GRACE_BLINK = 0.1;
 export const GRACE_ALPHA = 0.35;
 /** Magnet: cells the page slides toward Benjo's path on each of his moves. */
 export const MAGNET_STEPS = 2;

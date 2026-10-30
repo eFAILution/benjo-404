@@ -3,11 +3,11 @@
 // alpha blends Benjo, the formation, and every shot between the last two steps, so motion
 // stays smooth on displays faster than the 60 Hz step.
 
+import { graceFaint } from '../../shell/blink.js';
 import { bugX, bugY } from './formation.js';
 import {
   BITE_H,
   BITE_W,
-  BLINK_EVERY,
   BOB_AMP,
   BOB_RATE,
   BOLT_H,
@@ -16,6 +16,7 @@ import {
   FLAME_R,
   FLASH_EVERY,
   GRACE_ALPHA,
+  GRACE_BLINK,
   HIT_T,
   POP_GROW,
   POP_T,
@@ -138,7 +139,7 @@ function drawLives(ctx, palette, w) {
 function drawBenjo(host, w, blend) {
   const t = hurtT(w);
   const flashOn = t >= 0 && (w.reducedMotion || Math.floor(t / FLASH_EVERY) % 2 === 0);
-  const blink = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  const blink = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
   benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   hitOpts.tint = host.theme.palette.hazard;
   const x = w.prevBx + (w.bx - w.prevBx) * blend;

@@ -73,7 +73,7 @@ describe('Digital Twin', () => {
     assert.equal(w.streak, 0, 'a save is not a perfect');
     assert.equal(topBlock(w).x, top.x);
     assert.equal(topBlock(w).w, top.w);
-    assert.equal(w.grace, TWIN_GRACE);
+    assert.equal(w.graceT, TWIN_GRACE);
   });
 
   test('during the grace the next block waits and drops are ignored', () => {
@@ -92,7 +92,7 @@ describe('Digital Twin', () => {
     assert.equal(w.score, 1);
     assert.equal(calls, 0);
     for (let i = 0; i < 4; i++) stepWorld(w, false, DT, assist);
-    assert.equal(w.grace, 0);
+    assert.equal(w.graceT, 0);
     assert.notEqual(w.x, x, 'the mover slides again after the grace');
   });
 

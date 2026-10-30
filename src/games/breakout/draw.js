@@ -2,12 +2,13 @@
 // Renders a world onto the host canvas. Reads the world, never changes it.
 // alpha blends the paddle and the fireball between the last two steps.
 
+import { graceFaint } from '../../shell/blink.js';
 import {
   BENJO_DY,
   BENJO_H,
-  BLINK_EVERY,
   FLASH_EVERY,
   GRACE_ALPHA,
+  GRACE_BLINK,
   LIFE_R,
   LIFE_SPACING,
   LIFE_X,
@@ -135,7 +136,7 @@ function drawPaddle(host, w, px) {
   const t = w.dead ? w.deadT : w.lostT;
   const hurt = w.dead || w.losing;
   const flashOn = hurt && (w.reducedMotion || Math.floor(t / FLASH_EVERY) % 2 === 0);
-  const blink = w.graceT > 0 && (w.reducedMotion || Math.floor(w.graceT / BLINK_EVERY) % 2 === 0);
+  const blink = graceFaint(w.graceT, GRACE_BLINK, w.reducedMotion);
   benjoOpts.alpha = blink ? GRACE_ALPHA : 1;
   const opts = flashOn ? hitOpts : benjoOpts;
   opts.flipX = w.facing < 0;
